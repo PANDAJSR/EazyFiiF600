@@ -154,6 +154,12 @@ function BlockCanvas({ droneName, blocks }: Props) {
             if (blockIndex === 0 && rowIndex < rows.length - 1) {
               classNames.push('block-card-stack-bottom')
             }
+            if (row.length > 1 && blockIndex === 0) {
+              classNames.push('block-card-join-right')
+            }
+            if (row.length > 1 && blockIndex === row.length - 1) {
+              classNames.push('block-card-join-left')
+            }
 
             return (
               <section

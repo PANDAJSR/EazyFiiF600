@@ -212,7 +212,7 @@ body {
 .block-row {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
+  gap: 0;
   max-width: 100%;
 }
 
@@ -225,6 +225,17 @@ body {
 }
 
 .block-card-stack-bottom {
+  border-bottom-left-radius: 0;
+}
+
+.block-card-join-right {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.block-card-join-left {
+  margin-left: -2px;
+  border-top-left-radius: 0;
   border-bottom-left-radius: 0;
 }
 
