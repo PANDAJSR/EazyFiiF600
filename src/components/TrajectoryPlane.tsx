@@ -196,7 +196,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
     return (
       <div className="trajectory-card">
         <div className="trajectory-meta">{meta}</div>
-        <TrajectoryScene3D visits={visits} bounds={bounds} onLocateBlock={onLocateBlock} />
+        <TrajectoryScene3D visits={visits} bounds={bounds} onLocateBlock={onLocateBlock} onMovePoint={onMovePoint} />
       </div>
     )
   }
