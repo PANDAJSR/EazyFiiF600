@@ -168,9 +168,13 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
     if (!rowId) {
       return
     }
-    setFlashRowId(rowId)
+    setFlashRowId(undefined)
+    const rafId = window.requestAnimationFrame(() => setFlashRowId(rowId))
     const timer = window.setTimeout(() => setFlashRowId(undefined), 1300)
-    return () => window.clearTimeout(timer)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.clearTimeout(timer)
+    }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
   if (!blocks.length) {

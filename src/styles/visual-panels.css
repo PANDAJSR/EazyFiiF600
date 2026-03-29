@@ -193,15 +193,17 @@
 
 @keyframes block-card-flash-fadeout {
   0% {
+    outline: 4px solid rgba(27, 110, 214, 0.62);
+    outline-offset: 0;
     box-shadow:
-      0 0 0 3px rgba(27, 110, 214, 0.34),
-      0 10px 22px rgba(27, 110, 214, 0.22);
-    border-color: #1b6ed6;
+      0 0 0 4px rgba(27, 110, 214, 0.28),
+      0 14px 28px rgba(27, 110, 214, 0.28);
   }
 
   100% {
+    outline: 0 solid rgba(27, 110, 214, 0);
+    outline-offset: 0;
     box-shadow: 0 4px 10px rgba(41, 72, 115, 0.08);
-    border-color: #93b2da;
   }
 }
 
