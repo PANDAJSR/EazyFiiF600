@@ -169,16 +169,17 @@ body {
   stroke-linecap: round;
 }
 
-.trajectory-point-start {
-  fill: #2db974;
-  stroke: #fff;
-  stroke-width: 1.5;
+.trajectory-point {
+  fill: #fff;
+  stroke: #1b6ed6;
+  stroke-width: 2;
 }
 
-.trajectory-point-end {
-  fill: #f05f3b;
-  stroke: #fff;
-  stroke-width: 1.5;
+.trajectory-point-count {
+  fill: #1b6ed6;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
 }
 
 .warning-panel {

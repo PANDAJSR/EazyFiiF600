@@ -16,6 +16,12 @@ type Point = {
   y: number
 }
 
+type PointSummary = {
+  x: number
+  y: number
+  count: number
+}
+
 const VIEWBOX_WIDTH = 780
 const VIEWBOX_HEIGHT = 620
 const GRID_STEP = 20
@@ -72,6 +78,22 @@ const buildTicks = (min: number, max: number): number[] => {
   return ticks
 }
 
+const summarizePoints = (points: Point[]): PointSummary[] => {
+  const pointMap = new Map<string, PointSummary>()
+
+  points.forEach((point) => {
+    const key = `${point.x},${point.y}`
+    const existing = pointMap.get(key)
+    if (existing) {
+      existing.count += 1
+      return
+    }
+    pointMap.set(key, { x: point.x, y: point.y, count: 1 })
+  })
+
+  return [...pointMap.values()]
+}
+
 function TrajectoryPlane({ startPos, blocks }: Props) {
   const points = buildPathPoints(startPos, blocks)
 
@@ -110,10 +132,9 @@ function TrajectoryPlane({ startPos, blocks }: Props) {
 
   const xTicks = buildTicks(minX, maxX)
   const yTicks = buildTicks(minY, maxY)
+  const summarizedPoints = summarizePoints(points)
 
   const polylinePoints = points.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
-  const start = points[0]
-  const end = points[points.length - 1]
 
   return (
     <div className="trajectory-card">
@@ -167,8 +188,21 @@ function TrajectoryPlane({ startPos, blocks }: Props) {
           </g>
         ))}
         <polyline points={polylinePoints} className="trajectory-line" />
-        <circle cx={toSvgX(start.x)} cy={toSvgY(start.y)} r={6} className="trajectory-point-start" />
-        <circle cx={toSvgX(end.x)} cy={toSvgY(end.y)} r={6} className="trajectory-point-end" />
+        {summarizedPoints.map((point) => (
+          <g key={`point-${point.x}-${point.y}`}>
+            <circle cx={toSvgX(point.x)} cy={toSvgY(point.y)} r={6} className="trajectory-point" />
+            {point.count > 1 && (
+              <text
+                x={toSvgX(point.x)}
+                y={toSvgY(point.y) + 3.8}
+                textAnchor="middle"
+                className="trajectory-point-count"
+              >
+                {point.count}
+              </text>
+            )}
+          </g>
+        ))}
       </svg>
     </div>
   )
