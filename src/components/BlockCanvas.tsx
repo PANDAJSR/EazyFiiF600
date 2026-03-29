@@ -176,13 +176,13 @@ function BlockCanvas({
         onDragOver={(event) => {
           event.preventDefault()
           updateDropHint(event, block.id)
+          const rect = event.currentTarget.getBoundingClientRect()
+          const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
           setPreviewBlocks((prev) => {
             if (!draggingBlockId || draggingBlockId === block.id) {
               return prev
             }
             const source = prev ?? blocks
-            const rect = event.currentTarget.getBoundingClientRect()
-            const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
             return reorderBlocks(source, draggingBlockId, block.id, position)
           })
         }}
