@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
@@ -30,6 +30,8 @@ function BlockCanvas({
   onMoveBlock,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
+  const prevTopByBlockIdRef = useRef<Record<string, number>>({})
+  const firstLayoutMeasuredRef = useRef(false)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
@@ -49,6 +51,49 @@ function BlockCanvas({
       row.forEach((block) => rowMap.set(block.id, rowId))
     })
     return rowMap
+  }, [rows])
+
+  useLayoutEffect(() => {
+    const nextTopByBlockId: Record<string, number> = {}
+    Object.entries(blockRefs.current).forEach(([blockId, element]) => {
+      if (!element) {
+        return
+      }
+      nextTopByBlockId[blockId] = element.getBoundingClientRect().top
+    })
+
+    if (!firstLayoutMeasuredRef.current) {
+      prevTopByBlockIdRef.current = nextTopByBlockId
+      firstLayoutMeasuredRef.current = true
+      return
+    }
+
+    Object.entries(nextTopByBlockId).forEach(([blockId, nextTop]) => {
+      const prevTop = prevTopByBlockIdRef.current[blockId]
+      const element = blockRefs.current[blockId]
+      if (!element || prevTop === undefined) {
+        return
+      }
+
+      const deltaY = prevTop - nextTop
+      if (Math.abs(deltaY) < 1) {
+        return
+      }
+
+      element.style.transition = 'none'
+      element.style.transform = `translateY(${deltaY}px)`
+      // Force reflow before starting transition, so we can animate from old location to new location.
+      void element.offsetHeight
+      element.style.transition = 'transform 180ms ease'
+      element.style.transform = ''
+      window.setTimeout(() => {
+        if (blockRefs.current[blockId] === element) {
+          element.style.transition = ''
+        }
+      }, 220)
+    })
+
+    prevTopByBlockIdRef.current = nextTopByBlockId
   }, [rows])
 
   useEffect(() => {
