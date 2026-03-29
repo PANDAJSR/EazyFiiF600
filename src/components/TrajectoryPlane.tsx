@@ -36,6 +36,18 @@ const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
 
 const snapToStep = (value: number, step: number) => Math.round(value / step) * step
 
+const clientToSvg = (svg: SVGSVGElement, clientX: number, clientY: number) => {
+  const ctm = svg.getScreenCTM()
+  if (!ctm) {
+    return null
+  }
+  const point = svg.createSVGPoint()
+  point.x = clientX
+  point.y = clientY
+  const transformed = point.matrixTransform(ctm.inverse())
+  return { x: transformed.x, y: transformed.y }
+}
+
 const summarizePoints = (visits: Visit[]): PointSummary[] => {
   const pointMap = new Map<string, PointSummary>()
 
@@ -118,14 +130,13 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
         return
       }
 
-      const rect = svg.getBoundingClientRect()
-      const svgX =
-        ((event.clientX - rect.left) / rect.width) * VIEWBOX_WIDTH
-      const svgY =
-        ((event.clientY - rect.top) / rect.height) * VIEWBOX_HEIGHT
+      const svgPoint = clientToSvg(svg, event.clientX, event.clientY)
+      if (!svgPoint) {
+        return
+      }
 
-      const clampedX = Math.min(Math.max(svgX, plotLeft), plotLeft + plotSize)
-      const clampedY = Math.min(Math.max(svgY, plotTop), plotTop + plotSize)
+      const clampedX = Math.min(Math.max(svgPoint.x, plotLeft), plotLeft + plotSize)
+      const clampedY = Math.min(Math.max(svgPoint.y, plotTop), plotTop + plotSize)
       const dragBounds = dragBoundsRef.current ?? bounds
       const x = snapToStep(dragBounds.minX + ((clampedX - plotLeft) / plotSize) * dragBounds.span, SNAP_STEP)
       const y = snapToStep(dragBounds.minY + (1 - (clampedY - plotTop) / plotSize) * dragBounds.span, SNAP_STEP)
