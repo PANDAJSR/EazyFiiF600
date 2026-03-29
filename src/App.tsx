@@ -2,7 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
-import TrajectoryPlane from './components/TrajectoryPlane'
+import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
 
@@ -116,20 +116,15 @@ function App() {
                 highlightPulse={highlightPulse}
               />
             </section>
-            <section className="content-panel trajectory-panel">
-              <Typography.Title level={5} className="trajectory-title">
-                飞机平面轨迹（XY）
-              </Typography.Title>
-              <TrajectoryPlane
-                startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
-                blocks={selectedProgram?.blocks ?? []}
-                onLocateBlock={(blockId) => {
-                  setHighlightedBlockId(blockId)
-                  setHighlightPulse((prev) => prev + 1)
-                }}
-              />
-            </section>
           </div>
+          <FloatingTrajectoryPanel
+            startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
+            blocks={selectedProgram?.blocks ?? []}
+            onLocateBlock={(blockId) => {
+              setHighlightedBlockId(blockId)
+              setHighlightPulse((prev) => prev + 1)
+            }}
+          />
         </Layout.Content>
       </Layout>
       <input

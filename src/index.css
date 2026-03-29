@@ -106,7 +106,7 @@ body {
 
 .content-grid {
   display: grid;
-  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  grid-template-columns: minmax(360px, 1fr);
   gap: 16px;
   align-items: start;
 }
