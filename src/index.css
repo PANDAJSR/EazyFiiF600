@@ -175,11 +175,64 @@ body {
   stroke-width: 2;
 }
 
+.trajectory-point-group {
+  cursor: pointer;
+}
+
+.trajectory-point-active {
+  stroke: #0d4ea1;
+  stroke-width: 2.4;
+}
+
 .trajectory-point-count {
   fill: #1b6ed6;
   font-size: 10px;
   font-weight: 700;
   pointer-events: none;
+}
+
+.trajectory-visit-panel {
+  margin: 10px 4px 4px;
+  border: 1px solid #d5e4f8;
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+}
+
+.trajectory-visit-title {
+  color: #244b77;
+  font-size: 12px;
+  font-weight: 700;
+  margin-bottom: 6px;
+}
+
+.trajectory-visit-list {
+  display: grid;
+  gap: 6px;
+}
+
+.trajectory-visit-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: #325b88;
+  font-size: 12px;
+}
+
+.trajectory-locate-btn {
+  border: 1px solid #9fc0ee;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #1f5ea9;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.trajectory-locate-btn:hover {
+  background: #e2efff;
 }
 
 .warning-panel {
@@ -208,6 +261,11 @@ body {
   max-width: min(100%, 1000px);
   overflow-x: auto;
   overflow-y: hidden;
+}
+
+.block-card-highlight {
+  border-color: #1b6ed6;
+  box-shadow: 0 0 0 3px rgba(27, 110, 214, 0.18), 0 8px 20px rgba(27, 110, 214, 0.16);
 }
 
 .block-row {

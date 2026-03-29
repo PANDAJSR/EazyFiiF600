@@ -18,6 +18,7 @@ function App() {
     sourceName: '',
   })
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
+  const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
   const [loading, setLoading] = useState(false)
 
   const directoryPickerRef = useRef<HTMLInputElement>(null)
@@ -38,6 +39,7 @@ function App() {
       const parsed = await parseFiiFromFiles(Array.from(list))
       setResult(parsed)
       setSelectedDroneId(parsed.programs[0]?.drone.id)
+      setHighlightedBlockId(undefined)
       if (parsed.warnings.length) {
         message.warning(`读取完成，存在 ${parsed.warnings.length} 条提示`)
       } else {
@@ -81,7 +83,10 @@ function App() {
           <DroneSidebar
             programs={result.programs}
             selectedId={selectedDroneId}
-            onSelect={setSelectedDroneId}
+            onSelect={(id) => {
+              setSelectedDroneId(id)
+              setHighlightedBlockId(undefined)
+            }}
           />
         </Layout.Sider>
         <Layout.Content className="app-content">
@@ -104,6 +109,7 @@ function App() {
               <BlockCanvas
                 droneName={selectedProgram?.drone.name}
                 blocks={selectedProgram?.blocks ?? []}
+                highlightedBlockId={highlightedBlockId}
               />
             </section>
             <section className="content-panel trajectory-panel">
@@ -111,8 +117,9 @@ function App() {
                 飞机平面轨迹（XY）
               </Typography.Title>
               <TrajectoryPlane
-                startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0' }}
+                startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
                 blocks={selectedProgram?.blocks ?? []}
+                onLocateBlock={setHighlightedBlockId}
               />
             </section>
           </div>

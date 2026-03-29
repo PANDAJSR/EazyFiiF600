@@ -1,9 +1,11 @@
+import { useEffect, useRef } from 'react'
 import { Empty } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 
 type Props = {
   droneName?: string
   blocks: ParsedBlock[]
+  highlightedBlockId?: string
 }
 
 type BlockToken = {
@@ -133,7 +135,20 @@ const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
   return rows
 }
 
-function BlockCanvas({ droneName, blocks }: Props) {
+function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
+  const blockRefs = useRef<Record<string, HTMLElement | null>>({})
+
+  useEffect(() => {
+    if (!highlightedBlockId) {
+      return
+    }
+    const target = blockRefs.current[highlightedBlockId]
+    if (!target) {
+      return
+    }
+    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+  }, [highlightedBlockId])
+
   if (!blocks.length) {
     return (
       <div className="blocks-empty">
@@ -165,6 +180,9 @@ function BlockCanvas({ droneName, blocks }: Props) {
             }
 
             const classNames = ['block-card']
+            if (block.id === highlightedBlockId) {
+              classNames.push('block-card-highlight')
+            }
             if (blockIndex === 0 && rowIndex > 0) {
               classNames.push('block-card-stack-top')
             }
@@ -182,6 +200,10 @@ function BlockCanvas({ droneName, blocks }: Props) {
               <section
                 key={block.id}
                 className={classNames.join(' ')}
+                ref={(el) => {
+                  blockRefs.current[block.id] = el
+                }}
+                data-block-id={block.id}
                 style={{
                   color: theme.color,
                   background: theme.bg,
@@ -229,6 +251,9 @@ function BlockCanvas({ droneName, blocks }: Props) {
                   }
 
                   const classNames = ['block-card']
+                  if (block.id === highlightedBlockId) {
+                    classNames.push('block-card-highlight')
+                  }
                   if (blockIndex === 0 && rowIndex > 0) {
                     classNames.push('block-card-stack-top')
                   }
@@ -246,6 +271,10 @@ function BlockCanvas({ droneName, blocks }: Props) {
                     <section
                       key={block.id}
                       className={classNames.join(' ')}
+                      ref={(el) => {
+                        blockRefs.current[block.id] = el
+                      }}
+                      data-block-id={block.id}
                       style={{
                         color: theme.color,
                         background: theme.bg,
