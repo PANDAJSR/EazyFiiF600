@@ -140,6 +140,11 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
           token(f.color1 ?? '#ffffff', true, false, 'color1', 'color'),
         ],
       }
+    case 'Goertek_LEDTurnOnAllSingleColor2':
+      return {
+        title: '设置全部灯光颜色为',
+        values: [token(f.color1 ?? '#ffffff', true, false, 'color1', 'color')],
+      }
     default:
       return {
         title: block.type,
