@@ -38,7 +38,7 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
     case 'Goertek_Start':
       return { title: '开始', values: [] }
     case 'block_inittime':
-      return { title: '开始时间', values: [token(f.time || '00:00', true)] }
+      return { title: '在{{时间（空）}}开始', values: [token(f.time || '00:00', true)] }
     case 'Goertek_HorizontalSpeed':
       return {
         title: '水平速度',
