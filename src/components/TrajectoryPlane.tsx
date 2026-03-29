@@ -35,6 +35,7 @@ const SNAP_STEP = 10
 const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
 
 const snapToStep = (value: number, step: number) => Math.round(value / step) * step
+const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
 const clientToSvg = (svg: SVGSVGElement, clientX: number, clientY: number) => {
   const ctm = svg.getScreenCTM()
@@ -81,7 +82,9 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const [activePointKey, setActivePointKey] = useState<string>()
   const [isDraggingPoint, setIsDraggingPoint] = useState(false)
   const [frozenBounds, setFrozenBounds] = useState<TrajectoryBounds | null>(null)
+  const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
   const panelRef = useRef<HTMLDivElement>(null)
+  const canvasWrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<MovePointPayload | null>(null)
   const dragBoundsRef = useRef<TrajectoryBounds | null>(null)
@@ -167,6 +170,48 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
     }
   }, [bounds, onMovePoint, plotLeft, plotSize, plotTop, viewMode])
 
+  useEffect(() => {
+    if (viewMode !== '2d' || isDraggingPoint || !activePoint) {
+      return
+    }
+
+    const svg = svgRef.current
+    const wrap = canvasWrapRef.current
+    if (!svg || !wrap) {
+      return
+    }
+
+    const updateAnchor = () => {
+      const svgPointX = plotLeft + ((activePoint.x - displayBounds.minX) / displayBounds.span) * plotSize
+      const svgPointY = plotTop + (1 - (activePoint.y - displayBounds.minY) / displayBounds.span) * plotSize
+
+      const ctm = svg.getScreenCTM()
+      if (!ctm) {
+        return
+      }
+
+      const point = svg.createSVGPoint()
+      point.x = svgPointX
+      point.y = svgPointY
+      const screenPoint = point.matrixTransform(ctm)
+      const wrapRect = wrap.getBoundingClientRect()
+
+      const xPercent = clamp(((screenPoint.x - wrapRect.left) / wrapRect.width) * 100, 18, 82)
+      const yPercent = ((screenPoint.y - wrapRect.top) / wrapRect.height) * 100
+
+      setActivePointAnchor({ xPercent, yPercent })
+    }
+
+    const rafId = window.requestAnimationFrame(updateAnchor)
+    window.addEventListener('resize', updateAnchor)
+    window.addEventListener('scroll', updateAnchor, true)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+      window.removeEventListener('resize', updateAnchor)
+      window.removeEventListener('scroll', updateAnchor, true)
+    }
+  }, [activePoint, displayBounds.maxX, displayBounds.maxY, displayBounds.minX, displayBounds.minY, displayBounds.span, isDraggingPoint, plotLeft, plotSize, plotTop, viewMode])
+
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
@@ -189,19 +234,13 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const yTicks = buildTicks(displayBounds.minY, displayBounds.maxY)
 
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
-  const activePointAnchor = activePoint
-    ? {
-        xPercent: Math.max(18, Math.min(82, (toSvgX(activePoint.x) / VIEWBOX_WIDTH) * 100)),
-        yPercent: (toSvgY(activePoint.y) / VIEWBOX_HEIGHT) * 100,
-      }
-    : undefined
   const panelDirection =
     activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
 
   return (
     <div className="trajectory-card">
       <div className="trajectory-meta">{meta}</div>
-      <div className="trajectory-canvas-wrap">
+      <div ref={canvasWrapRef} className="trajectory-canvas-wrap">
         <svg
           ref={svgRef}
           className="trajectory-svg"
