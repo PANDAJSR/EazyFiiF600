@@ -28,7 +28,7 @@ type PointSummary = {
   visits: Visit[]
 }
 
-const VIEWBOX_WIDTH = 780
+const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
 const GRID_STEP = 20
 

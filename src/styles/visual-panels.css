@@ -14,7 +14,7 @@
   border: 1px solid #d7e6f8;
   background: #fbfdff;
   border-radius: 12px;
-  padding: 8px;
+  padding: 4px;
 }
 
 .trajectory-meta {
@@ -371,14 +371,14 @@
 }
 
 .floating-trajectory-panel-docked-right .floating-trajectory-body {
-  padding: 6px;
+  padding: 4px;
 }
 
 .floating-trajectory-panel-docked-right .trajectory-card {
   height: 100%;
   display: flex;
   flex-direction: column;
-  padding: 6px;
+  padding: 4px;
 }
 
 .floating-trajectory-panel-docked-right .trajectory-canvas-wrap {
@@ -421,7 +421,7 @@
   flex: 1;
   min-height: 0;
   overflow: auto;
-  padding: 10px;
+  padding: 6px;
 }
 
 .floating-trajectory-resize {
