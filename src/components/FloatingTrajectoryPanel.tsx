@@ -38,6 +38,11 @@ type DragState =
       originWidth: number
       originHeight: number
     }
+  | {
+      type: 'resize-left'
+      startX: number
+      originWidth: number
+    }
 
 const PANEL_MARGIN = 12
 const MIN_WIDTH = 380
@@ -164,6 +169,12 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         return
       }
 
+      if (current.type === 'resize-left') {
+        const offsetX = event.clientX - current.startX
+        setRect(getDockedRightRect(current.originWidth - offsetX))
+        return
+      }
+
       const offsetX = event.clientX - current.startX
       const offsetY = event.clientY - current.startY
 
@@ -219,6 +230,20 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
       startY: event.clientY,
       originWidth: rect.width,
       originHeight: rect.height,
+    }
+    document.body.classList.add('trajectory-panel-dragging')
+  }
+
+  const startResizeFromLeft = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!dockedRight) {
+      return
+    }
+    event.preventDefault()
+    event.stopPropagation()
+    dragRef.current = {
+      type: 'resize-left',
+      startX: event.clientX,
+      originWidth: rect.width,
     }
     document.body.classList.add('trajectory-panel-dragging')
   }
@@ -281,6 +306,14 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
           onPointerDown={startResize}
           role="separator"
           aria-label="调整轨迹面板大小"
+        />
+      )}
+      {dockedRight && (
+        <div
+          className="floating-trajectory-resize-left"
+          onPointerDown={startResizeFromLeft}
+          role="separator"
+          aria-label="调整右侧面板宽度"
         />
       )}
     </section>,

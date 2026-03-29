@@ -370,6 +370,26 @@
   border-radius: 14px 0 0 14px;
 }
 
+.floating-trajectory-panel-docked-right .floating-trajectory-body {
+  padding: 6px;
+}
+
+.floating-trajectory-panel-docked-right .trajectory-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+}
+
+.floating-trajectory-panel-docked-right .trajectory-canvas-wrap {
+  flex: 1;
+  min-height: 0;
+}
+
+.floating-trajectory-panel-docked-right .trajectory-svg {
+  height: 100%;
+}
+
 .floating-trajectory-header {
   display: flex;
   align-items: center;
@@ -422,6 +442,28 @@
   height: 9px;
   border-right: 2px solid #7ba5d8;
   border-bottom: 2px solid #7ba5d8;
+}
+
+.floating-trajectory-resize-left {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 10px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 2;
+}
+
+.floating-trajectory-resize-left::before {
+  content: '';
+  position: absolute;
+  left: 1px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 2px;
+  height: 44px;
+  border-radius: 999px;
+  background: rgba(123, 165, 216, 0.9);
 }
 
 .trajectory-panel-dragging,
