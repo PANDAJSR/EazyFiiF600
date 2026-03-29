@@ -6,17 +6,21 @@ type Props = {
   blocks: ParsedBlock[]
 }
 
+const themeControl = { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' }
+const themeAction = { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' }
+const themeKey = { color: '#17324d', bg: '#f1f7ff', border: '#adc3e3' }
+
 const blockTheme: Record<string, { color: string; bg: string; border: string }> = {
-  Goertek_Start: { color: '#5b1f2d', bg: '#ffd1de', border: '#ff7aa2' },
-  block_inittime: { color: '#5e2b17', bg: '#ffe2c5', border: '#ffac5f' },
-  Goertek_HorizontalSpeed: { color: '#ffffff', bg: '#4d52c5', border: '#7d83ff' },
-  Goertek_VerticalSpeed: { color: '#ffffff', bg: '#3f46af', border: '#7077f7' },
-  Goertek_UnLock: { color: '#1c5b51', bg: '#b8f3e6', border: '#66d6bf' },
-  block_delay: { color: '#1f6a4f', bg: '#c6ffe6', border: '#66dcad' },
-  Goertek_TakeOff2: { color: '#ffffff', bg: '#6a53c9', border: '#8d78eb' },
-  Goertek_MoveToCoord2: { color: '#ffffff', bg: '#5960db', border: '#8690ff' },
-  Goertek_Move: { color: '#ffffff', bg: '#5b65df', border: '#8c94ff' },
-  Goertek_Land: { color: '#ffffff', bg: '#5f51ba', border: '#8a79df' },
+  Goertek_Start: themeKey,
+  block_inittime: themeKey,
+  Goertek_HorizontalSpeed: themeAction,
+  Goertek_VerticalSpeed: themeAction,
+  Goertek_UnLock: themeAction,
+  block_delay: themeControl,
+  Goertek_TakeOff2: themeAction,
+  Goertek_MoveToCoord2: themeAction,
+  Goertek_Move: themeAction,
+  Goertek_Land: themeAction,
 }
 
 const blockText = (block: ParsedBlock): { title: string; values: string[] } => {
@@ -25,7 +29,7 @@ const blockText = (block: ParsedBlock): { title: string; values: string[] } => {
     case 'Goertek_Start':
       return { title: '开始', values: [] }
     case 'block_inittime':
-      return { title: 'Start at', values: [f.time || '00:00'] }
+      return { title: '开始时间', values: [f.time || '00:00'] }
     case 'Goertek_HorizontalSpeed':
       return {
         title: '水平速度',
