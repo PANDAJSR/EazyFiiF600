@@ -210,10 +210,26 @@ body {
 }
 
 .block-row {
+  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0;
   max-width: 100%;
+}
+
+.block-row-indented {
+  margin-left: 16px;
+}
+
+.block-row-indented::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 6px;
+  bottom: 6px;
+  width: 4px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(112, 146, 196, 0.45), rgba(112, 146, 196, 0.18));
 }
 
 .block-row + .block-row {
@@ -326,5 +342,14 @@ body {
 
   .block-chip-title-like {
     font-size: 17px;
+  }
+
+  .block-row-indented {
+    margin-left: 12px;
+  }
+
+  .block-row-indented::before {
+    left: -8px;
+    width: 3px;
   }
 }

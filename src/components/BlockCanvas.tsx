@@ -143,11 +143,17 @@ function BlockCanvas({ droneName, blocks }: Props) {
   }
 
   const rows = groupBlocksByRow(blocks)
+  const initTimeRowIndex = rows.findIndex((row) => row.some((block) => block.type === 'block_inittime'))
 
   return (
     <div className="blocks-wrap">
       {rows.map((row, rowIndex) => (
-        <div key={row[0].id} className="block-row">
+        <div
+          key={row[0].id}
+          className={['block-row', initTimeRowIndex >= 0 && rowIndex > initTimeRowIndex ? 'block-row-indented' : '']
+            .filter(Boolean)
+            .join(' ')}
+        >
           {row.map((block, blockIndex) => {
             const text = blockText(block)
             const theme = blockTheme[block.type] ?? {
