@@ -108,7 +108,14 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
         ],
       }
     case 'Goertek_Land':
-      return { title: '降落', values: [] }
+      return {
+        title: '降落',
+        values: [
+          token('Z'),
+          token('0', true),
+          token('cm'),
+        ],
+      }
     default:
       return {
         title: block.type,

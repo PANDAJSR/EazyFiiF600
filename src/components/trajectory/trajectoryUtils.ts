@@ -69,6 +69,17 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
         z: currentZ,
         blockId: block.id,
       })
+      return
+    }
+
+    if (block.type === 'Goertek_Land') {
+      currentZ = 0
+      visits.push({
+        x: currentX,
+        y: currentY,
+        z: currentZ,
+        blockId: block.id,
+      })
     }
   })
 
