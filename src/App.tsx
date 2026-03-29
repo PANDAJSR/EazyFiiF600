@@ -19,6 +19,7 @@ function App() {
   })
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
+  const [highlightPulse, setHighlightPulse] = useState(0)
   const [loading, setLoading] = useState(false)
 
   const directoryPickerRef = useRef<HTMLInputElement>(null)
@@ -40,6 +41,7 @@ function App() {
       setResult(parsed)
       setSelectedDroneId(parsed.programs[0]?.drone.id)
       setHighlightedBlockId(undefined)
+      setHighlightPulse(0)
       if (parsed.warnings.length) {
         message.warning(`读取完成，存在 ${parsed.warnings.length} 条提示`)
       } else {
@@ -86,6 +88,7 @@ function App() {
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
+              setHighlightPulse(0)
             }}
           />
         </Layout.Sider>
@@ -110,6 +113,7 @@ function App() {
                 droneName={selectedProgram?.drone.name}
                 blocks={selectedProgram?.blocks ?? []}
                 highlightedBlockId={highlightedBlockId}
+                highlightPulse={highlightPulse}
               />
             </section>
             <section className="content-panel trajectory-panel">
@@ -119,7 +123,10 @@ function App() {
               <TrajectoryPlane
                 startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
                 blocks={selectedProgram?.blocks ?? []}
-                onLocateBlock={setHighlightedBlockId}
+                onLocateBlock={(blockId) => {
+                  setHighlightedBlockId(blockId)
+                  setHighlightPulse((prev) => prev + 1)
+                }}
               />
             </section>
           </div>

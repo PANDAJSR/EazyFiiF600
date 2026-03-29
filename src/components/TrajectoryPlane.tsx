@@ -162,117 +162,130 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
   const yTicks = buildTicks(minY, maxY)
 
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
+  const activePointAnchor = activePoint
+    ? {
+        xPercent: (toSvgX(activePoint.x) / VIEWBOX_WIDTH) * 100,
+        yPercent: (toSvgY(activePoint.y) / VIEWBOX_HEIGHT) * 100,
+      }
+    : undefined
+  const panelDirection =
+    activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
 
   return (
     <div className="trajectory-card">
       <div className="trajectory-meta">
         范围 X: {minX} ~ {maxX} cm，Y: {minY} ~ {maxY} cm
       </div>
-      <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
-        <rect
-          x={plotLeft}
-          y={plotTop}
-          width={plotSize}
-          height={plotSize}
-          className="trajectory-grid-bg"
-        />
-        {xTicks.map((tick) => (
-          <g key={`x-${tick}`}>
-            <line
-              x1={toSvgX(tick)}
-              y1={plotTop}
-              x2={toSvgX(tick)}
-              y2={plotTop + plotSize}
-              className="trajectory-grid-line"
-            />
-            <text
-              x={toSvgX(tick)}
-              y={plotTop + plotSize + 18}
-              textAnchor="middle"
-              className="trajectory-axis-label"
-            >
-              {tick}
-            </text>
-          </g>
-        ))}
-        {yTicks.map((tick) => (
-          <g key={`y-${tick}`}>
-            <line
-              x1={plotLeft}
-              y1={toSvgY(tick)}
-              x2={plotLeft + plotSize}
-              y2={toSvgY(tick)}
-              className="trajectory-grid-line"
-            />
-            <text
-              x={plotLeft - 8}
-              y={toSvgY(tick) + 4}
-              textAnchor="end"
-              className="trajectory-axis-label"
-            >
-              {tick}
-            </text>
-          </g>
-        ))}
-        <polyline points={polylinePoints} className="trajectory-line" />
-        {summarizedPoints.map((point) => {
-          const key = `${point.x},${point.y}`
-          const isActive = activePointKey === key
-          return (
-            <g
-              key={`point-${point.x}-${point.y}`}
-              className="trajectory-point-group"
-              onClick={() => setActivePointKey(key)}
-            >
-              <circle
-                cx={toSvgX(point.x)}
-                cy={toSvgY(point.y)}
-                r={isActive ? 7 : 6}
-                className={isActive ? 'trajectory-point trajectory-point-active' : 'trajectory-point'}
+      <div className="trajectory-canvas-wrap">
+        <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
+          <rect
+            x={plotLeft}
+            y={plotTop}
+            width={plotSize}
+            height={plotSize}
+            className="trajectory-grid-bg"
+          />
+          {xTicks.map((tick) => (
+            <g key={`x-${tick}`}>
+              <line
+                x1={toSvgX(tick)}
+                y1={plotTop}
+                x2={toSvgX(tick)}
+                y2={plotTop + plotSize}
+                className="trajectory-grid-line"
               />
-              {point.count > 1 && (
-                <text
-                  x={toSvgX(point.x)}
-                  y={toSvgY(point.y) + 3.8}
-                  textAnchor="middle"
-                  className="trajectory-point-count"
-                >
-                  {point.count}
-                </text>
-              )}
+              <text
+                x={toSvgX(tick)}
+                y={plotTop + plotSize + 18}
+                textAnchor="middle"
+                className="trajectory-axis-label"
+              >
+                {tick}
+              </text>
             </g>
-          )
-        })}
-      </svg>
-      {!!activePoint && (
-        <div className="trajectory-visit-panel">
-          <div className="trajectory-visit-title">
-            点位 ({activePoint.x}, {activePoint.y}) 经过记录：{activePoint.count} 次
-          </div>
-          <div className="trajectory-visit-list">
-            {activePoint.visits.map((visit, index) => (
-              <div key={`${activePointKey}-${index}`} className="trajectory-visit-item">
-                <span>
-                  第 {index + 1} 次：X {visit.x}，Y {visit.y}，Z {visit.z}
-                </span>
-                {!!visit.blockId && (
-                  <button
-                    type="button"
-                    className="trajectory-locate-btn"
-                    onClick={() => {
-                      if (visit.blockId) {
-                        onLocateBlock?.(visit.blockId)
-                      }
-                    }}
+          ))}
+          {yTicks.map((tick) => (
+            <g key={`y-${tick}`}>
+              <line
+                x1={plotLeft}
+                y1={toSvgY(tick)}
+                x2={plotLeft + plotSize}
+                y2={toSvgY(tick)}
+                className="trajectory-grid-line"
+              />
+              <text
+                x={plotLeft - 8}
+                y={toSvgY(tick) + 4}
+                textAnchor="end"
+                className="trajectory-axis-label"
+              >
+                {tick}
+              </text>
+            </g>
+          ))}
+          <polyline points={polylinePoints} className="trajectory-line" />
+          {summarizedPoints.map((point) => {
+            const key = `${point.x},${point.y}`
+            const isActive = activePointKey === key
+            return (
+              <g
+                key={`point-${point.x}-${point.y}`}
+                className="trajectory-point-group"
+                onClick={() => setActivePointKey(key)}
+              >
+                <circle
+                  cx={toSvgX(point.x)}
+                  cy={toSvgY(point.y)}
+                  r={isActive ? 7 : 6}
+                  className={isActive ? 'trajectory-point trajectory-point-active' : 'trajectory-point'}
+                />
+                {point.count > 1 && (
+                  <text
+                    x={toSvgX(point.x)}
+                    y={toSvgY(point.y) + 3.8}
+                    textAnchor="middle"
+                    className="trajectory-point-count"
                   >
-                    定位代码
-                  </button>
+                    {point.count}
+                  </text>
                 )}
-              </div>
-            ))}
+              </g>
+            )
+          })}
+        </svg>
+        {!!activePoint && !!activePointAnchor && (
+          <div
+            className={`trajectory-visit-panel ${panelDirection}`}
+            style={{ left: `${activePointAnchor.xPercent}%`, top: `${activePointAnchor.yPercent}%` }}
+          >
+            <div className="trajectory-visit-title">
+              点位 ({activePoint.x}, {activePoint.y}) 经过记录：{activePoint.count} 次
+            </div>
+            <div className="trajectory-visit-list">
+              {activePoint.visits.map((visit, index) => (
+                <div key={`${activePointKey}-${index}`} className="trajectory-visit-item">
+                  <span>
+                    第 {index + 1} 次：X {visit.x}，Y {visit.y}，Z {visit.z}
+                  </span>
+                  {!!visit.blockId && (
+                    <button
+                      type="button"
+                      className="trajectory-locate-btn"
+                      onClick={() => {
+                        if (visit.blockId) {
+                          onLocateBlock?.(visit.blockId)
+                        }
+                      }}
+                    >
+                      定位代码
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

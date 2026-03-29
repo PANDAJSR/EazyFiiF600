@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Empty } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 
@@ -6,6 +6,7 @@ type Props = {
   droneName?: string
   blocks: ParsedBlock[]
   highlightedBlockId?: string
+  highlightPulse?: number
 }
 
 type BlockToken = {
@@ -135,8 +136,18 @@ const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
   return rows
 }
 
-function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
+function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
+  const [flashRowId, setFlashRowId] = useState<string>()
+  const rows = groupBlocksByRow(blocks)
+  const rowKeyByBlockId = useMemo(() => {
+    const rowMap = new Map<string, string>()
+    rows.forEach((row) => {
+      const rowId = row[0].id
+      row.forEach((block) => rowMap.set(block.id, rowId))
+    })
+    return rowMap
+  }, [rows])
 
   useEffect(() => {
     if (!highlightedBlockId) {
@@ -147,7 +158,20 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
       return
     }
     target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
-  }, [highlightedBlockId])
+  }, [highlightedBlockId, highlightPulse])
+
+  useEffect(() => {
+    if (!highlightedBlockId) {
+      return
+    }
+    const rowId = rowKeyByBlockId.get(highlightedBlockId)
+    if (!rowId) {
+      return
+    }
+    setFlashRowId(rowId)
+    const timer = window.setTimeout(() => setFlashRowId(undefined), 1300)
+    return () => window.clearTimeout(timer)
+  }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
   if (!blocks.length) {
     return (
@@ -157,7 +181,6 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
     )
   }
 
-  const rows = groupBlocksByRow(blocks)
   const initTimeRowIndex = rows.findIndex((row) => row.some((block) => block.type === 'block_inittime'))
   const rowsBeforeIndented =
     initTimeRowIndex >= 0 ? rows.slice(0, initTimeRowIndex + 1) : rows
@@ -169,7 +192,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
       {rowsBeforeIndented.map((row, rowIndex) => (
         <div
           key={row[0].id}
-          className="block-row"
+          className={flashRowId === row[0].id ? 'block-row block-row-highlight' : 'block-row'}
         >
           {row.map((block, blockIndex) => {
             const text = blockText(block)
@@ -180,9 +203,6 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
             }
 
             const classNames = ['block-card']
-            if (block.id === highlightedBlockId) {
-              classNames.push('block-card-highlight')
-            }
             if (blockIndex === 0 && rowIndex > 0) {
               classNames.push('block-card-stack-top')
             }
@@ -241,7 +261,14 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
           {rowsIndented.map((row, rowOffset) => {
             const rowIndex = initTimeRowIndex + 1 + rowOffset
             return (
-              <div key={row[0].id} className="block-row block-row-indented">
+              <div
+                key={row[0].id}
+                className={
+                  flashRowId === row[0].id
+                    ? 'block-row block-row-indented block-row-highlight'
+                    : 'block-row block-row-indented'
+                }
+              >
                 {row.map((block, blockIndex) => {
                   const text = blockText(block)
                   const theme = blockTheme[block.type] ?? {
@@ -251,9 +278,6 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId }: Props) {
                   }
 
                   const classNames = ['block-card']
-                  if (block.id === highlightedBlockId) {
-                    classNames.push('block-card-highlight')
-                  }
                   if (blockIndex === 0 && rowIndex > 0) {
                     classNames.push('block-card-stack-top')
                   }
