@@ -84,19 +84,29 @@ function TrajectoryPlane({ startPos, blocks }: Props) {
   const rawMinY = Math.min(0, ...points.map((point) => point.y))
   const rawMaxY = Math.max(360, ...points.map((point) => point.y))
 
-  const minX = Math.floor(rawMinX / GRID_STEP) * GRID_STEP
-  const maxX = Math.ceil(rawMaxX / GRID_STEP) * GRID_STEP
-  const minY = Math.floor(rawMinY / GRID_STEP) * GRID_STEP
-  const maxY = Math.ceil(rawMaxY / GRID_STEP) * GRID_STEP
+  const minXBase = Math.floor(rawMinX / GRID_STEP) * GRID_STEP
+  const maxXBase = Math.ceil(rawMaxX / GRID_STEP) * GRID_STEP
+  const minYBase = Math.floor(rawMinY / GRID_STEP) * GRID_STEP
+  const maxYBase = Math.ceil(rawMaxY / GRID_STEP) * GRID_STEP
 
   const margin = { top: 16, right: 16, bottom: 44, left: 44 }
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
   const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
-  const xSpan = Math.max(maxX - minX, GRID_STEP)
-  const ySpan = Math.max(maxY - minY, GRID_STEP)
+  const xSpanBase = Math.max(maxXBase - minXBase, GRID_STEP)
+  const ySpanBase = Math.max(maxYBase - minYBase, GRID_STEP)
+  const span = Math.max(xSpanBase, ySpanBase)
 
-  const toSvgX = (x: number) => margin.left + ((x - minX) / xSpan) * innerWidth
-  const toSvgY = (y: number) => margin.top + (1 - (y - minY) / ySpan) * innerHeight
+  const minX = minXBase
+  const maxX = minXBase + span
+  const minY = minYBase
+  const maxY = minYBase + span
+
+  const plotSize = Math.min(innerWidth, innerHeight)
+  const plotLeft = margin.left + (innerWidth - plotSize) / 2
+  const plotTop = margin.top + (innerHeight - plotSize) / 2
+
+  const toSvgX = (x: number) => plotLeft + ((x - minX) / span) * plotSize
+  const toSvgY = (y: number) => plotTop + (1 - (y - minY) / span) * plotSize
 
   const xTicks = buildTicks(minX, maxX)
   const yTicks = buildTicks(minY, maxY)
@@ -112,24 +122,24 @@ function TrajectoryPlane({ startPos, blocks }: Props) {
       </div>
       <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
         <rect
-          x={margin.left}
-          y={margin.top}
-          width={innerWidth}
-          height={innerHeight}
+          x={plotLeft}
+          y={plotTop}
+          width={plotSize}
+          height={plotSize}
           className="trajectory-grid-bg"
         />
         {xTicks.map((tick) => (
           <g key={`x-${tick}`}>
             <line
               x1={toSvgX(tick)}
-              y1={margin.top}
+              y1={plotTop}
               x2={toSvgX(tick)}
-              y2={margin.top + innerHeight}
+              y2={plotTop + plotSize}
               className="trajectory-grid-line"
             />
             <text
               x={toSvgX(tick)}
-              y={VIEWBOX_HEIGHT - 14}
+              y={plotTop + plotSize + 18}
               textAnchor="middle"
               className="trajectory-axis-label"
             >
@@ -140,14 +150,14 @@ function TrajectoryPlane({ startPos, blocks }: Props) {
         {yTicks.map((tick) => (
           <g key={`y-${tick}`}>
             <line
-              x1={margin.left}
+              x1={plotLeft}
               y1={toSvgY(tick)}
-              x2={margin.left + innerWidth}
+              x2={plotLeft + plotSize}
               y2={toSvgY(tick)}
               className="trajectory-grid-line"
             />
             <text
-              x={margin.left - 8}
+              x={plotLeft - 8}
               y={toSvgY(tick) + 4}
               textAnchor="end"
               className="trajectory-axis-label"
