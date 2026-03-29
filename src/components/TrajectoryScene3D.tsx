@@ -11,6 +11,11 @@ type Props = {
   onLocateBlock?: (blockId: string) => void
 }
 
+type PickCandidate = {
+  blockId: string
+  position: THREE.Vector3
+}
+
 const createGridLine = (
   start: THREE.Vector3,
   end: THREE.Vector3,
@@ -146,70 +151,82 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock }: Props) {
       endMarkerMaterial.dispose()
     })
 
-    const pickablePointMaterial = new THREE.MeshStandardMaterial({
-      color: '#6ea4e8',
-      emissive: '#000000',
-      metalness: 0.08,
-      roughness: 0.45,
-    })
-    const unpickablePointMaterial = new THREE.MeshStandardMaterial({
-      color: '#9db4d3',
-      emissive: '#000000',
-      transparent: true,
-      opacity: 0.68,
-      metalness: 0.08,
-      roughness: 0.45,
-    })
     const pointGeometry = new THREE.SphereGeometry(Math.max(bounds.span * 0.0055, 2.2), 14, 14)
-    const pickGroup = new THREE.Group()
-    const pickMeshes: THREE.Mesh[] = []
-    const pointScale = 1.65
-    const pointOffsetZ = Math.max(bounds.span * 0.0008, 0.2)
-
-    visits.forEach((visit, index) => {
-      if (index === 0) {
-        return
-      }
-      const mesh = new THREE.Mesh(pointGeometry, visit.blockId ? pickablePointMaterial : unpickablePointMaterial)
-      mesh.position.set(visit.x, visit.y, visit.z + pointOffsetZ)
-      mesh.userData = { blockId: visit.blockId }
-      mesh.scale.setScalar(pointScale)
-      pickMeshes.push(mesh)
-      pickGroup.add(mesh)
+    const hoverPointMaterial = new THREE.MeshStandardMaterial({
+      color: '#6ea4e8',
+      emissive: '#1b6ed6',
+      emissiveIntensity: 0.45,
+      metalness: 0.08,
+      roughness: 0.45,
     })
-    scene.add(pickGroup)
+    const pointScale = 1.78
+    const pointOffsetZ = Math.max(bounds.span * 0.0008, 0.2)
+    const hoverMesh = new THREE.Mesh(pointGeometry, hoverPointMaterial)
+    hoverMesh.visible = false
+    hoverMesh.scale.setScalar(pointScale)
+    scene.add(hoverMesh)
+
+    const pickCandidates: PickCandidate[] = visits.flatMap((visit) => {
+      if (!visit.blockId) {
+        return []
+      }
+      return [
+        {
+          blockId: visit.blockId,
+          position: new THREE.Vector3(visit.x, visit.y, visit.z + pointOffsetZ),
+        },
+      ]
+    })
 
     disposers.push(() => {
       pointGeometry.dispose()
-      pickablePointMaterial.dispose()
-      unpickablePointMaterial.dispose()
+      hoverPointMaterial.dispose()
     })
 
-    const raycaster = new THREE.Raycaster()
-    const pointer = new THREE.Vector2()
-    let hoveredMesh: THREE.Mesh | null = null
+    let hoveredCandidate: PickCandidate | null = null
     let pointerDown = { x: 0, y: 0 }
     let pointerMoved = false
-    let skipClickUntil = 0
 
-    const pickMeshAtPointer = (event: PointerEvent): THREE.Mesh | null => {
+    const pickCandidateAtPointer = (event: PointerEvent): PickCandidate | null => {
+      if (!pickCandidates.length) {
+        return null
+      }
       const rect = renderer.domElement.getBoundingClientRect()
-      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(pointer, camera)
-      const hits = raycaster.intersectObjects(pickMeshes, false)
-      return (hits[0]?.object as THREE.Mesh | undefined) ?? null
+      const maxDistancePx = 14
+      let minDistance = Number.POSITIVE_INFINITY
+      let nearest: PickCandidate | null = null
+
+      pickCandidates.forEach((candidate) => {
+        const projected = candidate.position.clone().project(camera)
+        if (projected.z < -1 || projected.z > 1) {
+          return
+        }
+        const screenX = (projected.x * 0.5 + 0.5) * rect.width + rect.left
+        const screenY = (-projected.y * 0.5 + 0.5) * rect.height + rect.top
+        const distance = Math.hypot(event.clientX - screenX, event.clientY - screenY)
+        if (distance < minDistance) {
+          minDistance = distance
+          nearest = candidate
+        }
+      })
+
+      return minDistance <= maxDistancePx ? nearest : null
+    }
+
+    const setHoveredCandidate = (candidate: PickCandidate | null) => {
+      hoveredCandidate = candidate
+      if (!candidate) {
+        hoverMesh.visible = false
+        renderer.domElement.style.cursor = 'default'
+        return
+      }
+      hoverMesh.visible = true
+      hoverMesh.position.copy(candidate.position)
+      renderer.domElement.style.cursor = 'pointer'
     }
 
     const resetHovered = () => {
-      if (!hoveredMesh) {
-        return
-      }
-      hoveredMesh.scale.setScalar(pointScale)
-      if (hoveredMesh.material instanceof THREE.MeshStandardMaterial) {
-        hoveredMesh.material.emissive.set('#000000')
-      }
-      hoveredMesh = null
+      setHoveredCandidate(null)
       renderer.domElement.style.cursor = 'default'
     }
 
@@ -227,40 +244,24 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock }: Props) {
         }
       }
 
-      const hit = pickMeshAtPointer(event)
-      if (hit === hoveredMesh) {
+      const nextCandidate = pickCandidateAtPointer(event)
+      if (nextCandidate?.blockId === hoveredCandidate?.blockId) {
         return
       }
-      resetHovered()
-      if (!hit) {
-        return
-      }
-
-      hoveredMesh = hit
-      hoveredMesh.scale.setScalar(pointScale * 1.28)
-      const blockId = hoveredMesh.userData.blockId as string | undefined
-      if (hoveredMesh.material instanceof THREE.MeshStandardMaterial) {
-        hoveredMesh.material.emissive.set(blockId ? '#1b6ed6' : '#637a9a')
-      }
-      renderer.domElement.style.cursor = blockId ? 'pointer' : 'default'
+      setHoveredCandidate(nextCandidate)
     }
 
     const onPointerUp = (event: PointerEvent) => {
-      if (pointerMoved || Date.now() < skipClickUntil) {
+      if (event.button !== 0 || pointerMoved) {
         return
       }
-      const hit = pickMeshAtPointer(event)
-      const blockId = hit?.userData.blockId as string | undefined
+      const hit = pickCandidateAtPointer(event)
+      const blockId = hit?.blockId
       if (blockId) {
         onLocateBlock?.(blockId)
       }
     }
 
-    const onControlsStart = () => {
-      skipClickUntil = Date.now() + 140
-    }
-
-    controls.addEventListener('start', onControlsStart)
     renderer.domElement.addEventListener('pointerdown', onPointerDown)
     renderer.domElement.addEventListener('pointermove', onPointerMove)
     renderer.domElement.addEventListener('pointerup', onPointerUp)
@@ -290,7 +291,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock }: Props) {
     return () => {
       window.cancelAnimationFrame(animationFrameId)
       resizeObserver.disconnect()
-      controls.removeEventListener('start', onControlsStart)
       controls.dispose()
       renderer.domElement.removeEventListener('pointerdown', onPointerDown)
       renderer.domElement.removeEventListener('pointermove', onPointerMove)
