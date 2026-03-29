@@ -47,6 +47,7 @@ const DEFAULT_HEIGHT = 460
 const DEFAULT_TOP = 90
 const MIN_VISIBLE_WIDTH = 280
 const MIN_VISIBLE_HEIGHT = 72
+const RIGHT_DOCK_THRESHOLD = 14
 const DEBUG_TAG = '[FloatingTrajectoryPanel]'
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
@@ -99,20 +100,36 @@ const clampRectToViewport = (next: Rect): Rect => {
   return clamped
 }
 
+const getDockedRightRect = (currentWidth: number): Rect => {
+  const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - PANEL_MARGIN * 2)
+  const width = clamp(currentWidth, MIN_WIDTH, maxWidth)
+
+  return {
+    x: window.innerWidth - width,
+    y: 0,
+    width,
+    height: window.innerHeight,
+  }
+}
+
+const shouldDockRight = (next: Rect): boolean => {
+  const rightGap = window.innerWidth - (next.x + next.width)
+  return rightGap <= RIGHT_DOCK_THRESHOLD
+}
+
 function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
+  const [dockedRight, setDockedRight] = useState(false)
   const dragRef = useRef<DragState | null>(null)
 
   useEffect(() => {
-    setRect((prev) => clampRectToViewport(prev))
-
     const onWindowResize = () => {
-      setRect((prev) => clampRectToViewport(prev))
+      setRect((prev) => (dockedRight ? getDockedRightRect(prev.width) : clampRectToViewport(prev)))
     }
 
     window.addEventListener('resize', onWindowResize)
     return () => window.removeEventListener('resize', onWindowResize)
-  }, [])
+  }, [dockedRight])
 
   useEffect(() => {
     const vw = window.innerWidth
@@ -165,7 +182,14 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
     }
 
     const onPointerUp = () => {
-      setRect((prev) => clampRectToViewport(prev))
+      setRect((prev) => {
+        const next = clampRectToViewport(prev)
+        if (dragRef.current?.type === 'move' && shouldDockRight(next)) {
+          setDockedRight(true)
+          return getDockedRightRect(next.width)
+        }
+        return next
+      })
       dragRef.current = null
       document.body.classList.remove('trajectory-panel-dragging')
     }
@@ -180,6 +204,9 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
     event.preventDefault()
+    if (dockedRight) {
+      setDockedRight(false)
+    }
     console.info(`${DEBUG_TAG} start move`, { clientX: event.clientX, clientY: event.clientY, rect })
     dragRef.current = {
       type: 'move',
@@ -192,6 +219,9 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   }
 
   const startResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (dockedRight) {
+      return
+    }
     event.preventDefault()
     event.stopPropagation()
     console.info(`${DEBUG_TAG} start resize`, { clientX: event.clientX, clientY: event.clientY, rect })
@@ -211,12 +241,12 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
 
   return createPortal(
     <section
-      className="floating-trajectory-panel"
+      className={`floating-trajectory-panel${dockedRight ? ' floating-trajectory-panel-docked-right' : ''}`}
       style={{
         width: `${rect.width}px`,
-        height: `${rect.height}px`,
+        height: dockedRight ? '100vh' : `${rect.height}px`,
         left: `${rect.x}px`,
-        top: `${rect.y}px`,
+        top: dockedRight ? '0px' : `${rect.y}px`,
         opacity: 1,
         visibility: 'visible',
       }}
@@ -229,12 +259,14 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
       <div className="floating-trajectory-body">
         <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} />
       </div>
-      <div
-        className="floating-trajectory-resize"
-        onPointerDown={startResize}
-        role="separator"
-        aria-label="调整轨迹面板大小"
-      />
+      {!dockedRight && (
+        <div
+          className="floating-trajectory-resize"
+          onPointerDown={startResize}
+          role="separator"
+          aria-label="调整轨迹面板大小"
+        />
+      )}
     </section>,
     document.body,
   )

@@ -362,6 +362,14 @@
   touch-action: none;
 }
 
+.floating-trajectory-panel-docked-right {
+  right: 0;
+  left: auto !important;
+  top: 0 !important;
+  bottom: 0;
+  border-radius: 14px 0 0 14px;
+}
+
 .floating-trajectory-header {
   display: flex;
   align-items: center;
