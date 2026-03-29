@@ -49,9 +49,11 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
         title: '水平速度',
         values: [
           token('速度'),
-          token(`${f.VH ?? '-'} cm/s`, true),
+          token(f.VH ?? '-', true),
+          token('cm/s'),
           token('加速度'),
-          token(`${f.AH ?? '-'} cm/s²`, true),
+          token(f.AH ?? '-', true),
+          token('cm/s²'),
         ],
       }
     case 'Goertek_VerticalSpeed':
@@ -59,9 +61,11 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
         title: '垂直速度',
         values: [
           token('速度'),
-          token(`${f.VV ?? '-'} cm/s`, true),
+          token(f.VV ?? '-', true),
+          token('cm/s'),
           token('加速度'),
-          token(`${f.AV ?? '-'} cm/s²`, true),
+          token(f.AV ?? '-', true),
+          token('cm/s²'),
         ],
       }
     case 'Goertek_UnLock':
