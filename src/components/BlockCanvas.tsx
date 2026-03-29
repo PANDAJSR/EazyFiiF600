@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Empty, Input } from 'antd'
+import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
+
+type BlockFieldInputType = 'text' | 'select' | 'color'
 
 type Props = {
   droneName?: string
@@ -15,6 +17,8 @@ type BlockToken = {
   value?: boolean
   titleLike?: boolean
   fieldKey?: string
+  inputType?: BlockFieldInputType
+  options?: string[]
 }
 
 const themeControl = { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' }
@@ -41,11 +45,15 @@ const token = (
   value = false,
   titleLike = false,
   fieldKey?: string,
+  inputType: BlockFieldInputType = 'text',
+  options?: string[],
 ): BlockToken => ({
   text,
   value,
   titleLike,
   fieldKey,
+  inputType,
+  options,
 })
 
 const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } => {
@@ -122,6 +130,15 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
       return {
         title: '降落',
         values: [token('Z'), token('0', true), token('cm')],
+      }
+    case 'Goertek_LEDTurnOnAllSingleColor4':
+      return {
+        title: '设置电机',
+        values: [
+          token(f.motor ?? '1', true, false, 'motor', 'select', ['1', '2', '3', '4']),
+          token('号灯光为'),
+          token(f.color1 ?? '#ffffff', true, false, 'color1', 'color'),
+        ],
       }
     default:
       return {
@@ -229,6 +246,39 @@ function BlockCanvas({
             <div className="block-values">
               {text.values.map((value, idx) => {
                 if (value.fieldKey && onFieldChange) {
+                  if (value.inputType === 'select') {
+                    return (
+                      <Select
+                        key={`${block.id}-${idx}`}
+                        size="small"
+                        value={block.fields[value.fieldKey] ?? value.options?.[0]}
+                        onChange={(nextValue) => {
+                          onFieldChange(block.id, value.fieldKey!, nextValue)
+                        }}
+                        options={(value.options ?? []).map((option) => ({ label: option, value: option }))}
+                        className="block-chip block-chip-value"
+                        style={{ width: 84 }}
+                      />
+                    )
+                  }
+
+                  if (value.inputType === 'color') {
+                    return (
+                      <ColorPicker
+                        key={`${block.id}-${idx}`}
+                        size="small"
+                        format="hex"
+                        disabledFormat
+                        showText
+                        value={block.fields[value.fieldKey] ?? value.text}
+                        onChangeComplete={(nextColor) => {
+                          onFieldChange(block.id, value.fieldKey!, nextColor.toHexString().toLowerCase())
+                        }}
+                        className="block-chip block-chip-value"
+                      />
+                    )
+                  }
+
                   return (
                     <Input
                       key={`${block.id}-${idx}`}
