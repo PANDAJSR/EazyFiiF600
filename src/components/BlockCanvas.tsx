@@ -139,6 +139,7 @@ const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
 function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const [flashRowId, setFlashRowId] = useState<string>()
+  const [flashVariant, setFlashVariant] = useState<0 | 1>(0)
   const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
@@ -168,6 +169,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
     if (!rowId) {
       return
     }
+    setFlashVariant((prev) => (prev === 0 ? 1 : 0))
     setFlashRowId(undefined)
     const rafId = window.requestAnimationFrame(() => setFlashRowId(rowId))
     const timer = window.setTimeout(() => setFlashRowId(undefined), 1300)
@@ -196,7 +198,11 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
       {rowsBeforeIndented.map((row, rowIndex) => (
         <div
           key={row[0].id}
-          className={flashRowId === row[0].id ? 'block-row block-row-highlight' : 'block-row'}
+          className={
+            flashRowId === row[0].id
+              ? `block-row block-row-highlight ${flashVariant === 0 ? 'block-row-highlight-a' : 'block-row-highlight-b'}`
+              : 'block-row'
+          }
         >
           {row.map((block, blockIndex) => {
             const text = blockText(block)
@@ -269,7 +275,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
                 key={row[0].id}
                 className={
                   flashRowId === row[0].id
-                    ? 'block-row block-row-indented block-row-highlight'
+                    ? `block-row block-row-indented block-row-highlight ${flashVariant === 0 ? 'block-row-highlight-a' : 'block-row-highlight-b'}`
                     : 'block-row block-row-indented'
                 }
               >

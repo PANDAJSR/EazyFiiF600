@@ -190,7 +190,14 @@
 
 .block-row-highlight {
   border-radius: 10px;
-  animation: block-row-highlight-fadeout 1.8s ease-out forwards;
+}
+
+.block-row-highlight-a {
+  animation: block-row-highlight-fadeout-a 1.8s ease-out forwards;
+}
+
+.block-row-highlight-b {
+  animation: block-row-highlight-fadeout-b 1.8s ease-out forwards;
 }
 
 .block-row-highlight > .block-card {
@@ -198,7 +205,17 @@
   z-index: 1;
 }
 
-@keyframes block-row-highlight-fadeout {
+@keyframes block-row-highlight-fadeout-a {
+  0% {
+    background: rgba(27, 110, 214, 0.22);
+  }
+
+  100% {
+    background: rgba(27, 110, 214, 0);
+  }
+}
+
+@keyframes block-row-highlight-fadeout-b {
   0% {
     background: rgba(27, 110, 214, 0.22);
   }
