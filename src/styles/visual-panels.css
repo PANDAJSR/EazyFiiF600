@@ -187,7 +187,8 @@
 }
 
 .block-row-highlight {
-  border-radius: 14px;
+  border-radius: 10px;
+  animation: block-row-highlight-fadeout 1.8s ease-out forwards;
 }
 
 .block-row-highlight::after {
@@ -195,13 +196,20 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -5px;
-  height: 7px;
-  border-radius: 999px;
-  background: linear-gradient(90deg, rgba(27, 110, 214, 0.06), rgba(27, 110, 214, 0.9), rgba(27, 110, 214, 0.06));
-  box-shadow: 0 2px 10px rgba(27, 110, 214, 0.35);
-  animation: block-row-underline-fadeout 1.3s ease-out forwards;
+  bottom: 0;
+  height: 12px;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 196, 0, 0.08),
+    rgba(255, 196, 0, 0.95),
+    rgba(255, 138, 0, 0.95),
+    rgba(255, 196, 0, 0.08)
+  );
+  box-shadow: 0 0 0 1px rgba(255, 170, 0, 0.24), 0 4px 12px rgba(255, 166, 0, 0.28);
+  animation: block-row-underline-fadeout 1.8s ease-out forwards;
   pointer-events: none;
+  z-index: 6;
 }
 
 @keyframes block-row-underline-fadeout {
@@ -213,6 +221,16 @@
   100% {
     opacity: 0;
     transform: scaleX(0.96);
+  }
+}
+
+@keyframes block-row-highlight-fadeout {
+  0% {
+    background: rgba(255, 196, 0, 0.14);
+  }
+
+  100% {
+    background: rgba(255, 196, 0, 0);
   }
 }
 
