@@ -14,6 +14,14 @@ type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
   onLocateBlock?: (blockId: string) => void
+  onMovePoint?: (payload: {
+    blockId: string
+    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+    x: number
+    y: number
+    baseX?: number
+    baseY?: number
+  }) => void
 }
 
 type ViewMode = '2d' | '3d'
@@ -118,7 +126,7 @@ const getDockedRightRect = (currentWidth: number): Rect => {
   }
 }
 
-function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
+function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock, onMovePoint }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('2d')
@@ -314,7 +322,13 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         </Tooltip>
       </div>
       <div className="floating-trajectory-body">
-        <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} viewMode={viewMode} />
+        <TrajectoryPlane
+          startPos={startPos}
+          blocks={blocks}
+          onLocateBlock={onLocateBlock}
+          onMovePoint={onMovePoint}
+          viewMode={viewMode}
+        />
       </div>
       {!dockedRight && (
         <div

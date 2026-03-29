@@ -9,6 +9,7 @@ type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
   onLocateBlock?: (blockId: string) => void
+  onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
 }
 
@@ -19,8 +20,21 @@ type PointSummary = {
   visits: Visit[]
 }
 
+type MovePointPayload = {
+  blockId: string
+  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+  x: number
+  y: number
+  baseX?: number
+  baseY?: number
+}
+
 const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
+const SNAP_STEP = 10
+const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
+
+const snapToStep = (value: number, step: number) => Math.round(value / step) * step
 
 const summarizePoints = (visits: Visit[]): PointSummary[] => {
   const pointMap = new Map<string, PointSummary>()
@@ -39,12 +53,23 @@ const summarizePoints = (visits: Visit[]): PointSummary[] => {
   return [...pointMap.values()]
 }
 
-function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: Props) {
+function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
   const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
+  const margin = { top: 16, right: 16, bottom: 44, left: 44 }
+  const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
+  const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
+  const plotSize = Math.min(innerWidth, innerHeight)
+  const plotLeft = margin.left + (innerWidth - plotSize) / 2
+  const plotTop = margin.top + (innerHeight - plotSize) / 2
+
+  const toSvgX = (x: number) => plotLeft + ((x - bounds.minX) / bounds.span) * plotSize
+  const toSvgY = (y: number) => plotTop + (1 - (y - bounds.minY) / bounds.span) * plotSize
   const [activePointKey, setActivePointKey] = useState<string>()
   const panelRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const dragRef = useRef<MovePointPayload | null>(null)
   const activePoint = activePointKey
     ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey)
     : undefined
@@ -75,6 +100,53 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: P
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [activePointKey, viewMode])
 
+  useEffect(() => {
+    if (viewMode !== '2d') {
+      dragRef.current = null
+      return
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      const dragging = dragRef.current
+      const svg = svgRef.current
+      if (!dragging || !svg) {
+        return
+      }
+
+      const rect = svg.getBoundingClientRect()
+      const svgX =
+        ((event.clientX - rect.left) / rect.width) * VIEWBOX_WIDTH
+      const svgY =
+        ((event.clientY - rect.top) / rect.height) * VIEWBOX_HEIGHT
+
+      const clampedX = Math.min(Math.max(svgX, plotLeft), plotLeft + plotSize)
+      const clampedY = Math.min(Math.max(svgY, plotTop), plotTop + plotSize)
+      const x = snapToStep(bounds.minX + ((clampedX - plotLeft) / plotSize) * bounds.span, SNAP_STEP)
+      const y = snapToStep(bounds.minY + (1 - (clampedY - plotTop) / plotSize) * bounds.span, SNAP_STEP)
+
+      onMovePoint?.({
+        ...dragging,
+        x,
+        y,
+      })
+      setActivePointKey(`${x},${y}`)
+    }
+
+    const onPointerUp = () => {
+      if (!dragRef.current) {
+        return
+      }
+      dragRef.current = null
+    }
+
+    window.addEventListener('pointermove', onPointerMove)
+    window.addEventListener('pointerup', onPointerUp)
+    return () => {
+      window.removeEventListener('pointermove', onPointerMove)
+      window.removeEventListener('pointerup', onPointerUp)
+    }
+  }, [bounds.minX, bounds.minY, bounds.span, onMovePoint, plotLeft, plotSize, plotTop, viewMode])
+
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
@@ -93,16 +165,6 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: P
     )
   }
 
-  const margin = { top: 16, right: 16, bottom: 44, left: 44 }
-  const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
-  const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
-  const plotSize = Math.min(innerWidth, innerHeight)
-  const plotLeft = margin.left + (innerWidth - plotSize) / 2
-  const plotTop = margin.top + (innerHeight - plotSize) / 2
-
-  const toSvgX = (x: number) => plotLeft + ((x - bounds.minX) / bounds.span) * plotSize
-  const toSvgY = (y: number) => plotTop + (1 - (y - bounds.minY) / bounds.span) * plotSize
-
   const xTicks = buildTicks(bounds.minX, bounds.maxX)
   const yTicks = buildTicks(bounds.minY, bounds.maxY)
 
@@ -120,7 +182,12 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: P
     <div className="trajectory-card">
       <div className="trajectory-meta">{meta}</div>
       <div className="trajectory-canvas-wrap">
-        <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
+        <svg
+          ref={svgRef}
+          className="trajectory-svg"
+          viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
+          role="img"
+        >
           <rect
             x={plotLeft}
             y={plotTop}
@@ -165,17 +232,44 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: P
           {summarizedPoints.map((point) => {
             const key = `${point.x},${point.y}`
             const isActive = activePointKey === key
+            const editableVisits = point.visits.filter(
+              (visit): visit is Visit & { blockId: string; blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' } =>
+                !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
+            )
+            const canDrag = editableVisits.length === 1
+
             return (
               <g
                 key={`point-${point.x}-${point.y}`}
                 className="trajectory-point-group"
                 onClick={() => setActivePointKey(key)}
+                onPointerDown={(event) => {
+                  if (!canDrag || !onMovePoint) {
+                    return
+                  }
+                  event.preventDefault()
+                  event.stopPropagation()
+                  const targetVisit = editableVisits[0]
+                  dragRef.current = {
+                    blockId: targetVisit.blockId,
+                    blockType: targetVisit.blockType,
+                    x: targetVisit.x,
+                    y: targetVisit.y,
+                    baseX: targetVisit.baseX,
+                    baseY: targetVisit.baseY,
+                  }
+                  setActivePointKey(key)
+                }}
               >
                 <circle
                   cx={toSvgX(point.x)}
                   cy={toSvgY(point.y)}
                   r={isActive ? 7 : 6}
-                  className={isActive ? 'trajectory-point trajectory-point-active' : 'trajectory-point'}
+                  className={
+                    isActive
+                      ? `trajectory-point trajectory-point-active ${canDrag ? 'trajectory-point-draggable' : ''}`
+                      : `trajectory-point ${canDrag ? 'trajectory-point-draggable' : ''}`
+                  }
                 />
                 {point.count > 1 && (
                   <text

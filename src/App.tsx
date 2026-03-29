@@ -182,6 +182,55 @@ function App() {
     message.success('修改已保存')
   }, [result.programs, result.sourceName])
 
+  const handleMovePoint = useCallback((payload: {
+    blockId: string
+    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+    x: number
+    y: number
+    baseX?: number
+    baseY?: number
+  }) => {
+    setResult((prev) => ({
+      ...prev,
+      programs: prev.programs.map((program) => {
+        if (program.drone.id !== selectedDroneId) {
+          return program
+        }
+        return {
+          ...program,
+          blocks: program.blocks.map((block) => {
+            if (block.id !== payload.blockId) {
+              return block
+            }
+
+            if (payload.blockType === 'Goertek_MoveToCoord2') {
+              return {
+                ...block,
+                fields: {
+                  ...block.fields,
+                  X: String(payload.x),
+                  Y: String(payload.y),
+                },
+              }
+            }
+
+            const baseX = payload.baseX ?? 0
+            const baseY = payload.baseY ?? 0
+            return {
+              ...block,
+              fields: {
+                ...block.fields,
+                X: String(payload.x - baseX),
+                Y: String(payload.y - baseY),
+              },
+            }
+          }),
+        }
+      }),
+    }))
+    setHasUnsavedChanges(true)
+  }, [selectedDroneId])
+
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
     if (!el) {
@@ -255,6 +304,7 @@ function App() {
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
             onLocateBlock={handleLocateBlock}
+            onMovePoint={handleMovePoint}
           />
         </Layout.Content>
       </Layout>

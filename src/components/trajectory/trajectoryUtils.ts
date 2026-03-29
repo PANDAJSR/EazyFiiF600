@@ -11,6 +11,10 @@ export type Visit = {
   y: number
   z: number
   blockId?: string
+  blockType?: string
+  baseX?: number
+  baseY?: number
+  baseZ?: number
 }
 
 export const GRID_STEP = 20
@@ -45,11 +49,15 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
         y: currentY,
         z: currentZ,
         blockId: block.id,
+        blockType: block.type,
       })
       return
     }
 
     if (block.type === 'Goertek_MoveToCoord2') {
+      const baseX = currentX
+      const baseY = currentY
+      const baseZ = currentZ
       const nextX = toNumber(block.fields.X)
       const nextY = toNumber(block.fields.Y)
       if (nextX === null || nextY === null) {
@@ -64,6 +72,10 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
         y: currentY,
         z: currentZ,
         blockId: block.id,
+        blockType: block.type,
+        baseX,
+        baseY,
+        baseZ,
       })
       return
     }
@@ -74,6 +86,9 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
       if (deltaX === null || deltaY === null) {
         return
       }
+      const baseX = currentX
+      const baseY = currentY
+      const baseZ = currentZ
       const deltaZ = toNumber(block.fields.Z) ?? 0
       currentX += deltaX
       currentY += deltaY
@@ -83,6 +98,10 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
         y: currentY,
         z: currentZ,
         blockId: block.id,
+        blockType: block.type,
+        baseX,
+        baseY,
+        baseZ,
       })
       return
     }
@@ -94,6 +113,7 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
         y: currentY,
         z: currentZ,
         blockId: block.id,
+        blockType: block.type,
       })
     }
   })

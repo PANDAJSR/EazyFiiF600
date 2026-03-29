@@ -66,6 +66,14 @@
   cursor: pointer;
 }
 
+.trajectory-point-draggable {
+  cursor: grab;
+}
+
+.trajectory-point-draggable:active {
+  cursor: grabbing;
+}
+
 .trajectory-point-active {
   stroke: #0d4ea1;
   stroke-width: 2.4;
