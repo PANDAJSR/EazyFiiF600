@@ -14,14 +14,22 @@ body {
 }
 
 .app-root {
-  min-height: 100vh;
+  height: 100vh;
   background: transparent;
+  overflow: hidden;
 }
 
 .app-sider.ant-layout-sider {
   background: rgba(255, 255, 255, 0.75);
   border-right: 1px solid rgba(92, 117, 156, 0.15);
   backdrop-filter: blur(8px);
+}
+
+.app-sider.ant-layout-sider .ant-layout-sider-children {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .brand-title {
@@ -47,8 +55,9 @@ body {
   display: flex;
   flex-direction: column;
   gap: 10px;
+  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  max-height: calc(100vh - 170px);
 }
 
 .sidebar-title {
@@ -100,6 +109,7 @@ body {
 }
 
 .app-content {
+  height: 100vh;
   padding: 18px 24px;
   overflow: auto;
 }
@@ -126,6 +136,9 @@ body {
 @media (max-width: 900px) {
   .app-root {
     flex-direction: column;
+    height: auto;
+    min-height: 100vh;
+    overflow: visible;
   }
 
   .app-sider.ant-layout-sider {
@@ -138,9 +151,11 @@ body {
 
   .drone-sidebar {
     max-height: 320px;
+    flex: initial;
   }
 
   .app-content {
+    height: auto;
     padding: 14px;
   }
 
