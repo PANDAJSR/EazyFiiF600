@@ -45,8 +45,8 @@ const MIN_HEIGHT = 280
 const DEFAULT_WIDTH = 520
 const DEFAULT_HEIGHT = 460
 const DEFAULT_TOP = 90
-const VISIBLE_GRAB_WIDTH = 120
-const VISIBLE_GRAB_HEIGHT = 44
+const MIN_VISIBLE_WIDTH = 280
+const MIN_VISIBLE_HEIGHT = 72
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
@@ -63,29 +63,35 @@ const getInitialRect = (): Rect => {
   return { x, y, width, height }
 }
 
+const clampRectToViewport = (next: Rect): Rect => {
+  const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - PANEL_MARGIN * 2)
+  const maxHeight = Math.max(MIN_HEIGHT, window.innerHeight - PANEL_MARGIN * 2)
+  const width = clamp(next.width, MIN_WIDTH, maxWidth)
+  const height = clamp(next.height, MIN_HEIGHT, maxHeight)
+  const keepWidth = Math.min(MIN_VISIBLE_WIDTH, width)
+  const keepHeight = Math.min(MIN_VISIBLE_HEIGHT, height)
+  const minX = -width + keepWidth
+  const maxX = window.innerWidth - keepWidth
+  const minY = PANEL_MARGIN
+  const maxY = window.innerHeight - keepHeight
+
+  return {
+    x: clamp(next.x, minX, maxX),
+    y: clamp(next.y, minY, maxY),
+    width,
+    height,
+  }
+}
+
 function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const dragRef = useRef<DragState | null>(null)
 
   useEffect(() => {
-    const onWindowResize = () => {
-      setRect((prev) => {
-        const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - PANEL_MARGIN * 2)
-        const maxHeight = Math.max(MIN_HEIGHT, window.innerHeight - PANEL_MARGIN * 2)
-        const width = clamp(prev.width, MIN_WIDTH, maxWidth)
-        const height = clamp(prev.height, MIN_HEIGHT, maxHeight)
-        const minX = -width + VISIBLE_GRAB_WIDTH
-        const maxX = window.innerWidth - VISIBLE_GRAB_WIDTH
-        const minY = PANEL_MARGIN
-        const maxY = window.innerHeight - VISIBLE_GRAB_HEIGHT
+    setRect((prev) => clampRectToViewport(prev))
 
-        return {
-          x: clamp(prev.x, minX, maxX),
-          y: clamp(prev.y, minY, maxY),
-          width,
-          height,
-        }
-      })
+    const onWindowResize = () => {
+      setRect((prev) => clampRectToViewport(prev))
     }
 
     window.addEventListener('resize', onWindowResize)
@@ -108,15 +114,11 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         setRect((prev) => {
           const nextXRaw = current.originX + offsetX
           const nextYRaw = current.originY + offsetY
-          const minX = -prev.width + VISIBLE_GRAB_WIDTH
-          const maxX = window.innerWidth - VISIBLE_GRAB_WIDTH
-          const minY = PANEL_MARGIN
-          const maxY = window.innerHeight - VISIBLE_GRAB_HEIGHT
-          return {
+          return clampRectToViewport({
             ...prev,
-            x: clamp(nextXRaw, minX, maxX),
-            y: clamp(nextYRaw, minY, maxY),
-          }
+            x: nextXRaw,
+            y: nextYRaw,
+          })
         })
         return
       }
@@ -125,18 +127,16 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
       const offsetY = event.clientY - current.startY
 
       setRect((prev) => {
-        const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - prev.x - PANEL_MARGIN)
-        const maxHeight = Math.max(MIN_HEIGHT, window.innerHeight - prev.y - PANEL_MARGIN)
-
-        return {
+        return clampRectToViewport({
           ...prev,
-          width: clamp(current.originWidth + offsetX, MIN_WIDTH, maxWidth),
-          height: clamp(current.originHeight + offsetY, MIN_HEIGHT, maxHeight),
-        }
+          width: current.originWidth + offsetX,
+          height: current.originHeight + offsetY,
+        })
       })
     }
 
     const onPointerUp = () => {
+      setRect((prev) => clampRectToViewport(prev))
       dragRef.current = null
       document.body.classList.remove('trajectory-panel-dragging')
     }
