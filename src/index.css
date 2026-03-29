@@ -130,31 +130,34 @@ body {
 }
 
 .block-card + .block-card {
-  margin-top: -1px;
-  position: relative;
+  margin-top: -2px;
 }
 
-.block-card + .block-card::before {
-  content: '';
-  position: absolute;
-  top: -7px;
-  left: 24px;
-  width: 36px;
-  height: 12px;
-  border-radius: 999px;
-  background: #e6f1ff;
-  border: 2px solid #93b2da;
-  box-sizing: border-box;
+.block-card:not(:first-child) {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+.block-card:not(:last-child) {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.block-line {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-width: max-content;
+  white-space: nowrap;
 }
 
 .block-title {
   font-size: 18px;
   font-weight: 700;
-  line-height: 1.15;
+  line-height: 1;
 }
 
 .block-values {
-  margin-top: 5px;
   display: flex;
   flex-wrap: nowrap;
   gap: 6px;

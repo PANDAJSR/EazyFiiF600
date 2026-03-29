@@ -95,19 +95,21 @@ function BlockCanvas({ droneName, blocks }: Props) {
               borderColor: theme.border,
             }}
           >
-            <div className="block-title">{text.title}</div>
-            {!!text.values.length && (
-              <div className="block-values">
-                {text.values.map((value, idx) => (
-                  <span
-                    key={`${block.id}-${idx}`}
-                    className={idx % 2 === 1 ? 'block-chip block-chip-value' : 'block-chip'}
-                  >
-                    {value}
-                  </span>
-                ))}
-              </div>
-            )}
+            <div className="block-line">
+              <span className="block-title">{text.title}</span>
+              {!!text.values.length && (
+                <div className="block-values">
+                  {text.values.map((value, idx) => (
+                    <span
+                      key={`${block.id}-${idx}`}
+                      className={idx % 2 === 1 ? 'block-chip block-chip-value' : 'block-chip'}
+                    >
+                      {value}
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
           </section>
         )
       })}
