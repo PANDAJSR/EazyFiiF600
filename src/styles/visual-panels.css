@@ -374,11 +374,17 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 12px 8px;
   border-bottom: 1px solid #e2ecf9;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.floating-trajectory-drag-handle {
+  flex: 1;
+  min-width: 0;
   cursor: move;
   user-select: none;
-  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
 }
 
 .floating-trajectory-body {

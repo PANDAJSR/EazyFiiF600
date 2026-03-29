@@ -1,4 +1,4 @@
-import { Typography } from 'antd'
+import { Button, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
@@ -47,7 +47,6 @@ const DEFAULT_HEIGHT = 460
 const DEFAULT_TOP = 90
 const MIN_VISIBLE_WIDTH = 280
 const MIN_VISIBLE_HEIGHT = 72
-const RIGHT_DOCK_THRESHOLD = 14
 const DEBUG_TAG = '[FloatingTrajectoryPanel]'
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
@@ -112,15 +111,11 @@ const getDockedRightRect = (currentWidth: number): Rect => {
   }
 }
 
-const shouldDockRight = (next: Rect): boolean => {
-  const rightGap = window.innerWidth - (next.x + next.width)
-  return rightGap <= RIGHT_DOCK_THRESHOLD
-}
-
 function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
   const dragRef = useRef<DragState | null>(null)
+  const floatingRectRef = useRef<Rect>(getInitialRect())
 
   useEffect(() => {
     const onWindowResize = () => {
@@ -182,14 +177,7 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
     }
 
     const onPointerUp = () => {
-      setRect((prev) => {
-        const next = clampRectToViewport(prev)
-        if (dragRef.current?.type === 'move' && shouldDockRight(next)) {
-          setDockedRight(true)
-          return getDockedRightRect(next.width)
-        }
-        return next
-      })
+      setRect((prev) => clampRectToViewport(prev))
       dragRef.current = null
       document.body.classList.remove('trajectory-panel-dragging')
     }
@@ -203,10 +191,10 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   }, [])
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    event.preventDefault()
     if (dockedRight) {
-      setDockedRight(false)
+      return
     }
+    event.preventDefault()
     console.info(`${DEBUG_TAG} start move`, { clientX: event.clientX, clientY: event.clientY, rect })
     dragRef.current = {
       type: 'move',
@@ -235,6 +223,17 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
     document.body.classList.add('trajectory-panel-dragging')
   }
 
+  const handleToggleDock = () => {
+    if (dockedRight) {
+      setDockedRight(false)
+      setRect(clampRectToViewport(floatingRectRef.current))
+      return
+    }
+    floatingRectRef.current = rect
+    setDockedRight(true)
+    setRect((prev) => getDockedRightRect(prev.width))
+  }
+
   if (typeof document === 'undefined') {
     return null
   }
@@ -251,10 +250,15 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         visibility: 'visible',
       }}
     >
-      <div className="floating-trajectory-header" onPointerDown={startMove}>
-        <Typography.Title level={5} className="trajectory-title">
-          飞机平面轨迹（XY）
-        </Typography.Title>
+      <div className="floating-trajectory-header">
+        <div className="floating-trajectory-drag-handle" onPointerDown={startMove}>
+          <Typography.Title level={5} className="trajectory-title">
+            飞机平面轨迹（XY）
+          </Typography.Title>
+        </div>
+        <Button size="small" onClick={handleToggleDock}>
+          {dockedRight ? '切换悬浮' : '贴右侧'}
+        </Button>
       </div>
       <div className="floating-trajectory-body">
         <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} />
