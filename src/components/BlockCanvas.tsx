@@ -35,6 +35,7 @@ const blockTheme: Record<string, { color: string; bg: string; border: string }> 
   Goertek_TakeOff2: themeAction,
   Goertek_MoveToCoord2: themeAction,
   Goertek_Move: themeAction,
+  Goertek_Turn: themeAction,
   Goertek_Land: themeAction,
 }
 
@@ -124,6 +125,17 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
           token('Z'),
           token(f.Z ?? '-', true, false, 'Z'),
           token('cm'),
+        ],
+      }
+    case 'Goertek_Turn':
+      return {
+        title: '转动（异步）',
+        values: [
+          token('向'),
+          token(f.turnDirection ?? 'r', true, false, 'turnDirection', 'select', ['r', 'l']),
+          token('转动'),
+          token(f.angle ?? '90', true, false, 'angle'),
+          token('度'),
         ],
       }
     case 'Goertek_Land':
