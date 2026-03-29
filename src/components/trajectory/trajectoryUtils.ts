@@ -34,6 +34,21 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
   let currentZ = startZ
 
   blocks.forEach((block) => {
+    if (block.type === 'Goertek_TakeOff2') {
+      const nextZ = toNumber(block.fields.alt)
+      if (nextZ === null) {
+        return
+      }
+      currentZ = nextZ
+      visits.push({
+        x: currentX,
+        y: currentY,
+        z: currentZ,
+        blockId: block.id,
+      })
+      return
+    }
+
     if (block.type === 'Goertek_MoveToCoord2') {
       const nextX = toNumber(block.fields.X)
       const nextY = toNumber(block.fields.Y)

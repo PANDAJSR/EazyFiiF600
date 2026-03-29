@@ -76,7 +76,14 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
     case 'block_delay':
       return { title: '延时', values: [token('ms'), token(f.time ?? '-', true)] }
     case 'Goertek_TakeOff2':
-      return { title: '起飞', values: [token(f.alt ?? '-', true), token('cm')] }
+      return {
+        title: '起飞',
+        values: [
+          token('Z'),
+          token(f.alt ?? '-', true),
+          token('cm'),
+        ],
+      }
     case 'Goertek_MoveToCoord2':
       return {
         title: '平移到（异步）',
