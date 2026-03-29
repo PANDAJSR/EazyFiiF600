@@ -130,6 +130,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
       setFrozenBounds(null)
       setIsDraggingPoint(false)
       setDragPreview(undefined)
+      setActivePointKey(undefined)
     }
 
     window.addEventListener('pointermove', onPointerMove)
