@@ -9,6 +9,7 @@ type Props = {
 type BlockToken = {
   text: string
   value?: boolean
+  titleLike?: boolean
 }
 
 const themeControl = { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' }
@@ -30,7 +31,11 @@ const blockTheme: Record<string, { color: string; bg: string; border: string }> 
 
 const MOVE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
 
-const token = (text: string, value = false): BlockToken => ({ text, value })
+const token = (text: string, value = false, titleLike = false): BlockToken => ({
+  text,
+  value,
+  titleLike,
+})
 
 const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } => {
   const f = block.fields
@@ -38,7 +43,7 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
     case 'Goertek_Start':
       return { title: '开始', values: [] }
     case 'block_inittime':
-      return { title: '在{{时间（', values: [token(f.time || '00:00', true), token('）}}开始')] }
+      return { title: '在时间（', values: [token(f.time || '00:00', true), token('）开始', false, true)] }
     case 'Goertek_HorizontalSpeed':
       return {
         title: '水平速度',
@@ -178,7 +183,13 @@ function BlockCanvas({ droneName, blocks }: Props) {
                       {text.values.map((value, idx) => (
                         <span
                           key={`${block.id}-${idx}`}
-                          className={value.value ? 'block-chip block-chip-value' : 'block-chip'}
+                          className={[
+                            'block-chip',
+                            value.value ? 'block-chip-value' : '',
+                            value.titleLike ? 'block-chip-title-like' : '',
+                          ]
+                            .filter(Boolean)
+                            .join(' ')}
                         >
                           {value.text}
                         </span>
