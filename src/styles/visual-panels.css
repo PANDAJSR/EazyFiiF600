@@ -387,6 +387,16 @@
   user-select: none;
 }
 
+.floating-trajectory-toggle-btn {
+  flex: none;
+}
+
+.floating-trajectory-toggle-icon {
+  display: inline-block;
+  font-size: 14px;
+  line-height: 1;
+}
+
 .floating-trajectory-body {
   flex: 1;
   min-height: 0;

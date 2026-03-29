@@ -1,4 +1,4 @@
-import { Button, Typography } from 'antd'
+import { Button, Tooltip, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
@@ -256,9 +256,21 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
             飞机平面轨迹（XY）
           </Typography.Title>
         </div>
-        <Button size="small" onClick={handleToggleDock}>
-          {dockedRight ? '切换悬浮' : '贴右侧'}
-        </Button>
+        <Tooltip title={dockedRight ? '切换为悬浮面板' : '贴右侧面板'}>
+          <Button
+            className="floating-trajectory-toggle-btn"
+            type="text"
+            size="small"
+            shape="circle"
+            icon={
+              <span className="floating-trajectory-toggle-icon" aria-hidden>
+                {dockedRight ? '🗗' : '📌'}
+              </span>
+            }
+            onClick={handleToggleDock}
+            aria-label={dockedRight ? '切换为悬浮面板' : '贴右侧面板'}
+          />
+        </Tooltip>
       </div>
       <div className="floating-trajectory-body">
         <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} />
