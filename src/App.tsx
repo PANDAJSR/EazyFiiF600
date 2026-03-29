@@ -1,9 +1,10 @@
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { Alert, Button, ConfigProvider, Layout, Space, message, Typography } from 'antd'
+import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import type { ParseResult } from './types/fii'
+import { reorderBlocks } from './utils/blockOrder'
 import { parseFiiFromFiles } from './utils/fiiParser'
 
 type FileInputWithDirectory = HTMLInputElement & {
@@ -97,6 +98,7 @@ function App() {
   })
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
+  const [selectedBlockId, setSelectedBlockId] = useState<string>()
   const [highlightPulse, setHighlightPulse] = useState(0)
   const [loading, setLoading] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -111,6 +113,7 @@ function App() {
 
   const handleLocateBlock = useCallback((blockId: string) => {
     setHighlightedBlockId(blockId)
+    setSelectedBlockId(blockId)
     setHighlightPulse((prev) => prev + 1)
   }, [])
 
@@ -127,6 +130,7 @@ function App() {
       setResult(merged)
       setSelectedDroneId(merged.programs[0]?.drone.id)
       setHighlightedBlockId(undefined)
+      setSelectedBlockId(undefined)
       setHighlightPulse(0)
       setHasUnsavedChanges(false)
 
@@ -231,6 +235,50 @@ function App() {
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
 
+  const handleDeleteBlock = useCallback((blockId: string) => {
+    Modal.confirm({
+      title: '删除积木',
+      content: '确认删除这个积木吗？',
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: () => {
+        setResult((prev) => ({
+          ...prev,
+          programs: prev.programs.map((program) => {
+            if (program.drone.id !== selectedDroneId) {
+              return program
+            }
+            return {
+              ...program,
+              blocks: program.blocks.filter((block) => block.id !== blockId),
+            }
+          }),
+        }))
+        setHasUnsavedChanges(true)
+        setSelectedBlockId((prev) => (prev === blockId ? undefined : prev))
+        setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
+        message.success('积木已删除')
+      },
+    })
+  }, [selectedDroneId])
+
+  const handleMoveBlock = useCallback((dragId: string, targetId: string, position: 'before' | 'after') => {
+    setResult((prev) => ({
+      ...prev,
+      programs: prev.programs.map((program) => {
+        if (program.drone.id !== selectedDroneId) {
+          return program
+        }
+        return {
+          ...program,
+          blocks: reorderBlocks(program.blocks, dragId, targetId, position),
+        }
+      }),
+    }))
+    setHasUnsavedChanges(true)
+  }, [selectedDroneId])
+
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
     if (!el) {
@@ -265,6 +313,7 @@ function App() {
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
+              setSelectedBlockId(undefined)
               setHighlightPulse(0)
             }}
           />
@@ -295,8 +344,12 @@ function App() {
                 droneName={selectedProgram?.drone.name}
                 blocks={selectedProgram?.blocks ?? []}
                 highlightedBlockId={highlightedBlockId}
+                selectedBlockId={selectedBlockId}
                 highlightPulse={highlightPulse}
                 onFieldChange={handleFieldChange}
+                onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
+                onDeleteBlock={handleDeleteBlock}
+                onMoveBlock={handleMoveBlock}
               />
             </section>
           </div>

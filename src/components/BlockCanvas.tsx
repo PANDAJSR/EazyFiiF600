@@ -1,199 +1,38 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
-
-type BlockFieldInputType = 'text' | 'select' | 'color'
+import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
 
 type Props = {
   droneName?: string
   blocks: ParsedBlock[]
   highlightedBlockId?: string
+  selectedBlockId?: string
   highlightPulse?: number
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
+  onSelectBlock?: (blockId: string) => void
+  onDeleteBlock?: (blockId: string) => void
+  onMoveBlock?: (dragId: string, targetId: string, position: 'before' | 'after') => void
 }
 
-type BlockToken = {
-  text: string
-  value?: boolean
-  titleLike?: boolean
-  fieldKey?: string
-  inputType?: BlockFieldInputType
-  options?: string[]
-}
-
-const themeControl = { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' }
-const themeAction = { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' }
-const themeKey = { color: '#17324d', bg: '#f1f7ff', border: '#adc3e3' }
-
-const blockTheme: Record<string, { color: string; bg: string; border: string }> = {
-  Goertek_Start: themeKey,
-  block_inittime: themeKey,
-  Goertek_HorizontalSpeed: themeAction,
-  Goertek_VerticalSpeed: themeAction,
-  Goertek_UnLock: themeAction,
-  block_delay: themeControl,
-  Goertek_TakeOff2: themeAction,
-  Goertek_MoveToCoord2: themeAction,
-  Goertek_Move: themeAction,
-  Goertek_Turn: themeAction,
-  Goertek_Land: themeAction,
-}
-
-const MOVE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
-
-const token = (
-  text: string,
-  value = false,
-  titleLike = false,
-  fieldKey?: string,
-  inputType: BlockFieldInputType = 'text',
-  options?: string[],
-): BlockToken => ({
-  text,
-  value,
-  titleLike,
-  fieldKey,
-  inputType,
-  options,
-})
-
-const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } => {
-  const f = block.fields
-  switch (block.type) {
-    case 'Goertek_Start':
-      return { title: '开始', values: [] }
-    case 'block_inittime':
-      return { title: '在时间', values: [token(f.time || '00:00', true, false, 'time'), token('开始', false, true)] }
-    case 'Goertek_HorizontalSpeed':
-      return {
-        title: '水平速度',
-        values: [
-          token('速度'),
-          token(f.VH ?? '-', true, false, 'VH'),
-          token('cm/s'),
-          token('加速度'),
-          token(f.AH ?? '-', true, false, 'AH'),
-          token('cm/s²'),
-        ],
-      }
-    case 'Goertek_VerticalSpeed':
-      return {
-        title: '垂直速度',
-        values: [
-          token('速度'),
-          token(f.VV ?? '-', true, false, 'VV'),
-          token('cm/s'),
-          token('加速度'),
-          token(f.AV ?? '-', true, false, 'AV'),
-          token('cm/s²'),
-        ],
-      }
-    case 'Goertek_UnLock':
-      return { title: '解锁', values: [] }
-    case 'block_delay':
-      return { title: '延时', values: [token('ms'), token(f.time ?? '-', true, false, 'time')] }
-    case 'Goertek_TakeOff2':
-      return {
-        title: '起飞',
-        values: [token('Z'), token(f.alt ?? '-', true, false, 'alt'), token('cm')],
-      }
-    case 'Goertek_MoveToCoord2':
-      return {
-        title: '平移到（异步）',
-        values: [
-          token('X'),
-          token(f.X ?? '-', true, false, 'X'),
-          token('cm'),
-          token('Y'),
-          token(f.Y ?? '-', true, false, 'Y'),
-          token('cm'),
-          token('Z'),
-          token(f.Z ?? '-', true, false, 'Z'),
-          token('cm'),
-        ],
-      }
-    case 'Goertek_Move':
-      return {
-        title: '相对平移（异步）',
-        values: [
-          token('X'),
-          token(f.X ?? '-', true, false, 'X'),
-          token('cm'),
-          token('Y'),
-          token(f.Y ?? '-', true, false, 'Y'),
-          token('cm'),
-          token('Z'),
-          token(f.Z ?? '-', true, false, 'Z'),
-          token('cm'),
-        ],
-      }
-    case 'Goertek_Turn':
-      return {
-        title: '转动（异步）',
-        values: [
-          token('向'),
-          token(f.turnDirection ?? 'r', true, false, 'turnDirection', 'select', ['r', 'l']),
-          token('转动'),
-          token(f.angle ?? '90', true, false, 'angle'),
-          token('度'),
-        ],
-      }
-    case 'Goertek_Land':
-      return {
-        title: '降落',
-        values: [token('Z'), token('0', true), token('cm')],
-      }
-    case 'Goertek_LEDTurnOnAllSingleColor4':
-      return {
-        title: '设置电机',
-        values: [
-          token(f.motor ?? '1', true, false, 'motor', 'select', ['1', '2', '3', '4']),
-          token('号灯光为'),
-          token(f.color1 ?? '#ffffff', true, false, 'color1', 'color'),
-        ],
-      }
-    case 'Goertek_LEDTurnOnAllSingleColor2':
-      return {
-        title: '设置全部灯光颜色为',
-        values: [token(f.color1 ?? '#ffffff', true, false, 'color1', 'color')],
-      }
-    default:
-      return {
-        title: block.type,
-        values: Object.entries(f).flatMap(([k, v]) => [token(k), token(v, true, false, k)]),
-      }
-  }
-}
-
-const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
-  const rows: ParsedBlock[][] = []
-
-  for (let index = 0; index < blocks.length; index += 1) {
-    const current = blocks[index]
-    const next = blocks[index + 1]
-
-    if (MOVE_BLOCK_TYPES.has(current.type) && next?.type === 'block_delay') {
-      rows.push([current, next])
-      index += 1
-      continue
-    }
-
-    rows.push([current])
-  }
-
-  return rows
-}
 
 function BlockCanvas({
   droneName,
   blocks,
   highlightedBlockId,
+  selectedBlockId,
   highlightPulse,
   onFieldChange,
+  onSelectBlock,
+  onDeleteBlock,
+  onMoveBlock,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const [flashRowId, setFlashRowId] = useState<string>()
+  const [draggingBlockId, setDraggingBlockId] = useState<string>()
+  const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
+
   const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
@@ -236,12 +75,31 @@ function BlockCanvas({
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
+  const updateDropHint = (event: React.DragEvent<HTMLElement>, targetId: string) => {
+    if (!draggingBlockId || draggingBlockId === targetId) {
+      return
+    }
+    const rect = event.currentTarget.getBoundingClientRect()
+    const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+    setDropHint({ targetId, position })
+  }
+
   const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
     const text = blockText(block)
     const theme = blockTheme[block.type] ?? {
       color: '#17324d',
       bg: '#deefff',
       border: '#8db8e6',
+    }
+
+    if (selectedBlockId === block.id) {
+      classNames.push('block-card-selected')
+    }
+    if (draggingBlockId === block.id) {
+      classNames.push('block-card-dragging')
+    }
+    if (dropHint?.targetId === block.id) {
+      classNames.push(dropHint.position === 'before' ? 'block-card-drop-before' : 'block-card-drop-after')
     }
 
     return (
@@ -252,6 +110,34 @@ function BlockCanvas({
           blockRefs.current[block.id] = el
         }}
         data-block-id={block.id}
+        draggable
+        onClick={() => onSelectBlock?.(block.id)}
+        onContextMenu={(event) => {
+          event.preventDefault()
+          onDeleteBlock?.(block.id)
+        }}
+        onDragStart={(event) => {
+          event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.setData('text/plain', block.id)
+          setDraggingBlockId(block.id)
+          setDropHint(undefined)
+          onSelectBlock?.(block.id)
+        }}
+        onDragOver={(event) => {
+          event.preventDefault()
+          updateDropHint(event, block.id)
+        }}
+        onDrop={(event) => {
+          event.preventDefault()
+          if (!draggingBlockId || draggingBlockId === block.id || !dropHint || dropHint.targetId !== block.id) {
+            return
+          }
+          onMoveBlock?.(draggingBlockId, dropHint.targetId, dropHint.position)
+        }}
+        onDragEnd={() => {
+          setDraggingBlockId(undefined)
+          setDropHint(undefined)
+        }}
         style={{
           color: theme.color,
           background: theme.bg,
