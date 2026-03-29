@@ -104,6 +104,83 @@ body {
   overflow: auto;
 }
 
+.content-grid {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) minmax(420px, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.content-panel {
+  min-width: 0;
+}
+
+.trajectory-panel {
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid #d5e5f8;
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.trajectory-title.ant-typography {
+  margin: 0 0 8px;
+  color: #153d69;
+}
+
+.trajectory-card {
+  border: 1px solid #d7e6f8;
+  background: #fbfdff;
+  border-radius: 12px;
+  padding: 8px;
+}
+
+.trajectory-meta {
+  color: #507097;
+  font-size: 12px;
+  margin: 2px 4px 8px;
+}
+
+.trajectory-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.trajectory-grid-bg {
+  fill: #fff;
+}
+
+.trajectory-grid-line {
+  stroke: #d7e7fa;
+  stroke-width: 1;
+}
+
+.trajectory-axis-label {
+  fill: #2e578a;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.trajectory-line {
+  fill: none;
+  stroke: #1b6ed6;
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.trajectory-point-start {
+  fill: #2db974;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
+.trajectory-point-end {
+  fill: #f05f3b;
+  stroke: #fff;
+  stroke-width: 1.5;
+}
+
 .warning-panel {
   margin-bottom: 12px;
 }
@@ -213,6 +290,10 @@ body {
 
   .app-content {
     padding: 14px;
+  }
+
+  .content-grid {
+    grid-template-columns: 1fr;
   }
 
   .block-title {

@@ -2,6 +2,7 @@ import { useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
+import TrajectoryPlane from './components/TrajectoryPlane'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
 
@@ -98,10 +99,23 @@ function App() {
               {selectedProgram?.drone.name ? `${selectedProgram.drone.name} 的动作积木` : '动作积木'}
             </Typography.Title>
           </div>
-          <BlockCanvas
-            droneName={selectedProgram?.drone.name}
-            blocks={selectedProgram?.blocks ?? []}
-          />
+          <div className="content-grid">
+            <section className="content-panel">
+              <BlockCanvas
+                droneName={selectedProgram?.drone.name}
+                blocks={selectedProgram?.blocks ?? []}
+              />
+            </section>
+            <section className="content-panel trajectory-panel">
+              <Typography.Title level={5} className="trajectory-title">
+                飞机平面轨迹（XY）
+              </Typography.Title>
+              <TrajectoryPlane
+                startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0' }}
+                blocks={selectedProgram?.blocks ?? []}
+              />
+            </section>
+          </div>
         </Layout.Content>
       </Layout>
       <input
