@@ -1,24 +1,15 @@
 import { Empty } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
-
-type XYZ = {
-  x: string
-  y: string
-  z: string
-}
+import TrajectoryScene3D from './TrajectoryScene3D'
+import type { XYZ, Visit } from './trajectory/trajectoryUtils'
+import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
 
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
   onLocateBlock?: (blockId: string) => void
-}
-
-type Visit = {
-  x: number
-  y: number
-  z: number
-  blockId?: string
+  viewMode?: '2d' | '3d'
 }
 
 type PointSummary = {
@@ -30,75 +21,6 @@ type PointSummary = {
 
 const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
-const GRID_STEP = 20
-
-const toNumber = (value?: string): number | null => {
-  if (!value) {
-    return null
-  }
-  const n = Number(value)
-  return Number.isFinite(n) ? n : null
-}
-
-const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] => {
-  const startX = toNumber(startPos.x) ?? 0
-  const startY = toNumber(startPos.y) ?? 0
-  const startZ = toNumber(startPos.z) ?? 0
-  const visits: Visit[] = [{ x: startX, y: startY, z: startZ }]
-
-  let currentX = startX
-  let currentY = startY
-  let currentZ = startZ
-
-  blocks.forEach((block) => {
-    if (block.type === 'Goertek_MoveToCoord2') {
-      const nextX = toNumber(block.fields.X)
-      const nextY = toNumber(block.fields.Y)
-      if (nextX === null || nextY === null) {
-        return
-      }
-      const nextZ = toNumber(block.fields.Z)
-      currentX = nextX
-      currentY = nextY
-      currentZ = nextZ ?? currentZ
-      visits.push({
-        x: currentX,
-        y: currentY,
-        z: currentZ,
-        blockId: block.id,
-      })
-      return
-    }
-
-    if (block.type === 'Goertek_Move') {
-      const deltaX = toNumber(block.fields.X)
-      const deltaY = toNumber(block.fields.Y)
-      if (deltaX === null || deltaY === null) {
-        return
-      }
-      const deltaZ = toNumber(block.fields.Z) ?? 0
-      currentX += deltaX
-      currentY += deltaY
-      currentZ += deltaZ
-      visits.push({
-        x: currentX,
-        y: currentY,
-        z: currentZ,
-        blockId: block.id,
-      })
-    }
-  })
-
-  return visits
-}
-
-const buildTicks = (min: number, max: number): number[] => {
-  const ticks: number[] = []
-  for (let value = min; value <= max; value += GRID_STEP) {
-    ticks.push(value)
-  }
-  return ticks
-}
 
 const summarizePoints = (visits: Visit[]): PointSummary[] => {
   const pointMap = new Map<string, PointSummary>()
@@ -117,18 +39,18 @@ const summarizePoints = (visits: Visit[]): PointSummary[] => {
   return [...pointMap.values()]
 }
 
-function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
+function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: Props) {
   const visits = buildPathVisits(startPos, blocks)
+  const bounds = calcTrajectoryBounds(visits)
   const summarizedPoints = summarizePoints(visits)
   const [activePointKey, setActivePointKey] = useState<string>()
-  const wrapRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const activePoint = activePointKey
     ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey)
     : undefined
 
   useEffect(() => {
-    if (!activePointKey) {
+    if (!activePointKey || viewMode !== '2d') {
       return
     }
 
@@ -151,43 +73,38 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
 
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
-  }, [activePointKey])
+  }, [activePointKey, viewMode])
 
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
 
-  const rawMinX = Math.min(0, ...visits.map((point) => point.x))
-  const rawMaxX = Math.max(360, ...visits.map((point) => point.x))
-  const rawMinY = Math.min(0, ...visits.map((point) => point.y))
-  const rawMaxY = Math.max(360, ...visits.map((point) => point.y))
+  const meta =
+    viewMode === '3d'
+      ? `范围 X: ${bounds.minX} ~ ${bounds.maxX} cm，Y: ${bounds.minY} ~ ${bounds.maxY} cm，Z: ${bounds.minZ} ~ ${bounds.maxZ} cm`
+      : `范围 X: ${bounds.minX} ~ ${bounds.maxX} cm，Y: ${bounds.minY} ~ ${bounds.maxY} cm`
 
-  const minXBase = Math.floor(rawMinX / GRID_STEP) * GRID_STEP
-  const maxXBase = Math.ceil(rawMaxX / GRID_STEP) * GRID_STEP
-  const minYBase = Math.floor(rawMinY / GRID_STEP) * GRID_STEP
-  const maxYBase = Math.ceil(rawMaxY / GRID_STEP) * GRID_STEP
+  if (viewMode === '3d') {
+    return (
+      <div className="trajectory-card">
+        <div className="trajectory-meta">{meta}</div>
+        <TrajectoryScene3D visits={visits} bounds={bounds} />
+      </div>
+    )
+  }
 
   const margin = { top: 16, right: 16, bottom: 44, left: 44 }
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
   const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
-  const xSpanBase = Math.max(maxXBase - minXBase, GRID_STEP)
-  const ySpanBase = Math.max(maxYBase - minYBase, GRID_STEP)
-  const span = Math.max(xSpanBase, ySpanBase)
-
-  const minX = minXBase
-  const maxX = minXBase + span
-  const minY = minYBase
-  const maxY = minYBase + span
-
   const plotSize = Math.min(innerWidth, innerHeight)
   const plotLeft = margin.left + (innerWidth - plotSize) / 2
   const plotTop = margin.top + (innerHeight - plotSize) / 2
 
-  const toSvgX = (x: number) => plotLeft + ((x - minX) / span) * plotSize
-  const toSvgY = (y: number) => plotTop + (1 - (y - minY) / span) * plotSize
+  const toSvgX = (x: number) => plotLeft + ((x - bounds.minX) / bounds.span) * plotSize
+  const toSvgY = (y: number) => plotTop + (1 - (y - bounds.minY) / bounds.span) * plotSize
 
-  const xTicks = buildTicks(minX, maxX)
-  const yTicks = buildTicks(minY, maxY)
+  const xTicks = buildTicks(bounds.minX, bounds.maxX)
+  const yTicks = buildTicks(bounds.minY, bounds.maxY)
 
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const activePointAnchor = activePoint
@@ -201,10 +118,8 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
 
   return (
     <div className="trajectory-card">
-      <div className="trajectory-meta">
-        范围 X: {minX} ~ {maxX} cm，Y: {minY} ~ {maxY} cm
-      </div>
-      <div ref={wrapRef} className="trajectory-canvas-wrap">
+      <div className="trajectory-meta">{meta}</div>
+      <div className="trajectory-canvas-wrap">
         <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
           <rect
             x={plotLeft}
@@ -241,12 +156,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
                 y2={toSvgY(tick)}
                 className="trajectory-grid-line"
               />
-              <text
-                x={plotLeft - 8}
-                y={toSvgY(tick) + 4}
-                textAnchor="end"
-                className="trajectory-axis-label"
-              >
+              <text x={plotLeft - 8} y={toSvgY(tick) + 4} textAnchor="end" className="trajectory-axis-label">
                 {tick}
               </text>
             </g>

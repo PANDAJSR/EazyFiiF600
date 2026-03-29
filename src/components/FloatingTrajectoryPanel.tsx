@@ -16,6 +16,8 @@ type Props = {
   onLocateBlock?: (blockId: string) => void
 }
 
+type ViewMode = '2d' | '3d'
+
 type Rect = {
   x: number
   y: number
@@ -119,6 +121,7 @@ const getDockedRightRect = (currentWidth: number): Rect => {
 function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('2d')
   const dragRef = useRef<DragState | null>(null)
   const floatingRectRef = useRef<Rect>(getInitialRect())
 
@@ -278,9 +281,19 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
       <div className="floating-trajectory-header">
         <div className="floating-trajectory-drag-handle" onPointerDown={startMove}>
           <Typography.Title level={5} className="trajectory-title">
-            飞机平面轨迹（XY）
+            {viewMode === '2d' ? '飞机平面轨迹（XY）' : '飞机三维轨迹（XYZ）'}
           </Typography.Title>
         </div>
+        <Tooltip title={viewMode === '2d' ? '切换到 3D 轨迹' : '切换到 2D 轨迹'}>
+          <Button
+            className="floating-trajectory-mode-btn"
+            type={viewMode === '2d' ? 'default' : 'primary'}
+            size="small"
+            onClick={() => setViewMode((prev) => (prev === '2d' ? '3d' : '2d'))}
+          >
+            {viewMode === '2d' ? '3D' : '2D'}
+          </Button>
+        </Tooltip>
         <Tooltip title={dockedRight ? '切换为悬浮面板' : '贴右侧面板'}>
           <Button
             className="floating-trajectory-toggle-btn"
@@ -298,7 +311,7 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         </Tooltip>
       </div>
       <div className="floating-trajectory-body">
-        <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} />
+        <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} viewMode={viewMode} />
       </div>
       {!dockedRight && (
         <div

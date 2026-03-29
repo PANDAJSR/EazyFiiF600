@@ -139,7 +139,6 @@ const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
 function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const [flashRowId, setFlashRowId] = useState<string>()
-  const [flashVariant, setFlashVariant] = useState<0 | 1>(0)
   const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
@@ -169,12 +168,15 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
     if (!rowId) {
       return
     }
-    setFlashVariant((prev) => (prev === 0 ? 1 : 0))
-    setFlashRowId(undefined)
-    const rafId = window.requestAnimationFrame(() => setFlashRowId(rowId))
+    let rafId2 = 0
+    const rafId1 = window.requestAnimationFrame(() => {
+      setFlashRowId(undefined)
+      rafId2 = window.requestAnimationFrame(() => setFlashRowId(rowId))
+    })
     const timer = window.setTimeout(() => setFlashRowId(undefined), 1300)
     return () => {
-      window.cancelAnimationFrame(rafId)
+      window.cancelAnimationFrame(rafId1)
+      window.cancelAnimationFrame(rafId2)
       window.clearTimeout(timer)
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
@@ -192,6 +194,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
     initTimeRowIndex >= 0 ? rows.slice(0, initTimeRowIndex + 1) : rows
   const rowsIndented =
     initTimeRowIndex >= 0 ? rows.slice(initTimeRowIndex + 1) : []
+  const flashVariantClass = (highlightPulse ?? 0) % 2 === 0 ? 'block-row-highlight-a' : 'block-row-highlight-b'
 
   return (
     <div className="blocks-wrap">
@@ -200,7 +203,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
           key={row[0].id}
           className={
             flashRowId === row[0].id
-              ? `block-row block-row-highlight ${flashVariant === 0 ? 'block-row-highlight-a' : 'block-row-highlight-b'}`
+              ? `block-row block-row-highlight ${flashVariantClass}`
               : 'block-row'
           }
         >
@@ -275,7 +278,7 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
                 key={row[0].id}
                 className={
                   flashRowId === row[0].id
-                    ? `block-row block-row-indented block-row-highlight ${flashVariant === 0 ? 'block-row-highlight-a' : 'block-row-highlight-b'}`
+                    ? `block-row block-row-indented block-row-highlight ${flashVariantClass}`
                     : 'block-row block-row-indented'
                 }
               >

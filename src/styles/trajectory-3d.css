@@ -1,0 +1,45 @@
+.trajectory-3d-stage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 360px;
+  padding: 2px;
+}
+
+.trajectory-3d-canvas {
+  width: 100%;
+  min-height: 340px;
+  flex: 1;
+  border: 1px solid #d7e6f8;
+  border-radius: 10px;
+  overflow: hidden;
+  background: linear-gradient(180deg, #fafdff 0%, #f5faff 100%);
+}
+
+.trajectory-3d-canvas > canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.trajectory-3d-tip {
+  font-size: 12px;
+  color: #53739a;
+  text-align: right;
+  padding-right: 4px;
+}
+
+.floating-trajectory-mode-btn {
+  flex: none;
+  min-width: 48px;
+}
+
+.floating-trajectory-panel-docked-right .trajectory-3d-stage {
+  height: 100%;
+  min-height: 0;
+}
+
+.floating-trajectory-panel-docked-right .trajectory-3d-canvas {
+  min-height: 0;
+  height: 100%;
+}
