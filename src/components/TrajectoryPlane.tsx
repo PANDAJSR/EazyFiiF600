@@ -67,6 +67,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const toSvgX = (x: number) => plotLeft + ((x - bounds.minX) / bounds.span) * plotSize
   const toSvgY = (y: number) => plotTop + (1 - (y - bounds.minY) / bounds.span) * plotSize
   const [activePointKey, setActivePointKey] = useState<string>()
+  const [isDraggingPoint, setIsDraggingPoint] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<MovePointPayload | null>(null)
@@ -137,6 +138,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
         return
       }
       dragRef.current = null
+      setIsDraggingPoint(false)
     }
 
     window.addEventListener('pointermove', onPointerMove)
@@ -258,6 +260,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
                     baseX: targetVisit.baseX,
                     baseY: targetVisit.baseY,
                   }
+                  setIsDraggingPoint(true)
                   setActivePointKey(key)
                 }}
               >
@@ -285,7 +288,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
             )
           })}
         </svg>
-        {!!activePoint && !!activePointAnchor && (
+        {!!activePoint && !!activePointAnchor && !isDraggingPoint && (
           <div
             ref={panelRef}
             className={`trajectory-visit-panel ${panelDirection}`}
