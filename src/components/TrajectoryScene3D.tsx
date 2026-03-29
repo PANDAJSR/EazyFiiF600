@@ -8,6 +8,7 @@ import { GRID_STEP } from './trajectory/trajectoryUtils'
 type Props = {
   visits: Visit[]
   bounds: TrajectoryBounds
+  onLocateBlock?: (blockId: string) => void
 }
 
 const createGridLine = (
@@ -26,7 +27,7 @@ const createGridLine = (
   return { line, dispose }
 }
 
-function TrajectoryScene3D({ visits, bounds }: Props) {
+function TrajectoryScene3D({ visits, bounds, onLocateBlock }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const center = useMemo(
@@ -145,6 +146,126 @@ function TrajectoryScene3D({ visits, bounds }: Props) {
       endMarkerMaterial.dispose()
     })
 
+    const pickablePointMaterial = new THREE.MeshStandardMaterial({
+      color: '#6ea4e8',
+      emissive: '#000000',
+      metalness: 0.08,
+      roughness: 0.45,
+    })
+    const unpickablePointMaterial = new THREE.MeshStandardMaterial({
+      color: '#9db4d3',
+      emissive: '#000000',
+      transparent: true,
+      opacity: 0.68,
+      metalness: 0.08,
+      roughness: 0.45,
+    })
+    const pointGeometry = new THREE.SphereGeometry(Math.max(bounds.span * 0.0055, 2.2), 14, 14)
+    const pickGroup = new THREE.Group()
+    const pickMeshes: THREE.Mesh[] = []
+    const pointScale = 1.65
+    const pointOffsetZ = Math.max(bounds.span * 0.0008, 0.2)
+
+    visits.forEach((visit, index) => {
+      if (index === 0) {
+        return
+      }
+      const mesh = new THREE.Mesh(pointGeometry, visit.blockId ? pickablePointMaterial : unpickablePointMaterial)
+      mesh.position.set(visit.x, visit.y, visit.z + pointOffsetZ)
+      mesh.userData = { blockId: visit.blockId }
+      mesh.scale.setScalar(pointScale)
+      pickMeshes.push(mesh)
+      pickGroup.add(mesh)
+    })
+    scene.add(pickGroup)
+
+    disposers.push(() => {
+      pointGeometry.dispose()
+      pickablePointMaterial.dispose()
+      unpickablePointMaterial.dispose()
+    })
+
+    const raycaster = new THREE.Raycaster()
+    const pointer = new THREE.Vector2()
+    let hoveredMesh: THREE.Mesh | null = null
+    let pointerDown = { x: 0, y: 0 }
+    let pointerMoved = false
+    let skipClickUntil = 0
+
+    const pickMeshAtPointer = (event: PointerEvent): THREE.Mesh | null => {
+      const rect = renderer.domElement.getBoundingClientRect()
+      pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(pointer, camera)
+      const hits = raycaster.intersectObjects(pickMeshes, false)
+      return (hits[0]?.object as THREE.Mesh | undefined) ?? null
+    }
+
+    const resetHovered = () => {
+      if (!hoveredMesh) {
+        return
+      }
+      hoveredMesh.scale.setScalar(pointScale)
+      if (hoveredMesh.material instanceof THREE.MeshStandardMaterial) {
+        hoveredMesh.material.emissive.set('#000000')
+      }
+      hoveredMesh = null
+      renderer.domElement.style.cursor = 'default'
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      pointerDown = { x: event.clientX, y: event.clientY }
+      pointerMoved = false
+    }
+
+    const onPointerMove = (event: PointerEvent) => {
+      if (!pointerMoved) {
+        const dx = event.clientX - pointerDown.x
+        const dy = event.clientY - pointerDown.y
+        if (Math.hypot(dx, dy) > 4) {
+          pointerMoved = true
+        }
+      }
+
+      const hit = pickMeshAtPointer(event)
+      if (hit === hoveredMesh) {
+        return
+      }
+      resetHovered()
+      if (!hit) {
+        return
+      }
+
+      hoveredMesh = hit
+      hoveredMesh.scale.setScalar(pointScale * 1.28)
+      const blockId = hoveredMesh.userData.blockId as string | undefined
+      if (hoveredMesh.material instanceof THREE.MeshStandardMaterial) {
+        hoveredMesh.material.emissive.set(blockId ? '#1b6ed6' : '#637a9a')
+      }
+      renderer.domElement.style.cursor = blockId ? 'pointer' : 'default'
+    }
+
+    const onPointerUp = (event: PointerEvent) => {
+      if (pointerMoved || Date.now() < skipClickUntil) {
+        return
+      }
+      const hit = pickMeshAtPointer(event)
+      const blockId = hit?.userData.blockId as string | undefined
+      if (blockId) {
+        onLocateBlock?.(blockId)
+      }
+    }
+
+    const onControlsStart = () => {
+      skipClickUntil = Date.now() + 140
+    }
+
+    controls.addEventListener('start', onControlsStart)
+    renderer.domElement.addEventListener('pointerdown', onPointerDown)
+    renderer.domElement.addEventListener('pointermove', onPointerMove)
+    renderer.domElement.addEventListener('pointerup', onPointerUp)
+    renderer.domElement.addEventListener('pointerleave', resetHovered)
+
     const resize = () => {
       const width = Math.max(1, container.clientWidth)
       const height = Math.max(1, container.clientHeight)
@@ -169,14 +290,33 @@ function TrajectoryScene3D({ visits, bounds }: Props) {
     return () => {
       window.cancelAnimationFrame(animationFrameId)
       resizeObserver.disconnect()
+      controls.removeEventListener('start', onControlsStart)
       controls.dispose()
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown)
+      renderer.domElement.removeEventListener('pointermove', onPointerMove)
+      renderer.domElement.removeEventListener('pointerup', onPointerUp)
+      renderer.domElement.removeEventListener('pointerleave', resetHovered)
+      renderer.domElement.style.cursor = 'default'
       disposers.forEach((dispose) => dispose())
       renderer.dispose()
       if (renderer.domElement.parentElement === container) {
         container.removeChild(renderer.domElement)
       }
     }
-  }, [bounds.maxX, bounds.maxY, bounds.maxZ, bounds.minX, bounds.minY, bounds.minZ, bounds.span, center.x, center.y, center.z, visits])
+  }, [
+    bounds.maxX,
+    bounds.maxY,
+    bounds.maxZ,
+    bounds.minX,
+    bounds.minY,
+    bounds.minZ,
+    bounds.span,
+    center.x,
+    center.y,
+    center.z,
+    onLocateBlock,
+    visits,
+  ])
 
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
@@ -185,7 +325,7 @@ function TrajectoryScene3D({ visits, bounds }: Props) {
   return (
     <div className="trajectory-3d-stage">
       <div ref={containerRef} className="trajectory-3d-canvas" />
-      <div className="trajectory-3d-tip">拖拽旋转 · 滚轮缩放 · 右键平移</div>
+      <div className="trajectory-3d-tip">拖拽旋转 · 滚轮缩放 · 点击轨迹点可定位积木</div>
     </div>
   )
 }

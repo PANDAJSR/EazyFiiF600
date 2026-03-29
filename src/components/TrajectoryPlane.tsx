@@ -88,7 +88,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: P
     return (
       <div className="trajectory-card">
         <div className="trajectory-meta">{meta}</div>
-        <TrajectoryScene3D visits={visits} bounds={bounds} />
+        <TrajectoryScene3D visits={visits} bounds={bounds} onLocateBlock={onLocateBlock} />
       </div>
     )
   }
