@@ -209,15 +209,22 @@ body {
   overflow-y: hidden;
 }
 
-.block-card + .block-card {
+.block-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 100%;
+}
+
+.block-row + .block-row {
   margin-top: -2px;
 }
 
-.block-card:not(:first-child) {
+.block-card-stack-top {
   border-top-left-radius: 0;
 }
 
-.block-card:not(:last-child) {
+.block-card-stack-bottom {
   border-bottom-left-radius: 0;
 }
 

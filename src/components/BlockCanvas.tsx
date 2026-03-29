@@ -28,6 +28,8 @@ const blockTheme: Record<string, { color: string; bg: string; border: string }> 
   Goertek_Land: themeAction,
 }
 
+const MOVE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
+
 const token = (text: string, value = false): BlockToken => ({ text, value })
 
 const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } => {
@@ -103,6 +105,25 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
   }
 }
 
+const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
+  const rows: ParsedBlock[][] = []
+
+  for (let index = 0; index < blocks.length; index += 1) {
+    const current = blocks[index]
+    const next = blocks[index + 1]
+
+    if (MOVE_BLOCK_TYPES.has(current.type) && next?.type === 'block_delay') {
+      rows.push([current, next])
+      index += 1
+      continue
+    }
+
+    rows.push([current])
+  }
+
+  return rows
+}
+
 function BlockCanvas({ droneName, blocks }: Props) {
   if (!blocks.length) {
     return (
@@ -112,44 +133,58 @@ function BlockCanvas({ droneName, blocks }: Props) {
     )
   }
 
+  const rows = groupBlocksByRow(blocks)
+
   return (
     <div className="blocks-wrap">
-      {blocks.map((block) => {
-        const text = blockText(block)
-        const theme = blockTheme[block.type] ?? {
-          color: '#17324d',
-          bg: '#deefff',
-          border: '#8db8e6',
-        }
+      {rows.map((row, rowIndex) => (
+        <div key={row[0].id} className="block-row">
+          {row.map((block, blockIndex) => {
+            const text = blockText(block)
+            const theme = blockTheme[block.type] ?? {
+              color: '#17324d',
+              bg: '#deefff',
+              border: '#8db8e6',
+            }
 
-        return (
-          <section
-            key={block.id}
-            className="block-card"
-            style={{
-              color: theme.color,
-              background: theme.bg,
-              borderColor: theme.border,
-            }}
-          >
-            <div className="block-line">
-              <span className="block-title">{text.title}</span>
-              {!!text.values.length && (
-                <div className="block-values">
-                  {text.values.map((value, idx) => (
-                    <span
-                      key={`${block.id}-${idx}`}
-                      className={value.value ? 'block-chip block-chip-value' : 'block-chip'}
-                    >
-                      {value.text}
-                    </span>
-                  ))}
+            const classNames = ['block-card']
+            if (blockIndex === 0 && rowIndex > 0) {
+              classNames.push('block-card-stack-top')
+            }
+            if (blockIndex === 0 && rowIndex < rows.length - 1) {
+              classNames.push('block-card-stack-bottom')
+            }
+
+            return (
+              <section
+                key={block.id}
+                className={classNames.join(' ')}
+                style={{
+                  color: theme.color,
+                  background: theme.bg,
+                  borderColor: theme.border,
+                }}
+              >
+                <div className="block-line">
+                  <span className="block-title">{text.title}</span>
+                  {!!text.values.length && (
+                    <div className="block-values">
+                      {text.values.map((value, idx) => (
+                        <span
+                          key={`${block.id}-${idx}`}
+                          className={value.value ? 'block-chip block-chip-value' : 'block-chip'}
+                        >
+                          {value.text}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          </section>
-        )
-      })}
+              </section>
+            )
+          })}
+        </div>
+      ))}
     </div>
   )
 }
