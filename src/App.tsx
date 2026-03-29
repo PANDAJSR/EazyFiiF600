@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
@@ -29,6 +29,11 @@ function App() {
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
+
+  const handleLocateBlock = useCallback((blockId: string) => {
+    setHighlightedBlockId(blockId)
+    setHighlightPulse((prev) => prev + 1)
+  }, [])
 
   const handleParseFiles = async (list: FileList | null) => {
     if (!list?.length) {
@@ -120,10 +125,7 @@ function App() {
           <FloatingTrajectoryPanel
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
-            onLocateBlock={(blockId) => {
-              setHighlightedBlockId(blockId)
-              setHighlightPulse((prev) => prev + 1)
-            }}
+            onLocateBlock={handleLocateBlock}
           />
         </Layout.Content>
       </Layout>

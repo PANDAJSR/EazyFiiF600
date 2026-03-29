@@ -1,5 +1,5 @@
 import { Empty } from 'antd'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 import TrajectoryScene3D from './TrajectoryScene3D'
 import type { XYZ, Visit } from './trajectory/trajectoryUtils'
@@ -40,9 +40,9 @@ const summarizePoints = (visits: Visit[]): PointSummary[] => {
 }
 
 function TrajectoryPlane({ startPos, blocks, onLocateBlock, viewMode = '2d' }: Props) {
-  const visits = buildPathVisits(startPos, blocks)
-  const bounds = calcTrajectoryBounds(visits)
-  const summarizedPoints = summarizePoints(visits)
+  const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
+  const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
+  const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
   const [activePointKey, setActivePointKey] = useState<string>()
   const panelRef = useRef<HTMLDivElement>(null)
   const activePoint = activePointKey
