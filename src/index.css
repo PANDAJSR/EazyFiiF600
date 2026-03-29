@@ -210,7 +210,6 @@ body {
 }
 
 .block-row {
-  position: relative;
   display: flex;
   align-items: flex-start;
   gap: 0;
@@ -218,18 +217,23 @@ body {
 }
 
 .block-row-indented {
+  margin-left: 0;
+}
+
+.block-subflow {
+  position: relative;
   margin-left: 16px;
 }
 
-.block-row-indented::before {
+.block-subflow::before {
   content: '';
   position: absolute;
   left: -10px;
-  top: 6px;
-  bottom: 6px;
+  top: 0;
+  bottom: 0;
   width: 4px;
   border-radius: 999px;
-  background: linear-gradient(180deg, rgba(112, 146, 196, 0.45), rgba(112, 146, 196, 0.18));
+  background: #4c8dff;
 }
 
 .block-row + .block-row {
@@ -345,10 +349,14 @@ body {
   }
 
   .block-row-indented {
+    margin-left: 0;
+  }
+
+  .block-subflow {
     margin-left: 12px;
   }
 
-  .block-row-indented::before {
+  .block-subflow::before {
     left: -8px;
     width: 3px;
   }

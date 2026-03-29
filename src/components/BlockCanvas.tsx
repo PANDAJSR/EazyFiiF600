@@ -144,15 +144,17 @@ function BlockCanvas({ droneName, blocks }: Props) {
 
   const rows = groupBlocksByRow(blocks)
   const initTimeRowIndex = rows.findIndex((row) => row.some((block) => block.type === 'block_inittime'))
+  const rowsBeforeIndented =
+    initTimeRowIndex >= 0 ? rows.slice(0, initTimeRowIndex + 1) : rows
+  const rowsIndented =
+    initTimeRowIndex >= 0 ? rows.slice(initTimeRowIndex + 1) : []
 
   return (
     <div className="blocks-wrap">
-      {rows.map((row, rowIndex) => (
+      {rowsBeforeIndented.map((row, rowIndex) => (
         <div
           key={row[0].id}
-          className={['block-row', initTimeRowIndex >= 0 && rowIndex > initTimeRowIndex ? 'block-row-indented' : '']
-            .filter(Boolean)
-            .join(' ')}
+          className="block-row"
         >
           {row.map((block, blockIndex) => {
             const text = blockText(block)
@@ -212,6 +214,73 @@ function BlockCanvas({ droneName, blocks }: Props) {
           })}
         </div>
       ))}
+      {!!rowsIndented.length && (
+        <div className="block-subflow">
+          {rowsIndented.map((row, rowOffset) => {
+            const rowIndex = initTimeRowIndex + 1 + rowOffset
+            return (
+              <div key={row[0].id} className="block-row block-row-indented">
+                {row.map((block, blockIndex) => {
+                  const text = blockText(block)
+                  const theme = blockTheme[block.type] ?? {
+                    color: '#17324d',
+                    bg: '#deefff',
+                    border: '#8db8e6',
+                  }
+
+                  const classNames = ['block-card']
+                  if (blockIndex === 0 && rowIndex > 0) {
+                    classNames.push('block-card-stack-top')
+                  }
+                  if (blockIndex === 0 && rowIndex < rows.length - 1) {
+                    classNames.push('block-card-stack-bottom')
+                  }
+                  if (row.length > 1 && blockIndex === 0) {
+                    classNames.push('block-card-join-right')
+                  }
+                  if (row.length > 1 && blockIndex === row.length - 1) {
+                    classNames.push('block-card-join-left')
+                  }
+
+                  return (
+                    <section
+                      key={block.id}
+                      className={classNames.join(' ')}
+                      style={{
+                        color: theme.color,
+                        background: theme.bg,
+                        borderColor: theme.border,
+                      }}
+                    >
+                      <div className="block-line">
+                        <span className="block-title">{text.title}</span>
+                        {!!text.values.length && (
+                          <div className="block-values">
+                            {text.values.map((value, idx) => (
+                              <span
+                                key={`${block.id}-${idx}`}
+                                className={[
+                                  'block-chip',
+                                  value.value ? 'block-chip-value' : '',
+                                  value.titleLike ? 'block-chip-title-like' : '',
+                                ]
+                                  .filter(Boolean)
+                                  .join(' ')}
+                              >
+                                {value.text}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  )
+                })}
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
