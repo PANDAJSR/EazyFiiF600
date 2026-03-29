@@ -193,51 +193,18 @@
   animation: block-row-highlight-fadeout 1.8s ease-out forwards;
 }
 
-.block-row-highlight::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -6px;
-  height: 12px;
-  border-radius: 0 0 10px 10px;
-  background: linear-gradient(
-    90deg,
-    rgba(255, 196, 0, 0.08),
-    rgba(255, 196, 0, 0.95),
-    rgba(255, 138, 0, 0.95),
-    rgba(255, 196, 0, 0.08)
-  );
-  box-shadow: 0 0 0 1px rgba(255, 170, 0, 0.24), 0 4px 12px rgba(255, 166, 0, 0.28);
-  animation: block-row-underline-fadeout 1.8s ease-out forwards;
-  pointer-events: none;
-  z-index: 0;
-}
-
 .block-row-highlight > .block-card {
   position: relative;
   z-index: 1;
 }
 
-@keyframes block-row-underline-fadeout {
-  0% {
-    opacity: 1;
-    transform: scaleX(1);
-  }
-
-  100% {
-    opacity: 0;
-    transform: scaleX(0.96);
-  }
-}
-
 @keyframes block-row-highlight-fadeout {
   0% {
-    background: rgba(255, 196, 0, 0.14);
+    background: rgba(27, 110, 214, 0.22);
   }
 
   100% {
-    background: rgba(255, 196, 0, 0);
+    background: rgba(27, 110, 214, 0);
   }
 }
 
