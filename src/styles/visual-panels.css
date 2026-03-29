@@ -351,7 +351,7 @@
 
 .floating-trajectory-panel {
   position: fixed;
-  z-index: 40;
+  z-index: 1000;
   background: rgba(255, 255, 255, 0.95);
   border: 1px solid #d5e5f8;
   border-radius: 14px;

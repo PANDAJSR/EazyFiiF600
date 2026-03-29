@@ -1,5 +1,6 @@
 import { Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
 import TrajectoryPlane from './TrajectoryPlane'
 
@@ -44,6 +45,8 @@ const MIN_HEIGHT = 280
 const DEFAULT_WIDTH = 520
 const DEFAULT_HEIGHT = 460
 const DEFAULT_TOP = 90
+const VISIBLE_GRAB_WIDTH = 120
+const VISIBLE_GRAB_HEIGHT = 44
 
 const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
 
@@ -71,12 +74,14 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         const maxHeight = Math.max(MIN_HEIGHT, window.innerHeight - PANEL_MARGIN * 2)
         const width = clamp(prev.width, MIN_WIDTH, maxWidth)
         const height = clamp(prev.height, MIN_HEIGHT, maxHeight)
-        const maxX = Math.max(PANEL_MARGIN, window.innerWidth - width - PANEL_MARGIN)
-        const maxY = Math.max(PANEL_MARGIN, window.innerHeight - height - PANEL_MARGIN)
+        const minX = -width + VISIBLE_GRAB_WIDTH
+        const maxX = window.innerWidth - VISIBLE_GRAB_WIDTH
+        const minY = PANEL_MARGIN
+        const maxY = window.innerHeight - VISIBLE_GRAB_HEIGHT
 
         return {
-          x: clamp(prev.x, PANEL_MARGIN, maxX),
-          y: clamp(prev.y, PANEL_MARGIN, maxY),
+          x: clamp(prev.x, minX, maxX),
+          y: clamp(prev.y, minY, maxY),
           width,
           height,
         }
@@ -103,12 +108,14 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         setRect((prev) => {
           const nextXRaw = current.originX + offsetX
           const nextYRaw = current.originY + offsetY
-          const maxX = Math.max(PANEL_MARGIN, window.innerWidth - prev.width - PANEL_MARGIN)
-          const maxY = Math.max(PANEL_MARGIN, window.innerHeight - prev.height - PANEL_MARGIN)
+          const minX = -prev.width + VISIBLE_GRAB_WIDTH
+          const maxX = window.innerWidth - VISIBLE_GRAB_WIDTH
+          const minY = PANEL_MARGIN
+          const maxY = window.innerHeight - VISIBLE_GRAB_HEIGHT
           return {
             ...prev,
-            x: clamp(nextXRaw, PANEL_MARGIN, maxX),
-            y: clamp(nextYRaw, PANEL_MARGIN, maxY),
+            x: clamp(nextXRaw, minX, maxX),
+            y: clamp(nextYRaw, minY, maxY),
           }
         })
         return
@@ -167,7 +174,11 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
     document.body.classList.add('trajectory-panel-dragging')
   }
 
-  return (
+  if (typeof document === 'undefined') {
+    return null
+  }
+
+  return createPortal(
     <section
       className="floating-trajectory-panel"
       style={{
@@ -190,7 +201,8 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
         role="separator"
         aria-label="调整轨迹面板大小"
       />
-    </section>
+    </section>,
+    document.body,
   )
 }
 
