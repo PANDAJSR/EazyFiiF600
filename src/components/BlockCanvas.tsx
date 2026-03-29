@@ -65,7 +65,7 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
       return { title: '起飞', values: [token(f.alt ?? '-', true), token('cm')] }
     case 'Goertek_MoveToCoord2':
       return {
-        title: '直线移至',
+        title: '平移到（异步）',
         values: [
           token('X'),
           token(f.X ?? '-', true),
@@ -80,7 +80,7 @@ const blockText = (block: ParsedBlock): { title: string; values: BlockToken[] } 
       }
     case 'Goertek_Move':
       return {
-        title: '方向移动',
+        title: '相对平移（异步）',
         values: [
           token('X'),
           token(f.X ?? '-', true),
