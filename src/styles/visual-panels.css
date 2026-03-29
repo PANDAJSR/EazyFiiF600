@@ -149,6 +149,21 @@
   font-size: 12px;
 }
 
+.trajectory-drag-preview {
+  position: fixed;
+  z-index: 1200;
+  pointer-events: none;
+  border: 1px solid #9fc0ee;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #1f5ea9;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 8px;
+  box-shadow: 0 10px 24px rgba(16, 50, 93, 0.2);
+}
+
 .trajectory-locate-btn {
   border: 1px solid #9fc0ee;
   border-radius: 999px;

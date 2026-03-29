@@ -4,6 +4,14 @@ import type { ParsedBlock } from '../types/fii'
 import TrajectoryScene3D from './TrajectoryScene3D'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
+import {
+  clamp,
+  clientToSvg,
+  EDITABLE_BLOCK_TYPES,
+  snapToStep,
+  SNAP_STEP,
+  summarizePoints,
+} from './trajectory/trajectoryPlaneUtils'
 
 type Props = {
   startPos: XYZ
@@ -11,13 +19,6 @@ type Props = {
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
-}
-
-type PointSummary = {
-  x: number
-  y: number
-  count: number
-  visits: Visit[]
 }
 
 type MovePointPayload = {
@@ -31,40 +32,6 @@ type MovePointPayload = {
 
 const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
-const SNAP_STEP = 10
-const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
-
-const snapToStep = (value: number, step: number) => Math.round(value / step) * step
-const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)
-
-const clientToSvg = (svg: SVGSVGElement, clientX: number, clientY: number) => {
-  const ctm = svg.getScreenCTM()
-  if (!ctm) {
-    return null
-  }
-  const point = svg.createSVGPoint()
-  point.x = clientX
-  point.y = clientY
-  const transformed = point.matrixTransform(ctm.inverse())
-  return { x: transformed.x, y: transformed.y }
-}
-
-const summarizePoints = (visits: Visit[]): PointSummary[] => {
-  const pointMap = new Map<string, PointSummary>()
-
-  visits.forEach((point) => {
-    const key = `${point.x},${point.y}`
-    const existing = pointMap.get(key)
-    if (existing) {
-      existing.count += 1
-      existing.visits.push(point)
-      return
-    }
-    pointMap.set(key, { x: point.x, y: point.y, count: 1, visits: [point] })
-  })
-
-  return [...pointMap.values()]
-}
 
 function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
@@ -83,6 +50,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const [isDraggingPoint, setIsDraggingPoint] = useState(false)
   const [frozenBounds, setFrozenBounds] = useState<TrajectoryBounds | null>(null)
   const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
+  const [dragPreview, setDragPreview] = useState<{ clientX: number; clientY: number; x: number; y: number }>()
   const panelRef = useRef<HTMLDivElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -150,6 +118,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
         y,
       })
       setActivePointKey(`${x},${y}`)
+      setDragPreview({ clientX: event.clientX, clientY: event.clientY, x, y })
     }
 
     const onPointerUp = () => {
@@ -160,6 +129,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
       dragBoundsRef.current = null
       setFrozenBounds(null)
       setIsDraggingPoint(false)
+      setDragPreview(undefined)
     }
 
     window.addEventListener('pointermove', onPointerMove)
@@ -321,6 +291,12 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
                   setFrozenBounds(bounds)
                   setIsDraggingPoint(true)
                   setActivePointKey(key)
+                  setDragPreview({
+                    clientX: event.clientX,
+                    clientY: event.clientY,
+                    x: targetVisit.x,
+                    y: targetVisit.y,
+                  })
                 }}
               >
                 <circle
@@ -378,6 +354,17 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
                 </div>
               ))}
             </div>
+          </div>
+        )}
+        {!!dragPreview && (
+          <div
+            className="trajectory-drag-preview"
+            style={{
+              left: `${dragPreview.clientX + 14}px`,
+              top: `${dragPreview.clientY + 14}px`,
+            }}
+          >
+            X {dragPreview.x} · Y {dragPreview.y}
           </div>
         )}
       </div>
