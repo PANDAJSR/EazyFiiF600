@@ -1,5 +1,5 @@
 import { Empty } from 'antd'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 
 type XYZ = {
@@ -121,9 +121,37 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
   const visits = buildPathVisits(startPos, blocks)
   const summarizedPoints = summarizePoints(visits)
   const [activePointKey, setActivePointKey] = useState<string>()
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const panelRef = useRef<HTMLDivElement>(null)
   const activePoint = activePointKey
     ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey)
     : undefined
+
+  useEffect(() => {
+    if (!activePointKey) {
+      return
+    }
+
+    const onPointerDown = (event: PointerEvent) => {
+      const target = event.target as HTMLElement | null
+      if (!target) {
+        return
+      }
+
+      if (panelRef.current?.contains(target)) {
+        return
+      }
+
+      if (target.closest('.trajectory-point-group')) {
+        return
+      }
+
+      setActivePointKey(undefined)
+    }
+
+    document.addEventListener('pointerdown', onPointerDown)
+    return () => document.removeEventListener('pointerdown', onPointerDown)
+  }, [activePointKey])
 
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
@@ -176,7 +204,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
       <div className="trajectory-meta">
         范围 X: {minX} ~ {maxX} cm，Y: {minY} ~ {maxY} cm
       </div>
-      <div className="trajectory-canvas-wrap">
+      <div ref={wrapRef} className="trajectory-canvas-wrap">
         <svg className="trajectory-svg" viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`} role="img">
           <rect
             x={plotLeft}
@@ -255,6 +283,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
         </svg>
         {!!activePoint && !!activePointAnchor && (
           <div
+            ref={panelRef}
             className={`trajectory-visit-panel ${panelDirection}`}
             style={{ left: `${activePointAnchor.xPercent}%`, top: `${activePointAnchor.yPercent}%` }}
           >
