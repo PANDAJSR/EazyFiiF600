@@ -191,6 +191,9 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
     }
 
     const onPointerUp = () => {
+      if (!dragRef.current) {
+        return
+      }
       setRect((prev) => clampRectToViewport(prev))
       dragRef.current = null
       document.body.classList.remove('trajectory-panel-dragging')
