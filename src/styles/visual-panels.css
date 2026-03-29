@@ -185,18 +185,23 @@
 
 .block-row-highlight {
   border-radius: 14px;
-  animation: block-row-fadeout 1.3s ease-out forwards;
 }
 
-@keyframes block-row-fadeout {
+.block-card-flash {
+  animation: block-card-flash-fadeout 1.3s ease-out forwards;
+}
+
+@keyframes block-card-flash-fadeout {
   0% {
-    background: rgba(27, 110, 214, 0.32);
-    box-shadow: 0 0 0 3px rgba(27, 110, 214, 0.22);
+    box-shadow:
+      0 0 0 3px rgba(27, 110, 214, 0.34),
+      0 10px 22px rgba(27, 110, 214, 0.22);
+    border-color: #1b6ed6;
   }
 
   100% {
-    background: rgba(27, 110, 214, 0);
-    box-shadow: 0 0 0 0 rgba(27, 110, 214, 0);
+    box-shadow: 0 4px 10px rgba(41, 72, 115, 0.08);
+    border-color: #93b2da;
   }
 }
 

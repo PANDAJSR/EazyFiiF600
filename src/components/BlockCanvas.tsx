@@ -203,6 +203,9 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
             }
 
             const classNames = ['block-card']
+            if (flashRowId === row[0].id) {
+              classNames.push('block-card-flash')
+            }
             if (blockIndex === 0 && rowIndex > 0) {
               classNames.push('block-card-stack-top')
             }
@@ -278,6 +281,9 @@ function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: 
                   }
 
                   const classNames = ['block-card']
+                  if (flashRowId === row[0].id) {
+                    classNames.push('block-card-flash')
+                  }
                   if (blockIndex === 0 && rowIndex > 0) {
                     classNames.push('block-card-stack-top')
                   }
