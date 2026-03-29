@@ -215,13 +215,28 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
       style={{
         width: `${rect.width}px`,
         height: `${rect.height}px`,
-        transform: `translate(${rect.x}px, ${rect.y}px)`,
+        left: `${rect.x}px`,
+        top: `${rect.y}px`,
+        opacity: 1,
+        visibility: 'visible',
       }}
     >
       <div className="floating-trajectory-header" onPointerDown={startMove}>
         <Typography.Title level={5} className="trajectory-title">
           飞机平面轨迹（XY）
         </Typography.Title>
+        <button
+          type="button"
+          className="floating-trajectory-reset-btn"
+          onPointerDown={(event) => event.stopPropagation()}
+          onClick={() => {
+            const next = clampRectToViewport(getInitialRect())
+            console.info(`${DEBUG_TAG} reset rect`, { next })
+            setRect(next)
+          }}
+        >
+          重置位置
+        </button>
       </div>
       <div className="floating-trajectory-body">
         <TrajectoryPlane startPos={startPos} blocks={blocks} onLocateBlock={onLocateBlock} />

@@ -373,6 +373,21 @@
   background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
 }
 
+.floating-trajectory-reset-btn {
+  border: 1px solid #9fc0ee;
+  border-radius: 999px;
+  background: #eef5ff;
+  color: #1f5ea9;
+  font-size: 12px;
+  line-height: 1;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.floating-trajectory-reset-btn:hover {
+  background: #e2efff;
+}
+
 .floating-trajectory-body {
   flex: 1;
   min-height: 0;
@@ -409,6 +424,7 @@
   .floating-trajectory-panel {
     width: calc(100vw - 20px) !important;
     height: min(62vh, 520px) !important;
-    transform: translate(10px, calc(100vh - min(62vh, 520px) - 10px)) !important;
+    left: 10px !important;
+    top: calc(100vh - min(62vh, 520px) - 10px) !important;
   }
 }
