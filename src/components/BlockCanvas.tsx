@@ -40,6 +40,7 @@ const blockTheme: Record<string, { color: string; bg: string; border: string }> 
 }
 
 const MOVE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
+const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
 
 const token = (
   text: string,
@@ -272,7 +273,11 @@ function BlockCanvas({
                         onChange={(nextValue) => {
                           onFieldChange(block.id, value.fieldKey!, nextValue)
                         }}
-                        options={(value.options ?? []).map((option) => ({ label: option, value: option }))}
+                        options={(value.options ?? []).map((option) => ({
+                          label:
+                            value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[option] ?? option) : option,
+                          value: option,
+                        }))}
                         className="block-chip block-chip-value"
                         style={{ width: 84 }}
                       />
