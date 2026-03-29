@@ -35,15 +35,11 @@ function BlockCanvas({
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
+  const [previewBlocks, setPreviewBlocks] = useState<ParsedBlock[] | null>(null)
 
-  const previewBlocks = useMemo(() => {
-    if (!draggingBlockId || !dropHint) {
-      return blocks
-    }
-    return reorderBlocks(blocks, draggingBlockId, dropHint.targetId, dropHint.position)
-  }, [blocks, draggingBlockId, dropHint])
+  const displayBlocks = previewBlocks ?? blocks
 
-  const rows = useMemo(() => groupBlocksByRow(previewBlocks), [previewBlocks])
+  const rows = useMemo(() => groupBlocksByRow(displayBlocks), [displayBlocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
     rows.forEach((row) => {
@@ -174,11 +170,21 @@ function BlockCanvas({
           event.dataTransfer.setData('text/plain', block.id)
           setDraggingBlockId(block.id)
           setDropHint(undefined)
+          setPreviewBlocks(blocks)
           onSelectBlock?.(block.id)
         }}
         onDragOver={(event) => {
           event.preventDefault()
           updateDropHint(event, block.id)
+          setPreviewBlocks((prev) => {
+            if (!draggingBlockId || draggingBlockId === block.id) {
+              return prev
+            }
+            const source = prev ?? blocks
+            const rect = event.currentTarget.getBoundingClientRect()
+            const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+            return reorderBlocks(source, draggingBlockId, block.id, position)
+          })
         }}
         onDrop={(event) => {
           event.preventDefault()
@@ -190,6 +196,7 @@ function BlockCanvas({
         onDragEnd={() => {
           setDraggingBlockId(undefined)
           setDropHint(undefined)
+          setPreviewBlocks(null)
         }}
         style={{
           color: theme.color,
