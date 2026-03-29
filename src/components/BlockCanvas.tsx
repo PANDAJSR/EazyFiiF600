@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
+import { reorderBlocks } from '../utils/blockOrder'
 
 type Props = {
   droneName?: string
@@ -33,7 +34,14 @@ function BlockCanvas({
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
 
-  const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
+  const previewBlocks = useMemo(() => {
+    if (!draggingBlockId || !dropHint) {
+      return blocks
+    }
+    return reorderBlocks(blocks, draggingBlockId, dropHint.targetId, dropHint.position)
+  }, [blocks, draggingBlockId, dropHint])
+
+  const rows = useMemo(() => groupBlocksByRow(previewBlocks), [previewBlocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
     rows.forEach((row) => {
