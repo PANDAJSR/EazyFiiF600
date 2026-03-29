@@ -171,7 +171,7 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock }: Props) {
 
       if (current.type === 'resize-left') {
         const offsetX = event.clientX - current.startX
-        setRect(getDockedRightRect(current.originWidth + offsetX))
+        setRect(getDockedRightRect(current.originWidth - offsetX))
         return
       }
 
