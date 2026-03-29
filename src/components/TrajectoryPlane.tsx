@@ -2,7 +2,7 @@ import { Empty } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 import TrajectoryScene3D from './TrajectoryScene3D'
-import type { XYZ, Visit } from './trajectory/trajectoryUtils'
+import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
 
 type Props = {
@@ -64,13 +64,16 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const plotLeft = margin.left + (innerWidth - plotSize) / 2
   const plotTop = margin.top + (innerHeight - plotSize) / 2
 
-  const toSvgX = (x: number) => plotLeft + ((x - bounds.minX) / bounds.span) * plotSize
-  const toSvgY = (y: number) => plotTop + (1 - (y - bounds.minY) / bounds.span) * plotSize
+  const toSvgX = (x: number) => plotLeft + ((x - displayBounds.minX) / displayBounds.span) * plotSize
+  const toSvgY = (y: number) => plotTop + (1 - (y - displayBounds.minY) / displayBounds.span) * plotSize
   const [activePointKey, setActivePointKey] = useState<string>()
   const [isDraggingPoint, setIsDraggingPoint] = useState(false)
+  const [frozenBounds, setFrozenBounds] = useState<TrajectoryBounds | null>(null)
   const panelRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
   const dragRef = useRef<MovePointPayload | null>(null)
+  const dragBoundsRef = useRef<TrajectoryBounds | null>(null)
+  const displayBounds = isDraggingPoint && frozenBounds ? frozenBounds : bounds
   const activePoint = activePointKey
     ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey)
     : undefined
@@ -104,6 +107,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   useEffect(() => {
     if (viewMode !== '2d') {
       dragRef.current = null
+      dragBoundsRef.current = null
       return
     }
 
@@ -122,8 +126,9 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
 
       const clampedX = Math.min(Math.max(svgX, plotLeft), plotLeft + plotSize)
       const clampedY = Math.min(Math.max(svgY, plotTop), plotTop + plotSize)
-      const x = snapToStep(bounds.minX + ((clampedX - plotLeft) / plotSize) * bounds.span, SNAP_STEP)
-      const y = snapToStep(bounds.minY + (1 - (clampedY - plotTop) / plotSize) * bounds.span, SNAP_STEP)
+      const dragBounds = dragBoundsRef.current ?? bounds
+      const x = snapToStep(dragBounds.minX + ((clampedX - plotLeft) / plotSize) * dragBounds.span, SNAP_STEP)
+      const y = snapToStep(dragBounds.minY + (1 - (clampedY - plotTop) / plotSize) * dragBounds.span, SNAP_STEP)
 
       onMovePoint?.({
         ...dragging,
@@ -138,6 +143,8 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
         return
       }
       dragRef.current = null
+      dragBoundsRef.current = null
+      setFrozenBounds(null)
       setIsDraggingPoint(false)
     }
 
@@ -147,7 +154,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
       window.removeEventListener('pointermove', onPointerMove)
       window.removeEventListener('pointerup', onPointerUp)
     }
-  }, [bounds.minX, bounds.minY, bounds.span, onMovePoint, plotLeft, plotSize, plotTop, viewMode])
+  }, [bounds, onMovePoint, plotLeft, plotSize, plotTop, viewMode])
 
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
@@ -155,8 +162,8 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
 
   const meta =
     viewMode === '3d'
-      ? `范围 X: ${bounds.minX} ~ ${bounds.maxX} cm，Y: ${bounds.minY} ~ ${bounds.maxY} cm，Z: ${bounds.minZ} ~ ${bounds.maxZ} cm`
-      : `范围 X: ${bounds.minX} ~ ${bounds.maxX} cm，Y: ${bounds.minY} ~ ${bounds.maxY} cm`
+      ? `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm，Z: ${displayBounds.minZ} ~ ${displayBounds.maxZ} cm`
+      : `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm`
 
   if (viewMode === '3d') {
     return (
@@ -167,8 +174,8 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
     )
   }
 
-  const xTicks = buildTicks(bounds.minX, bounds.maxX)
-  const yTicks = buildTicks(bounds.minY, bounds.maxY)
+  const xTicks = buildTicks(displayBounds.minX, displayBounds.maxX)
+  const yTicks = buildTicks(displayBounds.minY, displayBounds.maxY)
 
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const activePointAnchor = activePoint
@@ -260,6 +267,8 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
                     baseX: targetVisit.baseX,
                     baseY: targetVisit.baseY,
                   }
+                  dragBoundsRef.current = bounds
+                  setFrozenBounds(bounds)
                   setIsDraggingPoint(true)
                   setActivePointKey(key)
                 }}
