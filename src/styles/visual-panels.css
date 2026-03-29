@@ -198,7 +198,7 @@
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: -6px;
   height: 12px;
   border-radius: 0 0 10px 10px;
   background: linear-gradient(
@@ -211,7 +211,12 @@
   box-shadow: 0 0 0 1px rgba(255, 170, 0, 0.24), 0 4px 12px rgba(255, 166, 0, 0.28);
   animation: block-row-underline-fadeout 1.8s ease-out forwards;
   pointer-events: none;
-  z-index: 6;
+  z-index: 0;
+}
+
+.block-row-highlight > .block-card {
+  position: relative;
+  z-index: 1;
 }
 
 @keyframes block-row-underline-fadeout {
