@@ -184,8 +184,6 @@
 }
 
 .block-row-highlight {
-  margin: -4px -6px;
-  padding: 4px 6px;
   border-radius: 14px;
   animation: block-row-fadeout 1.3s ease-out forwards;
 }

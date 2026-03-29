@@ -164,7 +164,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock }: Props) {
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const activePointAnchor = activePoint
     ? {
-        xPercent: (toSvgX(activePoint.x) / VIEWBOX_WIDTH) * 100,
+        xPercent: Math.max(18, Math.min(82, (toSvgX(activePoint.x) / VIEWBOX_WIDTH) * 100)),
         yPercent: (toSvgY(activePoint.y) / VIEWBOX_HEIGHT) * 100,
       }
     : undefined

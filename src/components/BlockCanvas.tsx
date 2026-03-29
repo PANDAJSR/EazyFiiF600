@@ -139,7 +139,7 @@ const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
 function BlockCanvas({ droneName, blocks, highlightedBlockId, highlightPulse }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const [flashRowId, setFlashRowId] = useState<string>()
-  const rows = groupBlocksByRow(blocks)
+  const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
     rows.forEach((row) => {
