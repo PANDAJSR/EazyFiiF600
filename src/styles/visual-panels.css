@@ -214,29 +214,15 @@
   opacity: 0.52;
 }
 
-.block-card-drop-before,
-.block-card-drop-after {
-  position: relative;
-}
-
-.block-card-drop-before::before,
-.block-card-drop-after::after {
-  content: '';
-  position: absolute;
-  left: 0;
-  width: 100%;
+.block-drop-marker {
+  position: fixed;
   height: 3px;
   border-radius: 999px;
   background: #2d7fff;
   box-shadow: 0 0 0 1px rgba(45, 127, 255, 0.16);
-}
-
-.block-card-drop-before::before {
-  top: -7px;
-}
-
-.block-card-drop-after::after {
-  bottom: -7px;
+  transform: translateY(-50%);
+  pointer-events: none;
+  z-index: 1000;
 }
 
 .block-row {

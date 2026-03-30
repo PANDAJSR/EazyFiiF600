@@ -35,6 +35,7 @@ function BlockCanvas({
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
+  const [dropMarker, setDropMarker] = useState<{ top: number; left: number; width: number }>()
   const [previewBlocks, setPreviewBlocks] = useState<ParsedBlock[] | null>(null)
 
   const displayBlocks = previewBlocks ?? blocks
@@ -132,15 +133,6 @@ function BlockCanvas({
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
-  const updateDropHint = (event: React.DragEvent<HTMLElement>, targetId: string) => {
-    if (!draggingBlockId || draggingBlockId === targetId) {
-      return
-    }
-    const rect = event.currentTarget.getBoundingClientRect()
-    const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
-    setDropHint({ targetId, position })
-  }
-
   const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
     const text = blockText(block)
     const theme = blockTheme[block.type] ?? {
@@ -155,10 +147,6 @@ function BlockCanvas({
     if (draggingBlockId === block.id) {
       classNames.push('block-card-dragging')
     }
-    if (dropHint?.targetId === block.id) {
-      classNames.push(dropHint.position === 'before' ? 'block-card-drop-before' : 'block-card-drop-after')
-    }
-
     return (
       <section
         key={block.id}
@@ -178,14 +166,20 @@ function BlockCanvas({
           event.dataTransfer.setData('text/plain', block.id)
           setDraggingBlockId(block.id)
           setDropHint(undefined)
+          setDropMarker(undefined)
           setPreviewBlocks(blocks)
           onSelectBlock?.(block.id)
         }}
         onDragOver={(event) => {
           event.preventDefault()
-          updateDropHint(event, block.id)
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+          setDropHint({ targetId: block.id, position })
+          setDropMarker({
+            top: position === 'before' ? rect.top : rect.bottom,
+            left: rect.left,
+            width: rect.width,
+          })
           setPreviewBlocks((prev) => {
             if (!draggingBlockId || draggingBlockId === block.id) {
               return prev
@@ -204,6 +198,7 @@ function BlockCanvas({
         onDragEnd={() => {
           setDraggingBlockId(undefined)
           setDropHint(undefined)
+          setDropMarker(undefined)
           setPreviewBlocks(null)
         }}
         style={{
@@ -345,6 +340,16 @@ function BlockCanvas({
         <div className="block-subflow">
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
         </div>
+      )}
+      {!!dropMarker && (
+        <div
+          className="block-drop-marker"
+          style={{
+            top: `${dropMarker.top}px`,
+            left: `${dropMarker.left}px`,
+            width: `${dropMarker.width}px`,
+          }}
+        />
       )}
     </div>
   )
