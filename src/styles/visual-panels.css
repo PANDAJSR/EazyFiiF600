@@ -210,10 +210,6 @@
   box-shadow: 0 0 0 2px rgba(27, 110, 214, 0.26), 0 7px 14px rgba(41, 72, 115, 0.14);
 }
 
-.block-card-dragging {
-  opacity: 0.52;
-}
-
 .block-drop-marker {
   position: fixed;
   height: 3px;

@@ -30,6 +30,7 @@ function BlockCanvas({
   onReorderBlocks,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
+  const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
   const prevTopByBlockIdRef = useRef<Record<string, number>>({})
   const firstLayoutMeasuredRef = useRef(false)
@@ -165,9 +166,6 @@ function BlockCanvas({
     if (selectedBlockId === block.id) {
       classNames.push('block-card-selected')
     }
-    if (draggingBlockId === block.id) {
-      classNames.push('block-card-dragging')
-    }
     return (
       <section
         key={block.id}
@@ -185,6 +183,13 @@ function BlockCanvas({
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move'
           event.dataTransfer.setData('text/plain', block.id)
+          if (!transparentDragImageRef.current) {
+            const canvas = document.createElement('canvas')
+            canvas.width = 1
+            canvas.height = 1
+            transparentDragImageRef.current = canvas
+          }
+          event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
           setDraggingBlockId(block.id)
           setDropHint(undefined)
           setPreviewBlocks(blocks)
