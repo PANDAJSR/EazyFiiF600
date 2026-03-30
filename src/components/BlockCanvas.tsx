@@ -36,15 +36,10 @@ function BlockCanvas({
   const firstLayoutMeasuredRef = useRef(false)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
-  const [dragCursor, setDragCursor] = useState<{ x: number; y: number }>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
   const [previewBlocks, setPreviewBlocks] = useState<ParsedBlock[] | null>(null)
 
   const displayBlocks = previewBlocks ?? blocks
-  const draggingBlock = useMemo(
-    () => (draggingBlockId ? displayBlocks.find((item) => item.id === draggingBlockId) : undefined),
-    [displayBlocks, draggingBlockId],
-  )
 
   const rows = useMemo(() => groupBlocksByRow(displayBlocks), [displayBlocks])
   const rowKeyByBlockId = useMemo(() => {
@@ -129,19 +124,6 @@ function BlockCanvas({
   }, [dropHint, rows])
 
   useEffect(() => {
-    if (!draggingBlockId) {
-      return
-    }
-    const handleDragOver = (event: DragEvent) => {
-      if (event.clientX || event.clientY) {
-        setDragCursor({ x: event.clientX, y: event.clientY })
-      }
-    }
-    window.addEventListener('dragover', handleDragOver)
-    return () => window.removeEventListener('dragover', handleDragOver)
-  }, [draggingBlockId])
-
-  useEffect(() => {
     if (!highlightedBlockId) {
       return
     }
@@ -184,9 +166,6 @@ function BlockCanvas({
     if (selectedBlockId === block.id) {
       classNames.push('block-card-selected')
     }
-    if (draggingBlockId === block.id) {
-      classNames.push('block-card-drag-origin')
-    }
     return (
       <section
         key={block.id}
@@ -212,7 +191,6 @@ function BlockCanvas({
           }
           event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
           setDraggingBlockId(block.id)
-          setDragCursor({ x: event.clientX, y: event.clientY })
           setDropHint(undefined)
           setPreviewBlocks(blocks)
           onSelectBlock?.(block.id)
@@ -243,7 +221,6 @@ function BlockCanvas({
         }}
         onDragEnd={() => {
           setDraggingBlockId(undefined)
-          setDragCursor(undefined)
           setDropHint(undefined)
           setPreviewBlocks(null)
         }}
@@ -385,11 +362,6 @@ function BlockCanvas({
       {!!rowsIndented.length && (
         <div className="block-subflow">
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
-        </div>
-      )}
-      {!!draggingBlock && !!dragCursor && (
-        <div className="block-drag-follow" style={{ left: `${dragCursor.x + 12}px`, top: `${dragCursor.y + 12}px` }}>
-          {blockText(draggingBlock).title}
         </div>
       )}
       <div ref={dropMarkerRef} className="block-drop-marker" />
