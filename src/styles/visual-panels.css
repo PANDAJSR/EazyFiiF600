@@ -210,6 +210,25 @@
   box-shadow: 0 0 0 2px rgba(27, 110, 214, 0.26), 0 7px 14px rgba(41, 72, 115, 0.14);
 }
 
+.block-card-drag-origin {
+  opacity: 0.18;
+}
+
+.block-drag-follow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1100;
+  border: 2px solid #93b2da;
+  border-radius: 12px;
+  background: #deefff;
+  color: #17324d;
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 9px 11px;
+  box-shadow: 0 10px 22px rgba(41, 72, 115, 0.2);
+}
+
 .block-drop-marker {
   position: fixed;
   height: 3px;
