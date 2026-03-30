@@ -4,7 +4,6 @@ import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import type { ParseResult } from './types/fii'
-import { reorderBlocks } from './utils/blockOrder'
 import { parseFiiFromFiles } from './utils/fiiParser'
 
 type FileInputWithDirectory = HTMLInputElement & {
@@ -263,7 +262,7 @@ function App() {
     })
   }, [selectedDroneId])
 
-  const handleMoveBlock = useCallback((dragId: string, targetId: string, position: 'before' | 'after') => {
+  const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
     setResult((prev) => ({
       ...prev,
       programs: prev.programs.map((program) => {
@@ -272,7 +271,7 @@ function App() {
         }
         return {
           ...program,
-          blocks: reorderBlocks(program.blocks, dragId, targetId, position),
+          blocks: nextBlocks,
         }
       }),
     }))
@@ -349,7 +348,7 @@ function App() {
                 onFieldChange={handleFieldChange}
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
                 onDeleteBlock={handleDeleteBlock}
-                onMoveBlock={handleMoveBlock}
+                onReorderBlocks={handleReorderBlocks}
               />
             </section>
           </div>

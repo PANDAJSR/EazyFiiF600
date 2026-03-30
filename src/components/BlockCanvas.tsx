@@ -13,7 +13,7 @@ type Props = {
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
   onSelectBlock?: (blockId: string) => void
   onDeleteBlock?: (blockId: string) => void
-  onMoveBlock?: (dragId: string, targetId: string, position: 'before' | 'after') => void
+  onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
 }
 
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
@@ -27,15 +27,15 @@ function BlockCanvas({
   onFieldChange,
   onSelectBlock,
   onDeleteBlock,
-  onMoveBlock,
+  onReorderBlocks,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
+  const dropMarkerRef = useRef<HTMLDivElement | null>(null)
   const prevTopByBlockIdRef = useRef<Record<string, number>>({})
   const firstLayoutMeasuredRef = useRef(false)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
-  const [dropMarker, setDropMarker] = useState<{ top: number; left: number; width: number }>()
   const [previewBlocks, setPreviewBlocks] = useState<ParsedBlock[] | null>(null)
 
   const displayBlocks = previewBlocks ?? blocks
@@ -100,6 +100,27 @@ function BlockCanvas({
 
     prevTopByBlockIdRef.current = nextTopByBlockId
   }, [rows, draggingBlockId])
+
+  useLayoutEffect(() => {
+    const marker = dropMarkerRef.current
+    if (!marker) {
+      return
+    }
+    if (!dropHint) {
+      marker.style.display = 'none'
+      return
+    }
+    const target = blockRefs.current[dropHint.targetId]
+    if (!target) {
+      marker.style.display = 'none'
+      return
+    }
+    const rect = target.getBoundingClientRect()
+    marker.style.display = 'block'
+    marker.style.top = `${dropHint.position === 'before' ? rect.top : rect.bottom}px`
+    marker.style.left = `${rect.left}px`
+    marker.style.width = `${rect.width}px`
+  }, [dropHint, rows])
 
   useEffect(() => {
     if (!highlightedBlockId) {
@@ -166,39 +187,36 @@ function BlockCanvas({
           event.dataTransfer.setData('text/plain', block.id)
           setDraggingBlockId(block.id)
           setDropHint(undefined)
-          setDropMarker(undefined)
           setPreviewBlocks(blocks)
           onSelectBlock?.(block.id)
         }}
         onDragOver={(event) => {
           event.preventDefault()
+          if (!draggingBlockId || draggingBlockId === block.id) {
+            return
+          }
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
           setDropHint({ targetId: block.id, position })
-          setDropMarker({
-            top: position === 'before' ? rect.top : rect.bottom,
-            left: rect.left,
-            width: rect.width,
-          })
           setPreviewBlocks((prev) => {
-            if (!draggingBlockId || draggingBlockId === block.id) {
-              return prev
-            }
             const source = prev ?? blocks
             return reorderBlocks(source, draggingBlockId, block.id, position)
           })
         }}
         onDrop={(event) => {
           event.preventDefault()
-          if (!draggingBlockId || draggingBlockId === block.id || !dropHint || dropHint.targetId !== block.id) {
+          if (!draggingBlockId) {
             return
           }
-          onMoveBlock?.(draggingBlockId, dropHint.targetId, dropHint.position)
+          const rect = event.currentTarget.getBoundingClientRect()
+          const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
+          const source = previewBlocks ?? blocks
+          const next = draggingBlockId === block.id ? source : reorderBlocks(source, draggingBlockId, block.id, position)
+          onReorderBlocks?.(next)
         }}
         onDragEnd={() => {
           setDraggingBlockId(undefined)
           setDropHint(undefined)
-          setDropMarker(undefined)
           setPreviewBlocks(null)
         }}
         style={{
@@ -341,16 +359,7 @@ function BlockCanvas({
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
         </div>
       )}
-      {!!dropMarker && (
-        <div
-          className="block-drop-marker"
-          style={{
-            top: `${dropMarker.top}px`,
-            left: `${dropMarker.left}px`,
-            width: `${dropMarker.width}px`,
-          }}
-        />
-      )}
+      <div ref={dropMarkerRef} className="block-drop-marker" />
     </div>
   )
 }
