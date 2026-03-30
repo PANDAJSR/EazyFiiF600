@@ -65,6 +65,14 @@ function BlockCanvas({
     }
 
     Object.entries(nextTopByBlockId).forEach(([blockId, nextTop]) => {
+      if (!draggingBlockId || blockId !== draggingBlockId) {
+        const nonDraggingElement = blockRefs.current[blockId]
+        if (nonDraggingElement) {
+          nonDraggingElement.style.transition = ''
+          nonDraggingElement.style.transform = ''
+        }
+        return
+      }
       const prevTop = prevTopByBlockIdRef.current[blockId]
       const element = blockRefs.current[blockId]
       if (!element || prevTop === undefined) {
@@ -90,7 +98,7 @@ function BlockCanvas({
     })
 
     prevTopByBlockIdRef.current = nextTopByBlockId
-  }, [rows])
+  }, [rows, draggingBlockId])
 
   useEffect(() => {
     if (!highlightedBlockId) {
