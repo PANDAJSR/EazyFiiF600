@@ -32,16 +32,16 @@ function BlockCanvas({
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
-  const prevTopByBlockIdRef = useRef<Record<string, number>>({})
-  const firstLayoutMeasuredRef = useRef(false)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
+  const [dragCursor, setDragCursor] = useState<{ x: number; y: number }>()
   const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
-  const [previewBlocks, setPreviewBlocks] = useState<ParsedBlock[] | null>(null)
+  const draggingBlock = useMemo(
+    () => (draggingBlockId ? blocks.find((item) => item.id === draggingBlockId) : undefined),
+    [blocks, draggingBlockId],
+  )
 
-  const displayBlocks = previewBlocks ?? blocks
-
-  const rows = useMemo(() => groupBlocksByRow(displayBlocks), [displayBlocks])
+  const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
     rows.forEach((row) => {
@@ -50,57 +50,6 @@ function BlockCanvas({
     })
     return rowMap
   }, [rows])
-
-  useLayoutEffect(() => {
-    const nextTopByBlockId: Record<string, number> = {}
-    Object.entries(blockRefs.current).forEach(([blockId, element]) => {
-      if (!element) {
-        return
-      }
-      nextTopByBlockId[blockId] = element.getBoundingClientRect().top
-    })
-
-    if (!firstLayoutMeasuredRef.current) {
-      prevTopByBlockIdRef.current = nextTopByBlockId
-      firstLayoutMeasuredRef.current = true
-      return
-    }
-
-    Object.entries(nextTopByBlockId).forEach(([blockId, nextTop]) => {
-      if (!draggingBlockId || blockId !== draggingBlockId) {
-        const nonDraggingElement = blockRefs.current[blockId]
-        if (nonDraggingElement) {
-          nonDraggingElement.style.transition = ''
-          nonDraggingElement.style.transform = ''
-        }
-        return
-      }
-      const prevTop = prevTopByBlockIdRef.current[blockId]
-      const element = blockRefs.current[blockId]
-      if (!element || prevTop === undefined) {
-        return
-      }
-
-      const deltaY = prevTop - nextTop
-      if (Math.abs(deltaY) < 1) {
-        return
-      }
-
-      element.style.transition = 'none'
-      element.style.transform = `translateY(${deltaY}px)`
-      // Force reflow before starting transition, so we can animate from old location to new location.
-      void element.offsetHeight
-      element.style.transition = 'transform 180ms ease'
-      element.style.transform = ''
-      window.setTimeout(() => {
-        if (blockRefs.current[blockId] === element) {
-          element.style.transition = ''
-        }
-      }, 220)
-    })
-
-    prevTopByBlockIdRef.current = nextTopByBlockId
-  }, [rows, draggingBlockId])
 
   useLayoutEffect(() => {
     const marker = dropMarkerRef.current
@@ -122,6 +71,19 @@ function BlockCanvas({
     marker.style.left = `${rect.left}px`
     marker.style.width = `${rect.width}px`
   }, [dropHint, rows])
+
+  useEffect(() => {
+    if (!draggingBlockId) {
+      return
+    }
+    const handleDragOver = (event: DragEvent) => {
+      if (event.clientX || event.clientY) {
+        setDragCursor({ x: event.clientX, y: event.clientY })
+      }
+    }
+    window.addEventListener('dragover', handleDragOver)
+    return () => window.removeEventListener('dragover', handleDragOver)
+  }, [draggingBlockId])
 
   useEffect(() => {
     if (!highlightedBlockId) {
@@ -191,22 +153,19 @@ function BlockCanvas({
           }
           event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
           setDraggingBlockId(block.id)
+          setDragCursor({ x: event.clientX, y: event.clientY })
           setDropHint(undefined)
-          setPreviewBlocks(blocks)
           onSelectBlock?.(block.id)
         }}
         onDragOver={(event) => {
           event.preventDefault()
+          setDragCursor({ x: event.clientX, y: event.clientY })
           if (!draggingBlockId || draggingBlockId === block.id) {
             return
           }
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
           setDropHint({ targetId: block.id, position })
-          setPreviewBlocks((prev) => {
-            const source = prev ?? blocks
-            return reorderBlocks(source, draggingBlockId, block.id, position)
-          })
         }}
         onDrop={(event) => {
           event.preventDefault()
@@ -215,14 +174,13 @@ function BlockCanvas({
           }
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
-          const source = previewBlocks ?? blocks
-          const next = draggingBlockId === block.id ? source : reorderBlocks(source, draggingBlockId, block.id, position)
+          const next = draggingBlockId === block.id ? blocks : reorderBlocks(blocks, draggingBlockId, block.id, position)
           onReorderBlocks?.(next)
         }}
         onDragEnd={() => {
           setDraggingBlockId(undefined)
+          setDragCursor(undefined)
           setDropHint(undefined)
-          setPreviewBlocks(null)
         }}
         style={{
           color: theme.color,
@@ -362,6 +320,11 @@ function BlockCanvas({
       {!!rowsIndented.length && (
         <div className="block-subflow">
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
+        </div>
+      )}
+      {!!draggingBlock && !!dragCursor && (
+        <div className="block-drag-follow" style={{ left: `${dragCursor.x + 12}px`, top: `${dragCursor.y + 12}px` }}>
+          {blockText(draggingBlock).title}
         </div>
       )}
       <div ref={dropMarkerRef} className="block-drop-marker" />
