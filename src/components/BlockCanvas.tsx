@@ -30,7 +30,7 @@ function BlockCanvas({
   onReorderBlocks,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
-  const transparentDragImageRef = useRef<HTMLCanvasElement | null>(null)
+  const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
@@ -146,10 +146,9 @@ function BlockCanvas({
           event.dataTransfer.effectAllowed = 'move'
           event.dataTransfer.setData('application/x-eazyfii-block-id', block.id)
           if (!transparentDragImageRef.current) {
-            const canvas = document.createElement('canvas')
-            canvas.width = 1
-            canvas.height = 1
-            transparentDragImageRef.current = canvas
+            const image = new Image()
+            image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='
+            transparentDragImageRef.current = image
           }
           event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
           setDraggingBlockId(block.id)
