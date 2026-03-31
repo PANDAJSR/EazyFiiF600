@@ -144,7 +144,7 @@ function BlockCanvas({
         }}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move'
-          event.dataTransfer.setData('text/plain', block.id)
+          event.dataTransfer.setData('application/x-eazyfii-block-id', block.id)
           if (!transparentDragImageRef.current) {
             const canvas = document.createElement('canvas')
             canvas.width = 1
