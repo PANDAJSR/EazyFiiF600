@@ -215,14 +215,11 @@
   pointer-events: none;
   z-index: 1100;
   display: none;
-  border: 2px solid #93b2da;
-  border-radius: 12px;
-  background: #deefff;
-  color: #17324d;
-  font-size: 18px;
-  font-weight: 700;
-  line-height: 1;
-  padding: 9px 11px;
+}
+
+.block-drag-follow-card {
+  cursor: grabbing;
+  margin: 0;
   box-shadow: 0 10px 22px rgba(41, 72, 115, 0.2);
 }
 

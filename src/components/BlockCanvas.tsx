@@ -105,8 +105,93 @@ function BlockCanvas({
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
-  const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
+  const renderBlockLine = (block: ParsedBlock, editable: boolean) => {
     const text = blockText(block)
+    return (
+      <div className="block-line">
+        <span className="block-title">{text.title}</span>
+        {!!text.values.length && (
+          <div className="block-values">
+            {text.values.map((value, idx) => {
+              if (value.fieldKey && onFieldChange && editable) {
+                if (value.inputType === 'select') {
+                  return (
+                    <Select
+                      key={`${block.id}-${idx}`}
+                      size="small"
+                      value={block.fields[value.fieldKey] ?? value.options?.[0]}
+                      onChange={(nextValue) => {
+                        onFieldChange(block.id, value.fieldKey!, nextValue)
+                      }}
+                      options={(value.options ?? []).map((option) => ({
+                        label: value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[option] ?? option) : option,
+                        value: option,
+                      }))}
+                      className="block-chip block-chip-value"
+                      style={{ width: 84 }}
+                    />
+                  )
+                }
+
+                if (value.inputType === 'color') {
+                  return (
+                    <ColorPicker
+                      key={`${block.id}-${idx}`}
+                      size="small"
+                      format="hex"
+                      disabledFormat
+                      showText
+                      value={block.fields[value.fieldKey] ?? value.text}
+                      onChangeComplete={(nextColor) => {
+                        onFieldChange(block.id, value.fieldKey!, nextColor.toHexString().toLowerCase())
+                      }}
+                      className="block-chip block-chip-value"
+                    />
+                  )
+                }
+
+                return (
+                  <Input
+                    key={`${block.id}-${idx}`}
+                    size="small"
+                    value={block.fields[value.fieldKey] ?? ''}
+                    onChange={(event) => {
+                      onFieldChange(block.id, value.fieldKey!, event.target.value)
+                    }}
+                    className="block-chip block-chip-value"
+                    style={{ width: 64 }}
+                  />
+                )
+              }
+
+              if (value.fieldKey && !editable) {
+                const raw = block.fields[value.fieldKey] ?? value.text
+                const textValue = value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[raw] ?? raw) : raw
+                return (
+                  <span key={`${block.id}-${idx}`} className="block-chip block-chip-value">
+                    {textValue}
+                  </span>
+                )
+              }
+
+              return (
+                <span
+                  key={`${block.id}-${idx}`}
+                  className={['block-chip', value.value ? 'block-chip-value' : '', value.titleLike ? 'block-chip-title-like' : '']
+                    .filter(Boolean)
+                    .join(' ')}
+                >
+                  {value.text}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
     const theme = blockTheme[block.type] ?? {
       color: '#17324d',
       bg: '#deefff',
@@ -186,81 +271,7 @@ function BlockCanvas({
           borderColor: theme.border,
         }}
       >
-        <div className="block-line">
-          <span className="block-title">{text.title}</span>
-          {!!text.values.length && (
-            <div className="block-values">
-              {text.values.map((value, idx) => {
-                if (value.fieldKey && onFieldChange) {
-                  if (value.inputType === 'select') {
-                    return (
-                      <Select
-                        key={`${block.id}-${idx}`}
-                        size="small"
-                        value={block.fields[value.fieldKey] ?? value.options?.[0]}
-                        onChange={(nextValue) => {
-                          onFieldChange(block.id, value.fieldKey!, nextValue)
-                        }}
-                        options={(value.options ?? []).map((option) => ({
-                          label:
-                            value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[option] ?? option) : option,
-                          value: option,
-                        }))}
-                        className="block-chip block-chip-value"
-                        style={{ width: 84 }}
-                      />
-                    )
-                  }
-
-                  if (value.inputType === 'color') {
-                    return (
-                      <ColorPicker
-                        key={`${block.id}-${idx}`}
-                        size="small"
-                        format="hex"
-                        disabledFormat
-                        showText
-                        value={block.fields[value.fieldKey] ?? value.text}
-                        onChangeComplete={(nextColor) => {
-                          onFieldChange(block.id, value.fieldKey!, nextColor.toHexString().toLowerCase())
-                        }}
-                        className="block-chip block-chip-value"
-                      />
-                    )
-                  }
-
-                  return (
-                    <Input
-                      key={`${block.id}-${idx}`}
-                      size="small"
-                      value={block.fields[value.fieldKey] ?? ''}
-                      onChange={(event) => {
-                        onFieldChange(block.id, value.fieldKey!, event.target.value)
-                      }}
-                      className="block-chip block-chip-value"
-                      style={{ width: 64 }}
-                    />
-                  )
-                }
-
-                return (
-                  <span
-                    key={`${block.id}-${idx}`}
-                    className={[
-                      'block-chip',
-                      value.value ? 'block-chip-value' : '',
-                      value.titleLike ? 'block-chip-title-like' : '',
-                    ]
-                      .filter(Boolean)
-                      .join(' ')}
-                  >
-                    {value.text}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
+        {renderBlockLine(block, true)}
       </section>
     )
   }
@@ -320,7 +331,20 @@ function BlockCanvas({
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
         </div>
       )}
-      {!!draggingBlock && <div ref={dragFollowRef} className="block-drag-follow">{blockText(draggingBlock).title}</div>}
+      {!!draggingBlock && (
+        <div ref={dragFollowRef} className="block-drag-follow">
+          <section
+            className="block-card block-drag-follow-card"
+            style={{
+              color: (blockTheme[draggingBlock.type] ?? { color: '#17324d' }).color,
+              background: (blockTheme[draggingBlock.type] ?? { bg: '#deefff' }).bg,
+              borderColor: (blockTheme[draggingBlock.type] ?? { border: '#8db8e6' }).border,
+            }}
+          >
+            {renderBlockLine(draggingBlock, false)}
+          </section>
+        </div>
+      )}
       <div ref={dropMarkerRef} className="block-drop-marker" />
     </div>
   )
