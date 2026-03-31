@@ -214,6 +214,7 @@
   position: fixed;
   pointer-events: none;
   z-index: 1100;
+  display: none;
   border: 2px solid #93b2da;
   border-radius: 12px;
   background: #deefff;

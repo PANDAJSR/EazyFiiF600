@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
@@ -32,10 +32,9 @@ function BlockCanvas({
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
+  const dragFollowRef = useRef<HTMLDivElement | null>(null)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
-  const [dragCursor, setDragCursor] = useState<{ x: number; y: number }>()
-  const [dropHint, setDropHint] = useState<{ targetId: string; position: 'before' | 'after' }>()
   const draggingBlock = useMemo(
     () => (draggingBlockId ? blocks.find((item) => item.id === draggingBlockId) : undefined),
     [blocks, draggingBlockId],
@@ -51,26 +50,15 @@ function BlockCanvas({
     return rowMap
   }, [rows])
 
-  useLayoutEffect(() => {
-    const marker = dropMarkerRef.current
-    if (!marker) {
+  const moveDragFollow = (x: number, y: number) => {
+    const follow = dragFollowRef.current
+    if (!follow) {
       return
     }
-    if (!dropHint) {
-      marker.style.display = 'none'
-      return
-    }
-    const target = blockRefs.current[dropHint.targetId]
-    if (!target) {
-      marker.style.display = 'none'
-      return
-    }
-    const rect = target.getBoundingClientRect()
-    marker.style.display = 'block'
-    marker.style.top = `${dropHint.position === 'before' ? rect.top : rect.bottom}px`
-    marker.style.left = `${rect.left}px`
-    marker.style.width = `${rect.width}px`
-  }, [dropHint, rows])
+    follow.style.display = 'block'
+    follow.style.left = `${x + 12}px`
+    follow.style.top = `${y + 12}px`
+  }
 
   useEffect(() => {
     if (!draggingBlockId) {
@@ -78,7 +66,7 @@ function BlockCanvas({
     }
     const handleDragOver = (event: DragEvent) => {
       if (event.clientX || event.clientY) {
-        setDragCursor({ x: event.clientX, y: event.clientY })
+        moveDragFollow(event.clientX, event.clientY)
       }
     }
     window.addEventListener('dragover', handleDragOver)
@@ -152,19 +140,26 @@ function BlockCanvas({
           }
           event.dataTransfer.setDragImage(transparentDragImageRef.current, 0, 0)
           setDraggingBlockId(block.id)
-          setDragCursor({ x: event.clientX, y: event.clientY })
-          setDropHint(undefined)
+          moveDragFollow(event.clientX, event.clientY)
+          if (dropMarkerRef.current) {
+            dropMarkerRef.current.style.display = 'none'
+          }
           onSelectBlock?.(block.id)
         }}
         onDragOver={(event) => {
           event.preventDefault()
-          setDragCursor({ x: event.clientX, y: event.clientY })
+          moveDragFollow(event.clientX, event.clientY)
           if (!draggingBlockId || draggingBlockId === block.id) {
             return
           }
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
-          setDropHint({ targetId: block.id, position })
+          if (dropMarkerRef.current) {
+            dropMarkerRef.current.style.display = 'block'
+            dropMarkerRef.current.style.top = `${position === 'before' ? rect.top : rect.bottom}px`
+            dropMarkerRef.current.style.left = `${rect.left}px`
+            dropMarkerRef.current.style.width = `${rect.width}px`
+          }
         }}
         onDrop={(event) => {
           event.preventDefault()
@@ -178,8 +173,12 @@ function BlockCanvas({
         }}
         onDragEnd={() => {
           setDraggingBlockId(undefined)
-          setDragCursor(undefined)
-          setDropHint(undefined)
+          if (dropMarkerRef.current) {
+            dropMarkerRef.current.style.display = 'none'
+          }
+          if (dragFollowRef.current) {
+            dragFollowRef.current.style.display = 'none'
+          }
         }}
         style={{
           color: theme.color,
@@ -321,11 +320,7 @@ function BlockCanvas({
           {renderRows(rowsIndented, 'block-row block-row-indented', initTimeRowIndex + 1)}
         </div>
       )}
-      {!!draggingBlock && !!dragCursor && (
-        <div className="block-drag-follow" style={{ left: `${dragCursor.x + 12}px`, top: `${dragCursor.y + 12}px` }}>
-          {blockText(draggingBlock).title}
-        </div>
-      )}
+      {!!draggingBlock && <div ref={dragFollowRef} className="block-drag-follow">{blockText(draggingBlock).title}</div>}
       <div ref={dropMarkerRef} className="block-drop-marker" />
     </div>
   )
