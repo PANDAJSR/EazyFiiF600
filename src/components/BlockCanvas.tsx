@@ -60,6 +60,16 @@ function BlockCanvas({
     follow.style.top = `${y + 12}px`
   }
 
+  const resetDragState = () => {
+    setDraggingBlockId(undefined)
+    if (dropMarkerRef.current) {
+      dropMarkerRef.current.style.display = 'none'
+    }
+    if (dragFollowRef.current) {
+      dragFollowRef.current.style.display = 'none'
+    }
+  }
+
   useEffect(() => {
     if (!draggingBlockId) {
       return
@@ -69,8 +79,16 @@ function BlockCanvas({
         moveDragFollow(event.clientX, event.clientY)
       }
     }
+    const handleGlobalDrop = () => resetDragState()
+    const handleGlobalDragEnd = () => resetDragState()
     window.addEventListener('dragover', handleDragOver)
-    return () => window.removeEventListener('dragover', handleDragOver)
+    window.addEventListener('drop', handleGlobalDrop, true)
+    window.addEventListener('dragend', handleGlobalDragEnd, true)
+    return () => {
+      window.removeEventListener('dragover', handleDragOver)
+      window.removeEventListener('drop', handleGlobalDrop, true)
+      window.removeEventListener('dragend', handleGlobalDragEnd, true)
+    }
   }, [draggingBlockId])
 
   useEffect(() => {
@@ -249,21 +267,17 @@ function BlockCanvas({
         onDrop={(event) => {
           event.preventDefault()
           if (!draggingBlockId) {
+            resetDragState()
             return
           }
           const rect = event.currentTarget.getBoundingClientRect()
           const position: 'before' | 'after' = event.clientY < rect.top + rect.height / 2 ? 'before' : 'after'
           const next = draggingBlockId === block.id ? blocks : reorderBlocks(blocks, draggingBlockId, block.id, position)
           onReorderBlocks?.(next)
+          resetDragState()
         }}
         onDragEnd={() => {
-          setDraggingBlockId(undefined)
-          if (dropMarkerRef.current) {
-            dropMarkerRef.current.style.display = 'none'
-          }
-          if (dragFollowRef.current) {
-            dragFollowRef.current.style.display = 'none'
-          }
+          resetDragState()
         }}
         style={{
           color: theme.color,
