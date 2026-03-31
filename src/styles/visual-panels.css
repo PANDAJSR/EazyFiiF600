@@ -199,6 +199,7 @@
   overflow-x: auto;
   overflow-y: hidden;
   cursor: grab;
+  user-select: none;
   transition: box-shadow 0.16s ease, transform 0.16s ease;
 }
 

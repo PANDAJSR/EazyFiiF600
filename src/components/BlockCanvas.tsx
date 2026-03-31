@@ -79,14 +79,11 @@ function BlockCanvas({
         moveDragFollow(event.clientX, event.clientY)
       }
     }
-    const handleGlobalDrop = () => resetDragState()
     const handleGlobalDragEnd = () => resetDragState()
     window.addEventListener('dragover', handleDragOver)
-    window.addEventListener('drop', handleGlobalDrop, true)
     window.addEventListener('dragend', handleGlobalDragEnd, true)
     return () => {
       window.removeEventListener('dragover', handleDragOver)
-      window.removeEventListener('drop', handleGlobalDrop, true)
       window.removeEventListener('dragend', handleGlobalDragEnd, true)
     }
   }, [draggingBlockId])
@@ -235,6 +232,7 @@ function BlockCanvas({
         }}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move'
+          event.dataTransfer.clearData()
           event.dataTransfer.setData('application/x-eazyfii-block-id', block.id)
           if (!transparentDragImageRef.current) {
             const image = new Image()
