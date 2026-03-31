@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
-import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
+import { blockText, blockTheme, groupBlocksByRow, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
 import useBlockInputNavigation from './useBlockInputNavigation'
 
@@ -173,10 +173,12 @@ function BlockCanvas({
                     key={`${block.id}-${idx}`}
                     size="small"
                     value={block.fields[value.fieldKey] ?? ''}
+                    inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
                     data-block-id={block.id}
                     data-slot-index={(textInputSlotIndex += 1)}
                     onChange={(event) => {
-                      onFieldChange(block.id, value.fieldKey!, event.target.value)
+                      const nextValue = sanitizeBlockTextFieldInput(block.type, value.fieldKey!, event.target.value)
+                      onFieldChange(block.id, value.fieldKey!, nextValue)
                     }}
                     onKeyDown={(event) => {
                       handleInputKeyDown(event, block.id)

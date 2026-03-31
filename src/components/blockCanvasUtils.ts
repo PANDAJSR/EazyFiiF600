@@ -12,6 +12,22 @@ export type BlockToken = {
 }
 
 const MOVE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
+const NUMERIC_TEXT_FIELDS = new Set([
+  'Goertek_HorizontalSpeed:VH',
+  'Goertek_HorizontalSpeed:AH',
+  'Goertek_VerticalSpeed:VV',
+  'Goertek_VerticalSpeed:AV',
+  'block_delay:time',
+  'Goertek_TakeOff2:alt',
+  'Goertek_MoveToCoord2:X',
+  'Goertek_MoveToCoord2:Y',
+  'Goertek_MoveToCoord2:Z',
+  'Goertek_Move:X',
+  'Goertek_Move:Y',
+  'Goertek_Move:Z',
+  'Goertek_Turn:angle',
+])
+const TIME_TEXT_FIELDS = new Set(['block_inittime:time'])
 
 const token = (
   text: string,
@@ -149,6 +165,20 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
         values: Object.entries(f).flatMap(([k, v]) => [token(k), token(v, true, false, k)]),
       }
   }
+}
+
+export const sanitizeBlockTextFieldInput = (blockType: string, fieldKey: string, raw: string) => {
+  const fieldId = `${blockType}:${fieldKey}`
+  if (!NUMERIC_TEXT_FIELDS.has(fieldId) && !TIME_TEXT_FIELDS.has(fieldId)) {
+    return raw
+  }
+
+  // 中文输入法误触 WASD 时先去掉字母，再按字段类型做白名单过滤。
+  const withoutLetters = raw.replace(/[A-Za-z]/g, '')
+  if (TIME_TEXT_FIELDS.has(fieldId)) {
+    return withoutLetters.replace(/[^\d:]/g, '')
+  }
+  return withoutLetters.replace(/[^\d+\-.]/g, '')
 }
 
 export const groupBlocksByRow = (blocks: ParsedBlock[]): ParsedBlock[][] => {
