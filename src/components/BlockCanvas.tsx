@@ -3,6 +3,7 @@ import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
+import useBlockInputNavigation from './useBlockInputNavigation'
 
 type Props = {
   droneName?: string
@@ -41,23 +42,7 @@ function BlockCanvas({
   )
 
   const rows = useMemo(() => groupBlocksByRow(blocks), [blocks])
-  const blockIndexById = useMemo(() => {
-    const indexMap = new Map<string, number>()
-    blocks.forEach((block, index) => {
-      indexMap.set(block.id, index)
-    })
-    return indexMap
-  }, [blocks])
-  const textInputFieldKeysByBlockId = useMemo(() => {
-    const fieldKeyMap = new Map<string, string[]>()
-    blocks.forEach((block) => {
-      const editableFieldKeys = blockText(block)
-        .values.filter((value) => value.fieldKey && value.inputType !== 'select' && value.inputType !== 'color')
-        .map((value) => value.fieldKey!)
-      fieldKeyMap.set(block.id, editableFieldKeys)
-    })
-    return fieldKeyMap
-  }, [blocks])
+  const { handleInputKeyDown } = useBlockInputNavigation(rows)
   const rowKeyByBlockId = useMemo(() => {
     const rowMap = new Map<string, string>()
     rows.forEach((row) => {
@@ -194,69 +179,7 @@ function BlockCanvas({
                       onFieldChange(block.id, value.fieldKey!, event.target.value)
                     }}
                     onKeyDown={(event) => {
-                      const inputKey = event.key.toLowerCase()
-                      if (!['w', 'a', 's', 'd'].includes(inputKey) || event.metaKey || event.ctrlKey || event.altKey) {
-                        return
-                      }
-
-                      const blockIndex = blockIndexById.get(block.id)
-                      const currentSlotIndex = Number((event.currentTarget as HTMLInputElement).dataset.slotIndex)
-                      if (blockIndex === undefined || Number.isNaN(currentSlotIndex)) {
-                        return
-                      }
-
-                      const findSlotInBlock = (targetBlockId: string) => {
-                        const targetSlots = textInputFieldKeysByBlockId.get(targetBlockId) ?? []
-                        if (!targetSlots.length) {
-                          return null
-                        }
-                        const nextSlotIndex = Math.min(currentSlotIndex, targetSlots.length - 1)
-                        return { targetBlockId, nextSlotIndex }
-                      }
-
-                      const focusSlot = (targetBlockId: string, targetSlotIndex: number) => {
-                        const target = document.querySelector<HTMLInputElement>(
-                          `input[data-block-id="${targetBlockId}"][data-slot-index="${targetSlotIndex}"]`,
-                        )
-                        if (!target) {
-                          return
-                        }
-                        target.focus()
-                        const cursorPos = target.value.length
-                        target.setSelectionRange(cursorPos, cursorPos)
-                      }
-
-                      let nextTarget: { targetBlockId: string; nextSlotIndex: number } | null = null
-
-                      if (inputKey === 'a' || inputKey === 'd') {
-                        const offset = inputKey === 'a' ? -1 : 1
-                        const targetSlotIndex = currentSlotIndex + offset
-                        const currentSlots = textInputFieldKeysByBlockId.get(block.id) ?? []
-                        if (targetSlotIndex >= 0 && targetSlotIndex < currentSlots.length) {
-                          nextTarget = { targetBlockId: block.id, nextSlotIndex: targetSlotIndex }
-                        }
-                      } else {
-                        const direction = inputKey === 'w' ? -1 : 1
-                        for (
-                          let targetBlockIndex = blockIndex + direction;
-                          targetBlockIndex >= 0 && targetBlockIndex < blocks.length;
-                          targetBlockIndex += direction
-                        ) {
-                          const targetBlock = blocks[targetBlockIndex]
-                          const candidate = findSlotInBlock(targetBlock.id)
-                          if (!candidate) {
-                            continue
-                          }
-                          nextTarget = candidate
-                          break
-                        }
-                      }
-
-                      if (!nextTarget) {
-                        return
-                      }
-                      event.preventDefault()
-                      focusSlot(nextTarget.targetBlockId, nextTarget.nextSlotIndex)
+                      handleInputKeyDown(event, block.id)
                     }}
                     className="block-chip block-chip-value"
                     style={{ width: 64 }}
