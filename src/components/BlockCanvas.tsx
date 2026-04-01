@@ -4,6 +4,8 @@ import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
 import useBlockInputNavigation from './useBlockInputNavigation'
+import BlockInsertPicker from './BlockInsertPicker'
+import type { InsertableBlockDefinition } from './blockInsertCatalog'
 
 type Props = {
   droneName?: string
@@ -15,6 +17,10 @@ type Props = {
   onSelectBlock?: (blockId: string) => void
   onDeleteBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
+  insertPickerOpen?: boolean
+  insertPickerItems?: InsertableBlockDefinition[]
+  onInsertPickerCancel?: () => void
+  onInsertPickerSubmit?: (item: InsertableBlockDefinition) => void
 }
 
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
@@ -29,6 +35,10 @@ function BlockCanvas({
   onSelectBlock,
   onDeleteBlock,
   onReorderBlocks,
+  insertPickerOpen,
+  insertPickerItems,
+  onInsertPickerCancel,
+  onInsertPickerSubmit,
 }: Props) {
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
@@ -226,7 +236,7 @@ function BlockCanvas({
     if (selectedBlockId === block.id) {
       classNames.push('block-card-selected')
     }
-    return (
+    const cardNode = (
       <section
         key={block.id}
         className={classNames.join(' ')}
@@ -295,6 +305,17 @@ function BlockCanvas({
       >
         {renderBlockLine(block, true)}
       </section>
+    )
+
+    if (!(insertPickerOpen && selectedBlockId === block.id && insertPickerItems && onInsertPickerCancel && onInsertPickerSubmit)) {
+      return cardNode
+    }
+
+    return (
+      <div key={`${block.id}-insert-wrap`} className="block-insert-anchor">
+        {cardNode}
+        <BlockInsertPicker items={insertPickerItems} onCancel={onInsertPickerCancel} onSubmit={onInsertPickerSubmit} />
+      </div>
     )
   }
 

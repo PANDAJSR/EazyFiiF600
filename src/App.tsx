@@ -5,7 +5,6 @@ import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
-import BlockInsertPicker from './components/BlockInsertPicker'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
@@ -325,6 +324,13 @@ function App() {
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
                 onDeleteBlock={handleDeleteBlock}
                 onReorderBlocks={handleReorderBlocks}
+                insertPickerOpen={insertPickerOpen}
+                insertPickerItems={INSERTABLE_BLOCKS}
+                onInsertPickerCancel={() => {
+                  setInsertPickerOpen(false)
+                  setInsertAfterBlockId(undefined)
+                }}
+                onInsertPickerSubmit={handleInsertBlock}
               />
             </section>
           </div>
@@ -348,15 +354,6 @@ function App() {
         type="file"
         multiple
         onChange={(event) => void handleParseFiles(event.target.files)}
-      />
-      <BlockInsertPicker
-        open={insertPickerOpen}
-        items={INSERTABLE_BLOCKS}
-        onCancel={() => {
-          setInsertPickerOpen(false)
-          setInsertAfterBlockId(undefined)
-        }}
-        onSubmit={handleInsertBlock}
       />
     </ConfigProvider>
   )

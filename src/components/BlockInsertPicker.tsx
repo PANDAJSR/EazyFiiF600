@@ -1,9 +1,8 @@
-import { useMemo, useState } from 'react'
-import { Input, Modal } from 'antd'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Input } from 'antd'
 import type { InsertableBlockDefinition } from './blockInsertCatalog'
 
 type Props = {
-  open: boolean
   items: InsertableBlockDefinition[]
   onCancel: () => void
   onSubmit: (item: InsertableBlockDefinition) => void
@@ -11,9 +10,11 @@ type Props = {
 
 const normalize = (value: string) => value.trim().toLowerCase()
 
-function BlockInsertPicker({ open, items, onCancel, onSubmit }: Props) {
+function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
+  const wrapRef = useRef<HTMLDivElement | null>(null)
+  const inputRef = useRef<Input | null>(null)
 
   const filteredItems = useMemo(() => {
     const keyword = normalize(query)
@@ -36,24 +37,29 @@ function BlockInsertPicker({ open, items, onCancel, onSubmit }: Props) {
     onSubmit(target)
   }
 
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  useEffect(() => {
+    const handleMouseDown = (event: MouseEvent) => {
+      const target = event.target
+      if (!(target instanceof Node)) {
+        return
+      }
+      if (wrapRef.current?.contains(target)) {
+        return
+      }
+      onCancel()
+    }
+    window.addEventListener('mousedown', handleMouseDown)
+    return () => window.removeEventListener('mousedown', handleMouseDown)
+  }, [onCancel])
+
   return (
-    <Modal
-      title="插入积木"
-      open={open}
-      onCancel={onCancel}
-      footer={null}
-      width={520}
-      destroyOnClose
-      className="block-insert-picker"
-      afterOpenChange={(nextOpen) => {
-        if (nextOpen) {
-          setQuery('')
-          setActiveIndex(0)
-        }
-      }}
-    >
+    <div className="block-insert-picker" ref={wrapRef}>
       <Input
-        autoFocus
+        ref={inputRef}
         placeholder="搜索积木名称或类型（↑ ↓ 选择，Enter 插入）"
         value={query}
         onChange={(event) => {
@@ -74,6 +80,11 @@ function BlockInsertPicker({ open, items, onCancel, onSubmit }: Props) {
           if (event.key === 'Enter') {
             event.preventDefault()
             handleConfirm()
+            return
+          }
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            onCancel()
           }
         }}
       />
@@ -97,7 +108,7 @@ function BlockInsertPicker({ open, items, onCancel, onSubmit }: Props) {
         })}
         {!filteredItems.length && <div className="block-insert-picker-empty">未找到匹配积木</div>}
       </div>
-    </Modal>
+    </div>
   )
 }
 
