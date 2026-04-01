@@ -78,13 +78,33 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
   }
 
   const emitOfficialStartChain = () => {
+    const horizontal = blocks[2]
+    const vertical = blocks[3]
     lines.push('<block type="Goertek_Start" x="100" y="20">')
     lines.push('<next>')
     lines.push('<block type="block_inittime">')
     emitBlockFields(1)
-    if (blocks.length > 2) {
+    if (horizontal) {
       lines.push('<statement name="functionIntit">')
-      emitBlockChain(2)
+      lines.push(`<block type="${escapeXml(horizontal.type)}">`)
+      emitBlockFields(2)
+      if (vertical) {
+        lines.push('<next>')
+        lines.push(`<block type="${escapeXml(vertical.type)}">`)
+        emitBlockFields(3)
+        if (blocks.length > 4) {
+          lines.push('<next>')
+          emitBlockChain(4)
+          lines.push('</next>')
+        }
+        lines.push('</block>')
+        lines.push('</next>')
+      } else if (blocks.length > 3) {
+        lines.push('<next>')
+        emitBlockChain(3)
+        lines.push('</next>')
+      }
+      lines.push('</block>')
       lines.push('</statement>')
     }
     lines.push('</block>')
