@@ -6,7 +6,7 @@ import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
-import { isDesktopRuntime } from './utils/desktopBridge'
+import { isDesktopRuntime, isElectronShell } from './utils/desktopBridge'
 import { openDomDirectoryPicker } from './utils/domFilePicker'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
@@ -121,7 +121,10 @@ function App() {
       }
       return
     }
-
+    if (isElectronShell()) {
+      message.error('桌面桥接未初始化，请重启 Electron 进程后重试保存。')
+      return
+    }
     if (!result.sourceName || result.sourceName === LOCAL_DRAFT_SOURCE_NAME) {
       console.info('[fii] save blocked: source path is not bound', { sourceName: result.sourceName })
       message.warning('当前仅保存到浏览器本地草稿。请先通过“选择文件夹/文件”加载含 .fii 的工程后再保存。')

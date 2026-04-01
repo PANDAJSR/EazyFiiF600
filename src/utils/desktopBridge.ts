@@ -1,6 +1,7 @@
 import type { DesktopOpenResult, DesktopWritePayload, DesktopWriteResult } from '../types/desktop'
 
 export const isDesktopRuntime = () => Boolean(window.eazyFiiDesktop)
+export const isElectronShell = () => navigator.userAgent.includes('Electron')
 
 export const pickOpenDirectory = async (): Promise<DesktopOpenResult | null> => {
   if (!window.eazyFiiDesktop) {
