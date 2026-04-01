@@ -203,6 +203,11 @@ function BlockCanvas({
                       onFieldChange(block.id, value.fieldKey!, nextValue)
                     }}
                     onKeyDown={(event) => {
+                      if (event.key === 'Escape') {
+                        event.preventDefault()
+                        event.currentTarget.blur()
+                        return
+                      }
                       handleInputKeyDown(event, block.id)
                     }}
                     className="block-chip block-chip-value"
