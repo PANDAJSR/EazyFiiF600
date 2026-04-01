@@ -75,6 +75,14 @@ function App() {
     setLoading(true)
     try {
       const parsed = await parseFiiFromFiles(Array.from(list))
+      if (!parsed.sourceName) {
+        console.warn('[fii] parse skipped: no .fii source found in selected files', {
+          selectedCount: list.length,
+          warnings: parsed.warnings,
+        })
+        message.error('所选路径未找到 .fii 文件，未更新当前程序。请重新选择包含 .fii 的目录。')
+        return
+      }
       const merged = applySavedEdits(parsed)
       setResult(merged)
       setSelectedDroneId(merged.programs[0]?.drone.id)
@@ -99,8 +107,8 @@ function App() {
   }, [selectedDroneId])
   const handleSaveEdits = useCallback(() => {
     if (!result.sourceName || result.sourceName === LOCAL_DRAFT_SOURCE_NAME) {
-      message.warning('请先选择程序文件路径，再执行保存')
-      openDirectoryPicker()
+      console.info('[fii] save blocked: source path is not bound', { sourceName: result.sourceName })
+      message.warning('当前仅保存到浏览器本地草稿。请先通过“选择文件夹/文件”加载含 .fii 的工程后再保存。')
       return
     }
 
