@@ -31,6 +31,13 @@ const updateSelectedProgramBlocks = (
   }
 }
 
+const createRuntimeBlockId = () => {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return `custom_${crypto.randomUUID()}`
+  }
+  return `custom_${Date.now()}_${Math.random().toString(16).slice(2)}`
+}
+
 export const updateBlockField = (
   result: ParseResult,
   selectedDroneId: string | undefined,
@@ -96,6 +103,28 @@ export const removeBlockById = (
   return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) =>
     blocks.filter((block) => block.id !== blockId),
   )
+}
+
+export const duplicateBlockAfterTarget = (
+  result: ParseResult,
+  selectedDroneId: string | undefined,
+  targetBlockId: string,
+): ParseResult => {
+  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) => {
+    const targetIndex = blocks.findIndex((block) => block.id === targetBlockId)
+    if (targetIndex < 0) {
+      return blocks
+    }
+    const sourceBlock = blocks[targetIndex]
+    const duplicatedBlock: ParsedBlock = {
+      ...sourceBlock,
+      id: createRuntimeBlockId(),
+      fields: { ...sourceBlock.fields },
+    }
+    const nextBlocks = [...blocks]
+    nextBlocks.splice(targetIndex + 1, 0, duplicatedBlock)
+    return nextBlocks
+  })
 }
 
 export const replaceSelectedProgramBlocks = (

@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { MouseEvent as ReactMouseEvent } from 'react'
-import { ColorPicker, Empty, Input, Select } from 'antd'
+import { Dropdown, Empty } from 'antd'
+import type { MenuProps } from 'antd'
 import type { ParsedBlock } from '../types/fii'
-import { blockText, blockTheme, groupBlocksByRow, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
+import { blockTheme, groupBlocksByRow } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
 import useBlockInputNavigation from './useBlockInputNavigation'
 import BlockInsertPicker from './BlockInsertPicker'
 import type { InsertableBlockDefinition } from './blockInsertCatalog'
+import BlockLine from './BlockLine'
 
 type Props = {
   droneName?: string
@@ -17,14 +19,13 @@ type Props = {
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
   onSelectBlock?: (blockId?: string) => void
   onDeleteBlock?: (blockId: string) => void
+  onDuplicateBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
   insertPickerItems?: InsertableBlockDefinition[]
   onInsertPickerCancel?: () => void
   onInsertPickerSubmit?: (item: InsertableBlockDefinition) => void
 }
-
-const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
 
 function BlockCanvas({
   droneName,
@@ -35,6 +36,7 @@ function BlockCanvas({
   onFieldChange,
   onSelectBlock,
   onDeleteBlock,
+  onDuplicateBlock,
   onReorderBlocks,
   insertPickerOpen,
   insertPickerItems,
@@ -144,105 +146,6 @@ function BlockCanvas({
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
-  const renderBlockLine = (block: ParsedBlock, editable: boolean) => {
-    const text = blockText(block)
-    let textInputSlotIndex = -1
-    return (
-      <div className="block-line">
-        <span className="block-title">{text.title}</span>
-        {!!text.values.length && (
-          <div className="block-values">
-            {text.values.map((value, idx) => {
-              if (value.fieldKey && onFieldChange && editable) {
-                if (value.inputType === 'select') {
-                  return (
-                    <Select
-                      key={`${block.id}-${idx}`}
-                      size="small"
-                      value={block.fields[value.fieldKey] ?? value.options?.[0]}
-                      onChange={(nextValue) => {
-                        onFieldChange(block.id, value.fieldKey!, nextValue)
-                      }}
-                      options={(value.options ?? []).map((option) => ({
-                        label: value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[option] ?? option) : option,
-                        value: option,
-                      }))}
-                      className="block-chip block-chip-value"
-                      style={{ width: 84 }}
-                    />
-                  )
-                }
-
-                if (value.inputType === 'color') {
-                  return (
-                    <ColorPicker
-                      key={`${block.id}-${idx}`}
-                      size="small"
-                      format="hex"
-                      disabledFormat
-                      showText
-                      value={block.fields[value.fieldKey] ?? value.text}
-                      onChangeComplete={(nextColor) => {
-                        onFieldChange(block.id, value.fieldKey!, nextColor.toHexString().toLowerCase())
-                      }}
-                      className="block-chip block-chip-value"
-                    />
-                  )
-                }
-
-                return (
-                  <Input
-                    key={`${block.id}-${idx}`}
-                    size="small"
-                    value={block.fields[value.fieldKey] ?? ''}
-                    inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
-                    data-block-id={block.id}
-                    data-slot-index={(textInputSlotIndex += 1)}
-                    onChange={(event) => {
-                      const nextValue = sanitizeBlockTextFieldInput(block.type, value.fieldKey!, event.target.value)
-                      onFieldChange(block.id, value.fieldKey!, nextValue)
-                    }}
-                    onKeyDown={(event) => {
-                      if (event.key === 'Escape') {
-                        event.preventDefault()
-                        event.currentTarget.blur()
-                        return
-                      }
-                      handleInputKeyDown(event, block.id)
-                    }}
-                    className="block-chip block-chip-value"
-                    style={{ width: 64 }}
-                  />
-                )
-              }
-
-              if (value.fieldKey && !editable) {
-                const raw = block.fields[value.fieldKey] ?? value.text
-                const textValue = value.fieldKey === 'turnDirection' ? (TURN_DIRECTION_LABEL[raw] ?? raw) : raw
-                return (
-                  <span key={`${block.id}-${idx}`} className="block-chip block-chip-value">
-                    {textValue}
-                  </span>
-                )
-              }
-
-              return (
-                <span
-                  key={`${block.id}-${idx}`}
-                  className={['block-chip', value.value ? 'block-chip-value' : '', value.titleLike ? 'block-chip-title-like' : '']
-                    .filter(Boolean)
-                    .join(' ')}
-                >
-                  {value.text}
-                </span>
-              )
-            })}
-          </div>
-        )}
-      </div>
-    )
-  }
-
   const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
     const theme = blockTheme[block.type] ?? {
       color: '#17324d',
@@ -253,6 +156,24 @@ function BlockCanvas({
     if (selectedBlockId === block.id) {
       classNames.push('block-card-selected')
     }
+
+    const menuItems: MenuProps['items'] = [
+      { key: 'duplicate', label: '复制' },
+      { key: 'delete', label: '删除', danger: true },
+    ]
+
+    const handleCardMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
+      domEvent.preventDefault()
+      onSelectBlock?.(block.id)
+      if (key === 'duplicate') {
+        onDuplicateBlock?.(block.id)
+        return
+      }
+      if (key === 'delete') {
+        onDeleteBlock?.(block.id)
+      }
+    }
+
     const cardNode = (
       <section
         key={block.id}
@@ -265,7 +186,7 @@ function BlockCanvas({
         onClick={() => onSelectBlock?.(block.id)}
         onContextMenu={(event) => {
           event.preventDefault()
-          onDeleteBlock?.(block.id)
+          onSelectBlock?.(block.id)
         }}
         onDragStart={(event) => {
           event.dataTransfer.effectAllowed = 'move'
@@ -320,17 +241,26 @@ function BlockCanvas({
           borderColor: theme.border,
         }}
       >
-        {renderBlockLine(block, true)}
+        <BlockLine block={block} editable onFieldChange={onFieldChange} onInputKeyDown={handleInputKeyDown} />
       </section>
     )
 
+    const cardNodeWithMenu =
+      onDuplicateBlock || onDeleteBlock ? (
+        <Dropdown trigger={['contextMenu']} menu={{ items: menuItems, onClick: handleCardMenuClick }}>
+          {cardNode}
+        </Dropdown>
+      ) : (
+        cardNode
+      )
+
     if (!(insertPickerOpen && selectedBlockId === block.id && insertPickerItems && onInsertPickerCancel && onInsertPickerSubmit)) {
-      return cardNode
+      return cardNodeWithMenu
     }
 
     return (
       <div key={`${block.id}-insert-wrap`} className="block-insert-anchor">
-        {cardNode}
+        {cardNodeWithMenu}
         <BlockInsertPicker items={insertPickerItems} onCancel={onInsertPickerCancel} onSubmit={onInsertPickerSubmit} />
       </div>
     )
@@ -401,7 +331,7 @@ function BlockCanvas({
               borderColor: (blockTheme[draggingBlock.type] ?? { border: '#8db8e6' }).border,
             }}
           >
-            {renderBlockLine(draggingBlock, false)}
+            <BlockLine block={draggingBlock} editable={false} />
           </section>
         </div>
       )}

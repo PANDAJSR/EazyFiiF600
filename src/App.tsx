@@ -18,6 +18,7 @@ import {
   saveLocalDraftPrograms,
 } from './utils/localDraftStorage'
 import {
+  duplicateBlockAfterTarget,
   insertBlockAfterTarget,
   insertFirstBlockWhenEmpty,
   removeBlockById,
@@ -25,12 +26,10 @@ import {
   updateBlockField,
   updateMovePoint,
 } from './utils/programMutations'
-
 type FileInputWithDirectory = HTMLInputElement & {
   webkitdirectory?: boolean
   directory?: boolean
 }
-
 function App() {
   const [droneDialogMode, setDroneDialogMode] = useState<'create' | 'edit'>('create')
   const [droneDialogOpen, setDroneDialogOpen] = useState(false)
@@ -46,15 +45,12 @@ function App() {
   const [insertPickerOpen, setInsertPickerOpen] = useState(false)
   const [insertAfterBlockId, setInsertAfterBlockId] = useState<string>()
   const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string>()
-
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
-
   const selectedProgram = useMemo(
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
-
   useSelectedBlockEnterHotkey({
     enabled: !!selectedDroneId && !insertPickerOpen,
     selectedBlockId,
@@ -63,35 +59,29 @@ function App() {
       setInsertPickerOpen(true)
     },
   })
-
   useFocusBlockFirstInput({
     blockId: pendingFocusBlockId,
     onFocused: () => setPendingFocusBlockId(undefined),
   })
-
   const handleLocateBlock = useCallback((blockId: string) => {
     setHighlightedBlockId(blockId)
     setSelectedBlockId(blockId)
     setHighlightPulse((prev) => prev + 1)
   }, [])
-
   const handleParseFiles = async (list: FileList | null) => {
     if (!list?.length) {
       return
     }
-
     setLoading(true)
     try {
       const parsed = await parseFiiFromFiles(Array.from(list))
       const merged = applySavedEdits(parsed)
-
       setResult(merged)
       setSelectedDroneId(merged.programs[0]?.drone.id)
       setHighlightedBlockId(undefined)
       setSelectedBlockId(undefined)
       setHighlightPulse(0)
       setHasUnsavedChanges(false)
-
       if (merged.warnings.length) {
         message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
       } else {
@@ -103,12 +93,10 @@ function App() {
       setLoading(false)
     }
   }
-
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
-
   const handleSaveEdits = useCallback(() => {
     if (result.sourceName && result.sourceName !== LOCAL_DRAFT_SOURCE_NAME) {
       saveResultEdits(result.sourceName, result.programs)
@@ -117,7 +105,6 @@ function App() {
     setHasUnsavedChanges(false)
     message.success('已保存到本地')
   }, [result.programs, result.sourceName])
-
   const handleMovePoint = useCallback((payload: {
     blockId: string
     blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
@@ -129,7 +116,6 @@ function App() {
     setResult((prev) => updateMovePoint(prev, selectedDroneId, payload))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
-
   const handleDeleteBlock = useCallback((blockId: string) => {
     Modal.confirm({
       title: '删除积木',
@@ -146,7 +132,11 @@ function App() {
       },
     })
   }, [selectedDroneId])
-
+  const handleDuplicateBlock = useCallback((blockId: string) => {
+    setResult((prev) => duplicateBlockAfterTarget(prev, selectedDroneId, blockId))
+    setHasUnsavedChanges(true)
+    message.success('已复制积木')
+  }, [selectedDroneId])
   useEffect(() => {
     if (!selectedDroneId) {
       setSelectedDroneId(result.programs[0]?.drone.id)
@@ -157,25 +147,21 @@ function App() {
     }
     setSelectedDroneId(result.programs[0]?.drone.id)
   }, [result.programs, selectedDroneId])
-
   useBlockKeyboardNavigation({
     selectedProgram,
     selectedBlockId,
     onSelectBlock: (blockId) => setSelectedBlockId(blockId),
     onDeleteBlock: handleDeleteBlock,
   })
-
   const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
     setResult((prev) => replaceSelectedProgramBlocks(prev, selectedDroneId, nextBlocks))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
-
   const handleInsertBlock = useCallback((definition: (typeof INSERTABLE_BLOCKS)[number]) => {
     const targetBlockId = insertAfterBlockId ?? selectedBlockId
     if (!targetBlockId || !selectedDroneId) {
       return
     }
-
     const nextBlock = createInsertedBlock(definition)
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
     setSelectedBlockId(nextBlock.id)
@@ -187,7 +173,6 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${definition.label}`)
   }, [insertAfterBlockId, selectedBlockId, selectedDroneId])
-
   const handleInsertFirstBlock = useCallback(() => {
     if (!selectedDroneId) {
       return
@@ -201,7 +186,6 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${INSERTABLE_BLOCKS[0].label}`)
   }, [selectedDroneId])
-
   const handleCreateDrone = useCallback(() => {
     const nextDrone = createEmptyDroneProgram(result.programs.length + 1, droneStartPosDraft)
     setResult((prev) => ({
@@ -216,14 +200,12 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已新建：${nextDrone.drone.name}`)
   }, [droneStartPosDraft, result.programs.length])
-
   const openCreateDroneDialog = useCallback(() => {
     setDroneDialogMode('create')
     setEditingDroneId(undefined)
     setDroneStartPosDraft({ x: '0', y: '0' })
     setDroneDialogOpen(true)
   }, [])
-
   const openEditDroneDialog = useCallback((droneId: string) => {
     const target = result.programs.find((program) => program.drone.id === droneId)
     if (!target) {
@@ -237,7 +219,6 @@ function App() {
     })
     setDroneDialogOpen(true)
   }, [result.programs])
-
   const handleConfirmDroneDialog = useCallback(() => {
     if (droneDialogMode === 'create') {
       handleCreateDrone()
@@ -271,7 +252,6 @@ function App() {
     setDroneDialogOpen(false)
     message.success('无人机初始坐标已更新')
   }, [droneDialogMode, droneStartPosDraft, editingDroneId, handleCreateDrone])
-
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
     if (!el) {
@@ -281,7 +261,6 @@ function App() {
     el.setAttribute('directory', 'true')
     el.click()
   }
-
   return (
     <ConfigProvider>
       <Layout className="app-root">
@@ -348,6 +327,7 @@ function App() {
                 highlightPulse={highlightPulse}
                 onFieldChange={handleFieldChange}
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
+                onDuplicateBlock={handleDuplicateBlock}
                 onDeleteBlock={handleDeleteBlock}
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}
@@ -392,5 +372,4 @@ function App() {
     </ConfigProvider>
   )
 }
-
 export default App
