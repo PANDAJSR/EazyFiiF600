@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
@@ -13,6 +13,17 @@ import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 type FileInputWithDirectory = HTMLInputElement & {
   webkitdirectory?: boolean
   directory?: boolean
+}
+
+const isEditableTarget = (target: EventTarget | null) => {
+  if (!(target instanceof HTMLElement)) {
+    return false
+  }
+  const tag = target.tagName.toLowerCase()
+  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+    return true
+  }
+  return target.isContentEditable
 }
 
 function App() {
@@ -201,6 +212,42 @@ function App() {
       },
     })
   }, [selectedDroneId])
+
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.repeat || isEditableTarget(event.target)) {
+        return
+      }
+
+      const key = event.key
+      if (!selectedProgram?.blocks.length) {
+        return
+      }
+
+      if (key === 'ArrowUp' || key === 'ArrowDown') {
+        event.preventDefault()
+        const currentIndex = selectedBlockId
+          ? selectedProgram.blocks.findIndex((block) => block.id === selectedBlockId)
+          : -1
+        if (key === 'ArrowUp') {
+          const prevIndex = currentIndex <= 0 ? selectedProgram.blocks.length - 1 : currentIndex - 1
+          setSelectedBlockId(selectedProgram.blocks[prevIndex]?.id)
+          return
+        }
+        const nextIndex = currentIndex < 0 || currentIndex >= selectedProgram.blocks.length - 1 ? 0 : currentIndex + 1
+        setSelectedBlockId(selectedProgram.blocks[nextIndex]?.id)
+        return
+      }
+
+      if ((key === 'Backspace' || key === 'Delete') && selectedBlockId) {
+        event.preventDefault()
+        handleDeleteBlock(selectedBlockId)
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handleDeleteBlock, selectedBlockId, selectedProgram])
 
   const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
     setResult((prev) => ({

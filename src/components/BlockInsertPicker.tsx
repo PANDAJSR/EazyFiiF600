@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Input } from 'antd'
+import type { InputRef } from 'antd'
 import type { InsertableBlockDefinition } from './blockInsertCatalog'
 
 type Props = {
@@ -14,7 +15,7 @@ function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
   const [query, setQuery] = useState('')
   const [activeIndex, setActiveIndex] = useState(0)
   const wrapRef = useRef<HTMLDivElement | null>(null)
-  const inputRef = useRef<Input | null>(null)
+  const inputRef = useRef<InputRef | null>(null)
 
   const filteredItems = useMemo(() => {
     const keyword = normalize(query)

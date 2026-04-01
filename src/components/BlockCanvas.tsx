@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { MouseEvent as ReactMouseEvent } from 'react'
 import { ColorPicker, Empty, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, blockTheme, groupBlocksByRow, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
@@ -14,7 +15,7 @@ type Props = {
   selectedBlockId?: string
   highlightPulse?: number
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
-  onSelectBlock?: (blockId: string) => void
+  onSelectBlock?: (blockId?: string) => void
   onDeleteBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
@@ -40,6 +41,17 @@ function BlockCanvas({
   onInsertPickerCancel,
   onInsertPickerSubmit,
 }: Props) {
+  const handleWrapMouseDown = (event: ReactMouseEvent<HTMLDivElement>) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) {
+      return
+    }
+    if (target.closest('[data-block-id]') || target.closest('.block-insert-picker')) {
+      return
+    }
+    onSelectBlock?.(undefined)
+  }
+
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
   const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
@@ -367,7 +379,7 @@ function BlockCanvas({
   const rowsIndented = initTimeRowIndex >= 0 ? rows.slice(initTimeRowIndex + 1) : []
 
   return (
-    <div className="blocks-wrap">
+    <div className="blocks-wrap" onMouseDown={handleWrapMouseDown}>
       {renderRows(rowsBeforeIndented, 'block-row')}
       {!!rowsIndented.length && (
         <div className="block-subflow">
