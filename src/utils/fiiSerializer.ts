@@ -42,15 +42,10 @@ const buildProgramNames = (_program: ParseResult['programs'][number], index: num
 
 const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index: number): string => {
   const lines: string[] = []
-  const emitBlock = (blockIndex: number) => {
+  const emitBlockFields = (blockIndex: number) => {
     const block = blocks[blockIndex]
     if (!block) {
       return
-    }
-    if (blockIndex === 0) {
-      lines.push(`<block type="${escapeXml(block.type)}" x="100" y="20">`)
-    } else {
-      lines.push(`<block type="${escapeXml(block.type)}">`)
     }
     Object.entries(block.fields).forEach(([key, value]) => {
       lines.push(`<field name="${escapeXml(key)}">${escapeXml(value)}</field>`)
@@ -61,18 +56,52 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
     if (block.type === 'block_inittime' && !Object.prototype.hasOwnProperty.call(block.fields, 'color')) {
       lines.push('<field name="color">#cccccc</field>')
     }
-    if (blockIndex + 1 < blocks.length) {
+  }
+
+  const emitBlockChain = (startIndex: number, isRoot = false) => {
+    const block = blocks[startIndex]
+    if (!block) {
+      return
+    }
+    if (isRoot) {
+      lines.push(`<block type="${escapeXml(block.type)}" x="100" y="20">`)
+    } else {
+      lines.push(`<block type="${escapeXml(block.type)}">`)
+    }
+    emitBlockFields(startIndex)
+    if (startIndex + 1 < blocks.length) {
       lines.push('<next>')
-      emitBlock(blockIndex + 1)
+      emitBlockChain(startIndex + 1)
       lines.push('</next>')
     }
+    lines.push('</block>')
+  }
+
+  const emitOfficialStartChain = () => {
+    lines.push('<block type="Goertek_Start" x="100" y="20">')
+    lines.push('<next>')
+    lines.push('<block type="block_inittime">')
+    emitBlockFields(1)
+    if (blocks.length > 2) {
+      lines.push('<statement name="functionIntit">')
+      emitBlockChain(2)
+      lines.push('</statement>')
+    }
+    lines.push('</block>')
+    lines.push('</next>')
     lines.push('</block>')
   }
 
   lines.push('<xml xmlns="http://www.w3.org/1999/xhtml">')
   lines.push('  <variables></variables>')
   if (blocks.length > 0) {
-    emitBlock(0)
+    const first = blocks[0]
+    const second = blocks[1]
+    if (first?.type === 'Goertek_Start' && second?.type === 'block_inittime') {
+      emitOfficialStartChain()
+    } else {
+      emitBlockChain(0, true)
+    }
   } else {
     lines.push(`<!-- empty block list for drone ${index + 1} -->`)
   }
