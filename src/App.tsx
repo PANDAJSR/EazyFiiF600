@@ -35,7 +35,7 @@ function App() {
   const [droneDialogMode, setDroneDialogMode] = useState<'create' | 'edit'>('create')
   const [droneDialogOpen, setDroneDialogOpen] = useState(false)
   const [editingDroneId, setEditingDroneId] = useState<string>()
-  const [droneStartPosDraft, setDroneStartPosDraft] = useState({ x: '0', y: '0', z: '0' })
+  const [droneStartPosDraft, setDroneStartPosDraft] = useState({ x: '0', y: '0' })
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
@@ -220,7 +220,7 @@ function App() {
   const openCreateDroneDialog = useCallback(() => {
     setDroneDialogMode('create')
     setEditingDroneId(undefined)
-    setDroneStartPosDraft({ x: '0', y: '0', z: '0' })
+    setDroneStartPosDraft({ x: '0', y: '0' })
     setDroneDialogOpen(true)
   }, [])
 
@@ -234,7 +234,6 @@ function App() {
     setDroneStartPosDraft({
       x: target.drone.startPos.x || '0',
       y: target.drone.startPos.y || '0',
-      z: target.drone.startPos.z || '0',
     })
     setDroneDialogOpen(true)
   }, [result.programs])
@@ -260,7 +259,9 @@ function App() {
           drone: {
             ...program.drone,
             startPos: {
-              ...droneStartPosDraft,
+              x: droneStartPosDraft.x,
+              y: droneStartPosDraft.y,
+              z: program.drone.startPos.z || '0',
             },
           },
         }

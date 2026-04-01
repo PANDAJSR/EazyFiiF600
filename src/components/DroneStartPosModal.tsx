@@ -3,7 +3,6 @@ import { Input, Modal, Space, Typography } from 'antd'
 type StartPos = {
   x: string
   y: string
-  z: string
 }
 
 type Props = {
@@ -26,10 +25,9 @@ function DroneStartPosModal({ mode, open, draft, onChange, onCancel, onConfirm }
       onOk={onConfirm}
     >
       <Space direction="vertical" size={10} style={{ width: '100%' }}>
-        <Typography.Text>请输入无人机初始坐标（cm）</Typography.Text>
+        <Typography.Text>请输入无人机初始坐标 X/Y（cm）</Typography.Text>
         <Input addonBefore="X" value={draft.x} onChange={(event) => onChange({ ...draft, x: event.target.value })} />
         <Input addonBefore="Y" value={draft.y} onChange={(event) => onChange({ ...draft, y: event.target.value })} />
-        <Input addonBefore="Z" value={draft.z} onChange={(event) => onChange({ ...draft, z: event.target.value })} />
       </Space>
     </Modal>
   )
