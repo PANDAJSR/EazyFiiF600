@@ -1,16 +1,22 @@
-import { Tag } from 'antd'
+import { Button, Tag } from 'antd'
 import type { DroneProgram } from '../types/fii'
 
 type Props = {
   programs: DroneProgram[]
   selectedId?: string
   onSelect: (id: string) => void
+  onCreateDrone?: () => void
 }
 
-function DroneSidebar({ programs, selectedId, onSelect }: Props) {
+function DroneSidebar({ programs, selectedId, onSelect, onCreateDrone }: Props) {
   return (
     <div className="drone-sidebar">
-      <div className="sidebar-title">无人机列表</div>
+      <div className="sidebar-title-wrap">
+        <div className="sidebar-title">无人机列表</div>
+        <Button size="small" type="primary" onClick={onCreateDrone}>
+          新建无人机
+        </Button>
+      </div>
       {programs.map(({ drone, blocks }, index) => {
         const active = drone.id === selectedId
         return (
@@ -32,7 +38,7 @@ function DroneSidebar({ programs, selectedId, onSelect }: Props) {
           </button>
         )
       })}
-      {!programs.length && <div className="sidebar-empty">请先导入 .fii 文件</div>}
+      {!programs.length && <div className="sidebar-empty">暂无无人机，请先新建</div>}
     </div>
   )
 }

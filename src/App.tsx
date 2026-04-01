@@ -8,30 +8,30 @@ import { parseFiiFromFiles } from './utils/fiiParser'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
+import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
+import {
+  createEmptyDroneProgram,
+  LOCAL_DRAFT_SOURCE_NAME,
+  readLocalDraftResult,
+  saveLocalDraftPrograms,
+} from './utils/localDraftStorage'
+import {
+  insertBlockAfterTarget,
+  insertFirstBlockWhenEmpty,
+  removeBlockById,
+  replaceSelectedProgramBlocks,
+  updateBlockField,
+  updateMovePoint,
+} from './utils/programMutations'
 
 type FileInputWithDirectory = HTMLInputElement & {
   webkitdirectory?: boolean
   directory?: boolean
 }
 
-const isEditableTarget = (target: EventTarget | null) => {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-  const tag = target.tagName.toLowerCase()
-  if (tag === 'input' || tag === 'textarea' || tag === 'select') {
-    return true
-  }
-  return target.isContentEditable
-}
-
 function App() {
-  const [result, setResult] = useState<ParseResult>({
-    programs: [],
-    warnings: [],
-    sourceName: '',
-  })
+  const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
   const [selectedBlockId, setSelectedBlockId] = useState<string>()
@@ -100,40 +100,17 @@ function App() {
   }
 
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
-    setResult((prev) => ({
-      ...prev,
-      programs: prev.programs.map((program) => {
-        if (program.drone.id !== selectedDroneId) {
-          return program
-        }
-        return {
-          ...program,
-          blocks: program.blocks.map((block) => {
-            if (block.id !== blockId) {
-              return block
-            }
-            return {
-              ...block,
-              fields: {
-                ...block.fields,
-                [fieldKey]: value,
-              },
-            }
-          }),
-        }
-      }),
-    }))
+    setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
 
   const handleSaveEdits = useCallback(() => {
-    if (!result.sourceName) {
-      message.warning('请先读取文件')
-      return
+    if (result.sourceName && result.sourceName !== LOCAL_DRAFT_SOURCE_NAME) {
+      saveResultEdits(result.sourceName, result.programs)
     }
-    saveResultEdits(result.sourceName, result.programs)
+    saveLocalDraftPrograms(result.programs)
     setHasUnsavedChanges(false)
-    message.success('修改已保存')
+    message.success('已保存到本地')
   }, [result.programs, result.sourceName])
 
   const handleMovePoint = useCallback((payload: {
@@ -144,44 +121,7 @@ function App() {
     baseX?: number
     baseY?: number
   }) => {
-    setResult((prev) => ({
-      ...prev,
-      programs: prev.programs.map((program) => {
-        if (program.drone.id !== selectedDroneId) {
-          return program
-        }
-        return {
-          ...program,
-          blocks: program.blocks.map((block) => {
-            if (block.id !== payload.blockId) {
-              return block
-            }
-
-            if (payload.blockType === 'Goertek_MoveToCoord2') {
-              return {
-                ...block,
-                fields: {
-                  ...block.fields,
-                  X: String(payload.x),
-                  Y: String(payload.y),
-                },
-              }
-            }
-
-            const baseX = payload.baseX ?? 0
-            const baseY = payload.baseY ?? 0
-            return {
-              ...block,
-              fields: {
-                ...block.fields,
-                X: String(payload.x - baseX),
-                Y: String(payload.y - baseY),
-              },
-            }
-          }),
-        }
-      }),
-    }))
+    setResult((prev) => updateMovePoint(prev, selectedDroneId, payload))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
 
@@ -193,18 +133,7 @@ function App() {
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: () => {
-        setResult((prev) => ({
-          ...prev,
-          programs: prev.programs.map((program) => {
-            if (program.drone.id !== selectedDroneId) {
-              return program
-            }
-            return {
-              ...program,
-              blocks: program.blocks.filter((block) => block.id !== blockId),
-            }
-          }),
-        }))
+        setResult((prev) => removeBlockById(prev, selectedDroneId, blockId))
         setHasUnsavedChanges(true)
         setSelectedBlockId((prev) => (prev === blockId ? undefined : prev))
         setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
@@ -214,54 +143,25 @@ function App() {
   }, [selectedDroneId])
 
   useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.repeat || isEditableTarget(event.target)) {
-        return
-      }
-
-      const key = event.key
-      if (!selectedProgram?.blocks.length) {
-        return
-      }
-
-      if (key === 'ArrowUp' || key === 'ArrowDown') {
-        event.preventDefault()
-        const currentIndex = selectedBlockId
-          ? selectedProgram.blocks.findIndex((block) => block.id === selectedBlockId)
-          : -1
-        if (key === 'ArrowUp') {
-          const prevIndex = currentIndex <= 0 ? selectedProgram.blocks.length - 1 : currentIndex - 1
-          setSelectedBlockId(selectedProgram.blocks[prevIndex]?.id)
-          return
-        }
-        const nextIndex = currentIndex < 0 || currentIndex >= selectedProgram.blocks.length - 1 ? 0 : currentIndex + 1
-        setSelectedBlockId(selectedProgram.blocks[nextIndex]?.id)
-        return
-      }
-
-      if ((key === 'Backspace' || key === 'Delete') && selectedBlockId) {
-        event.preventDefault()
-        handleDeleteBlock(selectedBlockId)
-      }
+    if (!selectedDroneId) {
+      setSelectedDroneId(result.programs[0]?.drone.id)
+      return
     }
+    if (result.programs.some((program) => program.drone.id === selectedDroneId)) {
+      return
+    }
+    setSelectedDroneId(result.programs[0]?.drone.id)
+  }, [result.programs, selectedDroneId])
 
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [handleDeleteBlock, selectedBlockId, selectedProgram])
+  useBlockKeyboardNavigation({
+    selectedProgram,
+    selectedBlockId,
+    onSelectBlock: (blockId) => setSelectedBlockId(blockId),
+    onDeleteBlock: handleDeleteBlock,
+  })
 
   const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
-    setResult((prev) => ({
-      ...prev,
-      programs: prev.programs.map((program) => {
-        if (program.drone.id !== selectedDroneId) {
-          return program
-        }
-        return {
-          ...program,
-          blocks: nextBlocks,
-        }
-      }),
-    }))
+    setResult((prev) => replaceSelectedProgramBlocks(prev, selectedDroneId, nextBlocks))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
 
@@ -272,24 +172,7 @@ function App() {
     }
 
     const nextBlock = createInsertedBlock(definition)
-    setResult((prev) => ({
-      ...prev,
-      programs: prev.programs.map((program) => {
-        if (program.drone.id !== selectedDroneId) {
-          return program
-        }
-        const insertIndex = program.blocks.findIndex((block) => block.id === targetBlockId)
-        if (insertIndex < 0) {
-          return program
-        }
-        const nextBlocks = [...program.blocks]
-        nextBlocks.splice(insertIndex + 1, 0, nextBlock)
-        return {
-          ...program,
-          blocks: nextBlocks,
-        }
-      }),
-    }))
+    setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
     setSelectedBlockId(nextBlock.id)
     setHighlightedBlockId(nextBlock.id)
     setHighlightPulse((prev) => prev + 1)
@@ -299,6 +182,35 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${definition.label}`)
   }, [insertAfterBlockId, selectedBlockId, selectedDroneId])
+
+  const handleInsertFirstBlock = useCallback(() => {
+    if (!selectedDroneId) {
+      return
+    }
+    const defaultBlock = createInsertedBlock(INSERTABLE_BLOCKS[0])
+    setResult((prev) => insertFirstBlockWhenEmpty(prev, selectedDroneId, defaultBlock))
+    setSelectedBlockId(defaultBlock.id)
+    setHighlightedBlockId(defaultBlock.id)
+    setHighlightPulse((prev) => prev + 1)
+    setPendingFocusBlockId(defaultBlock.id)
+    setHasUnsavedChanges(true)
+    message.success(`已插入积木：${INSERTABLE_BLOCKS[0].label}`)
+  }, [selectedDroneId])
+
+  const handleCreateDrone = useCallback(() => {
+    const nextDrone = createEmptyDroneProgram(result.programs.length + 1)
+    setResult((prev) => ({
+      ...prev,
+      programs: [...prev.programs, nextDrone],
+      sourceName: prev.sourceName || LOCAL_DRAFT_SOURCE_NAME,
+    }))
+    setSelectedDroneId(nextDrone.drone.id)
+    setSelectedBlockId(undefined)
+    setHighlightedBlockId(undefined)
+    setHighlightPulse(0)
+    setHasUnsavedChanges(true)
+    message.success(`已新建：${nextDrone.drone.name}`)
+  }, [result.programs.length])
 
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
@@ -331,6 +243,7 @@ function App() {
           <DroneSidebar
             programs={result.programs}
             selectedId={selectedDroneId}
+            onCreateDrone={handleCreateDrone}
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
@@ -354,7 +267,12 @@ function App() {
               <Typography.Title level={4}>
                 {selectedProgram?.drone.name ? `${selectedProgram.drone.name} 的动作积木` : '动作积木'}
               </Typography.Title>
-              <Button type="primary" onClick={handleSaveEdits} disabled={!result.sourceName || !hasUnsavedChanges}>
+              {!selectedProgram?.blocks.length && (
+                <Button onClick={handleInsertFirstBlock} disabled={!selectedProgram}>
+                  添加首个积木
+                </Button>
+              )}
+              <Button type="primary" onClick={handleSaveEdits} disabled={!hasUnsavedChanges}>
                 保存修改
               </Button>
             </Space>
