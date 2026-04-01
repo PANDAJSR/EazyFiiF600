@@ -98,6 +98,12 @@ function App() {
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
   const handleSaveEdits = useCallback(() => {
+    if (!result.sourceName || result.sourceName === LOCAL_DRAFT_SOURCE_NAME) {
+      message.warning('请先选择程序文件路径，再执行保存')
+      openDirectoryPicker()
+      return
+    }
+
     if (result.sourceName && result.sourceName !== LOCAL_DRAFT_SOURCE_NAME) {
       saveResultEdits(result.sourceName, result.programs)
     }
