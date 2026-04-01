@@ -17,8 +17,7 @@ const normalizeName = (value: string) => value.trim().replace(/[\\/:*?"<>|]/g, '
 const normalizeXmlTagName = (value: string) =>
   (value || 'Action').replace(/[^\u4e00-\u9fa5A-Za-z0-9_]/g, '_')
 
-const ensureActionGroupName = (groupName: string, index: number) =>
-  normalizeName(groupName || `动作组${index + 1}`) || `动作组${index + 1}`
+const ensureActionGroupName = (_groupName: string, index: number) => `动作组${index + 1}`
 
 const ensureFiiName = (sourceName: string) => {
   const safeName = normalizeName(sourceName || 'project.fii')
@@ -33,9 +32,9 @@ const toIntString = (value: string, fallback: number) => {
   return String(fallback)
 }
 
-const buildProgramNames = (program: ParseResult['programs'][number], index: number) => {
-  const actionGroup = ensureActionGroupName(program.drone.actionGroup, index)
-  const droneNo = toIntString(program.drone.name.replace(/\D+/g, ''), index + 1)
+const buildProgramNames = (_program: ParseResult['programs'][number], index: number) => {
+  const actionGroup = ensureActionGroupName('', index)
+  const droneNo = String(index + 1)
   const flightName = `${actionGroup}无人机${droneNo}`
   const flightId = `${flightName}UAVID${2111 + index}`
   return { actionGroup, flightName, flightId }
