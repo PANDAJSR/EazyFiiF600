@@ -14,6 +14,8 @@ const escapeXml = (value: string) =>
     .replace(/'/g, '&apos;')
 
 const normalizeName = (value: string) => value.trim().replace(/[\\/:*?"<>|]/g, '_')
+const normalizeXmlTagName = (value: string) =>
+  (value || 'Action').replace(/[^\u4e00-\u9fa5A-Za-z0-9_]/g, '_')
 
 const ensureActionGroupName = (groupName: string, index: number) =>
   normalizeName(groupName || `动作组${index + 1}`) || `动作组${index + 1}`
@@ -23,6 +25,22 @@ const ensureFiiName = (sourceName: string) => {
   return safeName.toLowerCase().endsWith('.fii') ? safeName : `${safeName}.fii`
 }
 
+const toIntString = (value: string, fallback: number) => {
+  const parsed = Number.parseInt(value, 10)
+  if (Number.isFinite(parsed)) {
+    return String(parsed)
+  }
+  return String(fallback)
+}
+
+const buildProgramNames = (program: ParseResult['programs'][number], index: number) => {
+  const actionGroup = ensureActionGroupName(program.drone.actionGroup, index)
+  const droneNo = toIntString(program.drone.name.replace(/\D+/g, ''), index + 1)
+  const flightName = `${actionGroup}无人机${droneNo}`
+  const flightId = `${flightName}UAVID${2111 + index}`
+  return { actionGroup, flightName, flightId }
+}
+
 const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index: number): string => {
   const lines: string[] = []
   const emitBlock = (blockIndex: number) => {
@@ -30,10 +48,20 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
     if (!block) {
       return
     }
-    lines.push(`<block type="${escapeXml(block.type)}" id="block_${blockIndex + 1}">`)
+    if (blockIndex === 0) {
+      lines.push(`<block type="${escapeXml(block.type)}" x="100" y="20">`)
+    } else {
+      lines.push(`<block type="${escapeXml(block.type)}">`)
+    }
     Object.entries(block.fields).forEach(([key, value]) => {
       lines.push(`<field name="${escapeXml(key)}">${escapeXml(value)}</field>`)
     })
+    if (block.type === 'block_delay' && !Object.prototype.hasOwnProperty.call(block.fields, 'delay')) {
+      lines.push('<field name="delay">0</field>')
+    }
+    if (block.type === 'block_inittime' && !Object.prototype.hasOwnProperty.call(block.fields, 'color')) {
+      lines.push('<field name="color">#cccccc</field>')
+    }
     if (blockIndex + 1 < blocks.length) {
       lines.push('<next>')
       emitBlock(blockIndex + 1)
@@ -42,8 +70,8 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
     lines.push('</block>')
   }
 
-  lines.push('<?xml version="1.0" encoding="utf-8"?>')
-  lines.push('<xml xmlns="https://developers.google.com/blockly/xml">')
+  lines.push('<xml xmlns="http://www.w3.org/1999/xhtml">')
+  lines.push('  <variables></variables>')
   if (blocks.length > 0) {
     emitBlock(0)
   } else {
@@ -55,20 +83,35 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
 
 const buildFiiXml = (result: ParseResult): string => {
   const lines: string[] = []
+  const meta = result.programs.map((program, index) => buildProgramNames(program, index))
+  const groupNames = Array.from(new Set(meta.map((item) => item.actionGroup)))
+
   lines.push('<?xml version="1.0" encoding="utf-8"?>')
-  lines.push('<Root>')
+  lines.push('<GoertekGraphicXml>')
+  lines.push('  <DeviceType DeviceType="F600" />')
+  groupNames.forEach((groupName) => {
+    lines.push(`  <Actions actionname="${escapeXml(groupName)}" />`)
+  })
+  lines.push('  <AreaL AreaL="400" />')
+  lines.push('  <AreaW AreaW="400" />')
+  lines.push('  <AreaH AreaH="300" />')
+  groupNames.forEach((groupName) => {
+    lines.push(`  <${normalizeXmlTagName(groupName)}Controls time="0" />`)
+  })
+
   result.programs.forEach((program, index) => {
-    const actionGroup = ensureActionGroupName(program.drone.actionGroup, index)
-    lines.push(`  <Actions actionname="${escapeXml(actionGroup)}" />`)
+    const item = meta[index]
+    const x = toIntString(program.drone.startPos.x || '0', 0)
+    const y = toIntString(program.drone.startPos.y || '0', 0)
+    const z = toIntString(program.drone.startPos.z || '0', 0)
+    lines.push(`  <ActionFlight actionfname="${escapeXml(item.flightName)}" />`)
+    lines.push(`  <ActionFlightID actionfid="${escapeXml(item.flightId)}" />`)
+    lines.push(`  <ActionFlightPosX actionfX="${escapeXml(`${item.flightName}pos${x}`)}" />`)
+    lines.push(`  <ActionFlightPosY actionfY="${escapeXml(`${item.flightName}pos${y}`)}" />`)
+    lines.push(`  <ActionFlightPosZ actionfZ="${escapeXml(`${item.flightName}pos${z}`)}" />`)
   })
-  result.programs.forEach((program) => {
-    lines.push(`  <ActionFlight actionfname="${escapeXml(program.drone.name)}" />`)
-    lines.push(`  <ActionFlightID actionfid="${escapeXml(program.drone.id)}" />`)
-    lines.push(`  <ActionFlightPosX actionfX="${escapeXml(program.drone.startPos.x || '0')}" />`)
-    lines.push(`  <ActionFlightPosY actionfY="${escapeXml(program.drone.startPos.y || '0')}" />`)
-    lines.push(`  <ActionFlightPosZ actionfZ="${escapeXml(program.drone.startPos.z || '0')}" />`)
-  })
-  lines.push('</Root>')
+
+  lines.push('</GoertekGraphicXml>')
   return lines.join('\n')
 }
 
@@ -79,7 +122,7 @@ export const serializeProjectFiles = (result: ParseResult): SerializedProjectFil
     content: buildFiiXml(result),
   })
   result.programs.forEach((program, index) => {
-    const actionGroup = ensureActionGroupName(program.drone.actionGroup, index)
+    const { actionGroup } = buildProgramNames(program, index)
     files.push({
       relativePath: `动作组/${actionGroup}/webCodeAll.xml`,
       content: buildBlockXml(program.blocks, index),
