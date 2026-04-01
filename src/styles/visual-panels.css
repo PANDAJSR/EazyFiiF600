@@ -208,7 +208,11 @@
 }
 
 .block-card-selected {
-  box-shadow: 0 0 0 2px rgba(27, 110, 214, 0.26), 0 7px 14px rgba(41, 72, 115, 0.14);
+  position: relative;
+  z-index: 2;
+  border-color: #1b6ed6 !important;
+  box-shadow: 0 0 0 3px rgba(27, 110, 214, 0.35), 0 14px 24px rgba(27, 110, 214, 0.28);
+  transform: translateY(-1px);
 }
 
 .block-drag-follow {
