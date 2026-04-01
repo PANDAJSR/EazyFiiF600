@@ -6,6 +6,8 @@ import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
+import { isDesktopRuntime } from './utils/desktopBridge'
+import { openDomDirectoryPicker } from './utils/domFilePicker'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
@@ -26,10 +28,8 @@ import {
   updateBlockField,
   updateMovePoint,
 } from './utils/programMutations'
-type FileInputWithDirectory = HTMLInputElement & {
-  webkitdirectory?: boolean
-  directory?: boolean
-}
+import { saveDesktopProject } from './utils/desktopProjectIO'
+
 function App() {
   const [droneDialogMode, setDroneDialogMode] = useState<'create' | 'edit'>('create')
   const [droneDialogOpen, setDroneDialogOpen] = useState(false)
@@ -45,6 +45,7 @@ function App() {
   const [insertPickerOpen, setInsertPickerOpen] = useState(false)
   const [insertAfterBlockId, setInsertAfterBlockId] = useState<string>()
   const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string>()
+  const [desktopProjectDirectory, setDesktopProjectDirectory] = useState<string>()
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const selectedProgram = useMemo(
@@ -105,7 +106,22 @@ function App() {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
-  const handleSaveEdits = useCallback(() => {
+  const handleSaveEdits = useCallback(async () => {
+    if (isDesktopRuntime()) {
+      try {
+        const saveResult = await saveDesktopProject(result, desktopProjectDirectory)
+        if (!saveResult) {
+          return
+        }
+        setDesktopProjectDirectory(saveResult.directoryPath)
+        setHasUnsavedChanges(false)
+        message.success(`已写入 ${saveResult.writtenCount} 个文件`)
+      } catch {
+        message.error('保存失败，请检查目录权限')
+      }
+      return
+    }
+
     if (!result.sourceName || result.sourceName === LOCAL_DRAFT_SOURCE_NAME) {
       console.info('[fii] save blocked: source path is not bound', { sourceName: result.sourceName })
       message.warning('当前仅保存到浏览器本地草稿。请先通过“选择文件夹/文件”加载含 .fii 的工程后再保存。')
@@ -118,7 +134,7 @@ function App() {
     saveLocalDraftPrograms(result.programs)
     setHasUnsavedChanges(false)
     message.success('已保存到本地')
-  }, [result.programs, result.sourceName])
+  }, [desktopProjectDirectory, result])
   const handleMovePoint = useCallback((payload: {
     blockId: string
     blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
@@ -266,22 +282,13 @@ function App() {
     setDroneDialogOpen(false)
     message.success('无人机初始坐标已更新')
   }, [droneDialogMode, droneStartPosDraft, editingDroneId, handleCreateDrone])
-  const openDirectoryPicker = () => {
-    const el = directoryPickerRef.current as FileInputWithDirectory | null
-    if (!el) {
-      return
-    }
-    el.setAttribute('webkitdirectory', 'true')
-    el.setAttribute('directory', 'true')
-    el.click()
-  }
   return (
     <ConfigProvider>
       <Layout className="app-root">
         <Layout.Sider width={340} className="app-sider">
           <div className="brand-title">Fii 动作查看器</div>
           <div className="sider-actions">
-            <Button type="primary" onClick={openDirectoryPicker} loading={loading} block>
+            <Button type="primary" onClick={() => openDomDirectoryPicker(directoryPickerRef)} loading={loading} block>
               选择文件夹
             </Button>
             <Button onClick={() => filesPickerRef.current?.click()} disabled={loading} block>
@@ -327,7 +334,7 @@ function App() {
                 </Button>
               )}
               {hasUnsavedChanges && <Typography.Text type="warning">有未保存修改</Typography.Text>}
-              <Button type="primary" onClick={handleSaveEdits} disabled={loading}>
+              <Button type="primary" onClick={() => void handleSaveEdits()} disabled={loading}>
                 保存修改
               </Button>
             </Space>

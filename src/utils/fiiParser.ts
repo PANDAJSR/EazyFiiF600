@@ -1,8 +1,20 @@
 import type { DroneInfo, ParseResult, ParsedBlock } from '../types/fii'
 
 type FileLookup = {
-  byName: Map<string, File>
-  byPath: Map<string, File>
+  byName: Map<string, InputFile>
+  byPath: Map<string, InputFile>
+}
+
+type InputFile = {
+  name: string
+  webkitRelativePath?: string
+  text: () => Promise<string>
+}
+
+export type ParsedTextFile = {
+  name: string
+  relativePath: string
+  text: string
 }
 
 type XmlBlockNode = {
@@ -14,12 +26,12 @@ type XmlBlockNode = {
 
 const normalize = (value: string) => value.replace(/\\/g, '/').toLowerCase()
 
-const buildFileLookup = (files: File[]): FileLookup => {
-  const byName = new Map<string, File>()
-  const byPath = new Map<string, File>()
+const buildFileLookup = (files: InputFile[]): FileLookup => {
+  const byName = new Map<string, InputFile>()
+  const byPath = new Map<string, InputFile>()
 
   files.forEach((file) => {
-    const rel = (file as File & { webkitRelativePath?: string }).webkitRelativePath
+    const rel = file.webkitRelativePath
     byName.set(normalize(file.name), file)
     if (rel) {
       byPath.set(normalize(rel), file)
@@ -137,7 +149,7 @@ const parseBlocksFromXml = (xmlText: string): ParsedBlock[] => {
   return blocks
 }
 
-const resolveActionXml = (actionGroup: string, lookup: FileLookup): File | undefined => {
+const resolveActionXml = (actionGroup: string, lookup: FileLookup): InputFile | undefined => {
   const guesses = [
     `动作组/${actionGroup}/webCodeAll.xml`,
     `${actionGroup}/webCodeAll.xml`,
@@ -160,7 +172,7 @@ const resolveActionXml = (actionGroup: string, lookup: FileLookup): File | undef
   return lookup.byName.get('webcodeall.xml')
 }
 
-export const parseFiiFromFiles = async (files: File[]): Promise<ParseResult> => {
+const parseFiiFromInputFiles = async (files: InputFile[]): Promise<ParseResult> => {
   const lookup = buildFileLookup(files)
   const warnings: string[] = []
 
@@ -195,4 +207,15 @@ export const parseFiiFromFiles = async (files: File[]): Promise<ParseResult> => 
     warnings,
     sourceName: fiiFile.name,
   }
+}
+
+export const parseFiiFromFiles = async (files: File[]): Promise<ParseResult> => parseFiiFromInputFiles(files)
+
+export const parseFiiFromTextFiles = async (files: ParsedTextFile[]): Promise<ParseResult> => {
+  const inputFiles: InputFile[] = files.map((file) => ({
+    name: file.name,
+    webkitRelativePath: file.relativePath,
+    text: async () => file.text,
+  }))
+  return parseFiiFromInputFiles(inputFiles)
 }
