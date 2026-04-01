@@ -312,7 +312,8 @@ function App() {
                   添加首个积木
                 </Button>
               )}
-              <Button type="primary" onClick={handleSaveEdits} disabled={!hasUnsavedChanges}>
+              {hasUnsavedChanges && <Typography.Text type="warning">有未保存修改</Typography.Text>}
+              <Button type="primary" onClick={handleSaveEdits} disabled={loading}>
                 保存修改
               </Button>
             </Space>
