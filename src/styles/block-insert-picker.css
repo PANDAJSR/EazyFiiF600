@@ -1,0 +1,47 @@
+.block-insert-picker .ant-modal-body {
+  display: grid;
+  gap: 12px;
+}
+
+.block-insert-picker-list {
+  max-height: 360px;
+  overflow: auto;
+  border: 1px solid #d7e2f1;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 6px;
+}
+
+.block-insert-picker-item {
+  width: 100%;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: transparent;
+  text-align: left;
+  cursor: pointer;
+  display: grid;
+  gap: 3px;
+}
+
+.block-insert-picker-item.active,
+.block-insert-picker-item:hover {
+  background: #e6f0ff;
+}
+
+.block-insert-picker-item-label {
+  color: #17324d;
+  font-weight: 600;
+}
+
+.block-insert-picker-item-type {
+  color: #5f7896;
+  font-size: 12px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+}
+
+.block-insert-picker-empty {
+  color: #7e8fa3;
+  text-align: center;
+  padding: 24px 8px;
+}

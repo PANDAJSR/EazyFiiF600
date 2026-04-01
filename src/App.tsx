@@ -5,88 +5,15 @@ import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
+import BlockInsertPicker from './components/BlockInsertPicker'
+import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
+import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
+import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
+import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 
 type FileInputWithDirectory = HTMLInputElement & {
   webkitdirectory?: boolean
   directory?: boolean
-}
-
-type SavedEdits = {
-  [sourceName: string]: {
-    [droneId: string]: {
-      [blockId: string]: Record<string, string>
-    }
-  }
-}
-
-const EDIT_STORAGE_KEY = 'fii-block-edits-v1'
-
-const readSavedEdits = (): SavedEdits => {
-  try {
-    const raw = localStorage.getItem(EDIT_STORAGE_KEY)
-    if (!raw) {
-      return {}
-    }
-    const parsed = JSON.parse(raw)
-    if (typeof parsed === 'object' && parsed) {
-      return parsed as SavedEdits
-    }
-    return {}
-  } catch {
-    return {}
-  }
-}
-
-const saveEditsToStorage = (edits: SavedEdits) => {
-  localStorage.setItem(EDIT_STORAGE_KEY, JSON.stringify(edits))
-}
-
-const applySavedEdits = (result: ParseResult): ParseResult => {
-  if (!result.sourceName) {
-    return result
-  }
-
-  const allSaved = readSavedEdits()
-  const sourceSaved = allSaved[result.sourceName]
-  if (!sourceSaved) {
-    return result
-  }
-
-  return {
-    ...result,
-    programs: result.programs.map((program) => {
-      const droneSaved = sourceSaved[program.drone.id]
-      if (!droneSaved) {
-        return program
-      }
-      return {
-        ...program,
-        blocks: program.blocks.map((block) => {
-          const blockSaved = droneSaved[block.id]
-          if (!blockSaved) {
-            return block
-          }
-          return {
-            ...block,
-            fields: {
-              ...block.fields,
-              ...blockSaved,
-            },
-          }
-        }),
-      }
-    }),
-  }
-}
-
-const buildSourceEdits = (programs: ParseResult['programs']) => {
-  return programs.reduce<SavedEdits[string]>((droneAcc, program) => {
-    droneAcc[program.drone.id] = program.blocks.reduce<SavedEdits[string][string]>((blockAcc, block) => {
-      blockAcc[block.id] = block.fields
-      return blockAcc
-    }, {})
-    return droneAcc
-  }, {})
 }
 
 function App() {
@@ -101,6 +28,9 @@ function App() {
   const [highlightPulse, setHighlightPulse] = useState(0)
   const [loading, setLoading] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
+  const [insertPickerOpen, setInsertPickerOpen] = useState(false)
+  const [insertAfterBlockId, setInsertAfterBlockId] = useState<string>()
+  const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string>()
 
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
@@ -109,6 +39,20 @@ function App() {
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
+
+  useSelectedBlockEnterHotkey({
+    enabled: !!selectedDroneId && !insertPickerOpen,
+    selectedBlockId,
+    onOpen: (blockId) => {
+      setInsertAfterBlockId(blockId)
+      setInsertPickerOpen(true)
+    },
+  })
+
+  useFocusBlockFirstInput({
+    blockId: pendingFocusBlockId,
+    onFocused: () => setPendingFocusBlockId(undefined),
+  })
 
   const handleLocateBlock = useCallback((blockId: string) => {
     setHighlightedBlockId(blockId)
@@ -177,10 +121,7 @@ function App() {
       message.warning('请先读取文件')
       return
     }
-
-    const allSaved = readSavedEdits()
-    allSaved[result.sourceName] = buildSourceEdits(result.programs)
-    saveEditsToStorage(allSaved)
+    saveResultEdits(result.sourceName, result.programs)
     setHasUnsavedChanges(false)
     message.success('修改已保存')
   }, [result.programs, result.sourceName])
@@ -278,6 +219,41 @@ function App() {
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
 
+  const handleInsertBlock = useCallback((definition: (typeof INSERTABLE_BLOCKS)[number]) => {
+    const targetBlockId = insertAfterBlockId ?? selectedBlockId
+    if (!targetBlockId || !selectedDroneId) {
+      return
+    }
+
+    const nextBlock = createInsertedBlock(definition)
+    setResult((prev) => ({
+      ...prev,
+      programs: prev.programs.map((program) => {
+        if (program.drone.id !== selectedDroneId) {
+          return program
+        }
+        const insertIndex = program.blocks.findIndex((block) => block.id === targetBlockId)
+        if (insertIndex < 0) {
+          return program
+        }
+        const nextBlocks = [...program.blocks]
+        nextBlocks.splice(insertIndex + 1, 0, nextBlock)
+        return {
+          ...program,
+          blocks: nextBlocks,
+        }
+      }),
+    }))
+    setSelectedBlockId(nextBlock.id)
+    setHighlightedBlockId(nextBlock.id)
+    setHighlightPulse((prev) => prev + 1)
+    setPendingFocusBlockId(nextBlock.id)
+    setInsertPickerOpen(false)
+    setInsertAfterBlockId(undefined)
+    setHasUnsavedChanges(true)
+    message.success(`已插入积木：${definition.label}`)
+  }, [insertAfterBlockId, selectedBlockId, selectedDroneId])
+
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
     if (!el) {
@@ -372,6 +348,15 @@ function App() {
         type="file"
         multiple
         onChange={(event) => void handleParseFiles(event.target.files)}
+      />
+      <BlockInsertPicker
+        open={insertPickerOpen}
+        items={INSERTABLE_BLOCKS}
+        onCancel={() => {
+          setInsertPickerOpen(false)
+          setInsertAfterBlockId(undefined)
+        }}
+        onSubmit={handleInsertBlock}
       />
     </ConfigProvider>
   )

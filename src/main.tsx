@@ -4,6 +4,7 @@ import 'antd/dist/reset.css'
 import './index.css'
 import './styles/visual-panels.css'
 import './styles/trajectory-3d.css'
+import './styles/block-insert-picker.css'
 import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
