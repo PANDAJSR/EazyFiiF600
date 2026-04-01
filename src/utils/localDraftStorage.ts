@@ -3,6 +3,7 @@ import type { DroneProgram, ParseResult, ParsedBlock } from '../types/fii'
 const LOCAL_DRAFT_STORAGE_KEY = 'fii-local-draft-v1'
 
 export const LOCAL_DRAFT_SOURCE_NAME = '本地草稿'
+type DroneStartPosInput = { x: string; y: string; z: string }
 
 const createDroneId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -59,7 +60,7 @@ const createInitialProgramBlocks = (droneId: string): ParsedBlock[] => [
   },
 ]
 
-export const createEmptyDroneProgram = (index: number): DroneProgram => {
+export const createEmptyDroneProgram = (index: number, startPos?: DroneStartPosInput): DroneProgram => {
   const droneId = createDroneId()
   return {
     drone: {
@@ -67,9 +68,9 @@ export const createEmptyDroneProgram = (index: number): DroneProgram => {
       name: `无人机${index}`,
       actionGroup: `本地动作组${index}`,
       startPos: {
-        x: '0',
-        y: '0',
-        z: '0',
+        x: startPos?.x ?? '0',
+        y: startPos?.y ?? '0',
+        z: startPos?.z ?? '0',
       },
     },
     blocks: createInitialProgramBlocks(droneId),

@@ -6,9 +6,10 @@ type Props = {
   selectedId?: string
   onSelect: (id: string) => void
   onCreateDrone?: () => void
+  onEditDrone?: (id: string) => void
 }
 
-function DroneSidebar({ programs, selectedId, onSelect, onCreateDrone }: Props) {
+function DroneSidebar({ programs, selectedId, onSelect, onCreateDrone, onEditDrone }: Props) {
   return (
     <div className="drone-sidebar">
       <div className="sidebar-title-wrap">
@@ -25,6 +26,10 @@ function DroneSidebar({ programs, selectedId, onSelect, onCreateDrone }: Props) 
             key={drone.id}
             className={`drone-item ${active ? 'active' : ''}`}
             onClick={() => onSelect(drone.id)}
+            onContextMenu={(event) => {
+              event.preventDefault()
+              onEditDrone?.(drone.id)
+            }}
           >
             <div className="drone-item-head">
               <span>{drone.name || `无人机${index + 1}`}</span>

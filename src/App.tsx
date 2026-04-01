@@ -3,6 +3,7 @@ import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typograph
 import DroneSidebar from './components/DroneSidebar'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
+import DroneStartPosModal from './components/DroneStartPosModal'
 import type { ParseResult } from './types/fii'
 import { parseFiiFromFiles } from './utils/fiiParser'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
@@ -31,6 +32,10 @@ type FileInputWithDirectory = HTMLInputElement & {
 }
 
 function App() {
+  const [droneDialogMode, setDroneDialogMode] = useState<'create' | 'edit'>('create')
+  const [droneDialogOpen, setDroneDialogOpen] = useState(false)
+  const [editingDroneId, setEditingDroneId] = useState<string>()
+  const [droneStartPosDraft, setDroneStartPosDraft] = useState({ x: '0', y: '0', z: '0' })
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
@@ -198,7 +203,7 @@ function App() {
   }, [selectedDroneId])
 
   const handleCreateDrone = useCallback(() => {
-    const nextDrone = createEmptyDroneProgram(result.programs.length + 1)
+    const nextDrone = createEmptyDroneProgram(result.programs.length + 1, droneStartPosDraft)
     setResult((prev) => ({
       ...prev,
       programs: [...prev.programs, nextDrone],
@@ -210,7 +215,61 @@ function App() {
     setHighlightPulse(0)
     setHasUnsavedChanges(true)
     message.success(`已新建：${nextDrone.drone.name}`)
-  }, [result.programs.length])
+  }, [droneStartPosDraft, result.programs.length])
+
+  const openCreateDroneDialog = useCallback(() => {
+    setDroneDialogMode('create')
+    setEditingDroneId(undefined)
+    setDroneStartPosDraft({ x: '0', y: '0', z: '0' })
+    setDroneDialogOpen(true)
+  }, [])
+
+  const openEditDroneDialog = useCallback((droneId: string) => {
+    const target = result.programs.find((program) => program.drone.id === droneId)
+    if (!target) {
+      return
+    }
+    setDroneDialogMode('edit')
+    setEditingDroneId(droneId)
+    setDroneStartPosDraft({
+      x: target.drone.startPos.x || '0',
+      y: target.drone.startPos.y || '0',
+      z: target.drone.startPos.z || '0',
+    })
+    setDroneDialogOpen(true)
+  }, [result.programs])
+
+  const handleConfirmDroneDialog = useCallback(() => {
+    if (droneDialogMode === 'create') {
+      handleCreateDrone()
+      setDroneDialogOpen(false)
+      return
+    }
+    if (!editingDroneId) {
+      setDroneDialogOpen(false)
+      return
+    }
+    setResult((prev) => ({
+      ...prev,
+      programs: prev.programs.map((program) => {
+        if (program.drone.id !== editingDroneId) {
+          return program
+        }
+        return {
+          ...program,
+          drone: {
+            ...program.drone,
+            startPos: {
+              ...droneStartPosDraft,
+            },
+          },
+        }
+      }),
+    }))
+    setHasUnsavedChanges(true)
+    setDroneDialogOpen(false)
+    message.success('无人机初始坐标已更新')
+  }, [droneDialogMode, droneStartPosDraft, editingDroneId, handleCreateDrone])
 
   const openDirectoryPicker = () => {
     const el = directoryPickerRef.current as FileInputWithDirectory | null
@@ -243,7 +302,8 @@ function App() {
           <DroneSidebar
             programs={result.programs}
             selectedId={selectedDroneId}
-            onCreateDrone={handleCreateDrone}
+            onCreateDrone={openCreateDroneDialog}
+            onEditDrone={openEditDroneDialog}
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
@@ -319,6 +379,14 @@ function App() {
         type="file"
         multiple
         onChange={(event) => void handleParseFiles(event.target.files)}
+      />
+      <DroneStartPosModal
+        mode={droneDialogMode}
+        open={droneDialogOpen}
+        draft={droneStartPosDraft}
+        onChange={setDroneStartPosDraft}
+        onCancel={() => setDroneDialogOpen(false)}
+        onConfirm={handleConfirmDroneDialog}
       />
     </ConfigProvider>
   )
