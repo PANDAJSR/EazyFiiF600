@@ -8,6 +8,13 @@ type Props = {
 }
 
 function RodConfigPanel({ config, onChange }: Props) {
+  const flatFieldOrder = ROD_SUBJECT_SPECS.flatMap((subject) =>
+    Array.from({ length: subject.count }).flatMap((_, pointIndex) => [
+      { subjectId: subject.id, pointIndex, axis: 'x' as const },
+      { subjectId: subject.id, pointIndex, axis: 'y' as const },
+    ]),
+  )
+
   const updatePoint = (subjectId: RodSubjectId, pointIndex: number, axis: 'x' | 'y', value: number | null) => {
     onChange({
       ...config,
@@ -21,6 +28,47 @@ function RodConfigPanel({ config, onChange }: Props) {
         }
       }),
     })
+  }
+
+  const spreadPasteValues = (
+    event: React.ClipboardEvent<HTMLInputElement>,
+    subjectId: RodSubjectId,
+    pointIndex: number,
+    axis: 'x' | 'y',
+  ) => {
+    const pastedText = event.clipboardData.getData('text')
+    const numbers = pastedText
+      .match(/-?\d+(?:\.\d+)?/g)
+      ?.map((value) => Number(value))
+      .filter((value) => Number.isFinite(value))
+
+    if (!numbers || numbers.length === 0) {
+      return
+    }
+
+    const startIndex = flatFieldOrder.findIndex(
+      (field) => field.subjectId === subjectId && field.pointIndex === pointIndex && field.axis === axis,
+    )
+    if (startIndex < 0) {
+      return
+    }
+
+    event.preventDefault()
+
+    const nextConfig: RodConfig = { ...config }
+    for (const spec of ROD_SUBJECT_SPECS) {
+      nextConfig[spec.id] = config[spec.id].map((point) => ({ ...point }))
+    }
+
+    numbers.forEach((value, offset) => {
+      const targetField = flatFieldOrder[startIndex + offset]
+      if (!targetField) {
+        return
+      }
+      nextConfig[targetField.subjectId][targetField.pointIndex][targetField.axis] = value
+    })
+
+    onChange(nextConfig)
   }
 
   return (
@@ -42,12 +90,14 @@ function RodConfigPanel({ config, onChange }: Props) {
                     value={point.x}
                     placeholder="X"
                     onChange={(value) => updatePoint(subject.id, pointIndex, 'x', value)}
+                    onPaste={(event) => spreadPasteValues(event, subject.id, pointIndex, 'x')}
                   />
                   <InputNumber
                     className="rod-config-input"
                     value={point.y}
                     placeholder="Y"
                     onChange={(value) => updatePoint(subject.id, pointIndex, 'y', value)}
+                    onPaste={(event) => spreadPasteValues(event, subject.id, pointIndex, 'y')}
                   />
                 </div>
               ))}
