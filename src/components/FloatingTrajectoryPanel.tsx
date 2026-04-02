@@ -377,7 +377,7 @@ function FloatingTrajectoryPanel({
           </Typography.Title>
         </div>
         {viewMode === '2d' && !!selectedBlockId && (
-          <Tooltip title={pathDrawingMode ? '退出画路径模式' : '连续点击平面点位，自动生成“平移到（自动延时）”积木'}>
+          <Tooltip title={pathDrawingMode ? '退出画路径模式' : '连续点击平面点位，自动生成“智能平移”积木'}>
             <Button
               className="floating-trajectory-draw-btn"
               type={pathDrawingMode ? 'primary' : 'default'}

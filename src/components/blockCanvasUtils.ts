@@ -106,7 +106,7 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
       }
     case AUTO_DELAY_BLOCK_TYPE:
       return {
-        title: '平移到（自动延时）',
+        title: '智能平移',
         values: [
           token('X'),
           token(f.X ?? '-', true, false, 'X'),

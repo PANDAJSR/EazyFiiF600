@@ -47,7 +47,7 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
   },
   {
     type: AUTO_DELAY_BLOCK_TYPE,
-    label: '平移到（自动延时）',
+    label: '智能平移',
     keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
     fields: { X: '0', Y: '0', Z: '100', time: '800' },
   },
