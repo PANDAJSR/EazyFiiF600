@@ -234,7 +234,6 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
             }
             onDrawPathPoint(preview.x, preview.y)
             setDrawPreview(undefined)
-            setActivePointKey(`${preview.x},${preview.y}`)
           }}
         >
           <rect
@@ -357,7 +356,7 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
         </svg>
         <div ref={panelRef}>
           <TrajectoryPlaneOverlay
-            activePoint={activePoint}
+            activePoint={pathDrawingMode ? undefined : activePoint}
             activePointAnchor={activePointAnchor}
             activePointKey={activePointKey}
             panelDirection={panelDirection}
