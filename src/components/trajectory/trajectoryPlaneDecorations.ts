@@ -5,6 +5,26 @@ type XYPoint = {
   y: number
 }
 
+const sortPointsAroundCenter = (points: XYPoint[]): XYPoint[] => {
+  const center = points.reduce(
+    (acc, point) => ({ x: acc.x + point.x / points.length, y: acc.y + point.y / points.length }),
+    { x: 0, y: 0 },
+  )
+
+  return [...points].sort((a, b) => {
+    const angleA = Math.atan2(a.y - center.y, a.x - center.x)
+    const angleB = Math.atan2(b.y - center.y, b.x - center.x)
+
+    if (angleA === angleB) {
+      const distanceA = (a.x - center.x) ** 2 + (a.y - center.y) ** 2
+      const distanceB = (b.x - center.x) ** 2 + (b.y - center.y) ** 2
+      return distanceA - distanceB
+    }
+
+    return angleA - angleB
+  })
+}
+
 export const buildRodMarkers = (rodConfig?: RodConfig): Array<XYPoint & { marker: string }> => {
   if (!rodConfig) {
     return []
@@ -26,5 +46,5 @@ export const buildTakeoffZone = (rodConfig?: RodConfig): XYPoint[] => {
     .slice(0, 4)
     .filter((point): point is XYPoint => Number.isFinite(point.x) && Number.isFinite(point.y))
 
-  return points.length === 4 ? points : []
+  return points.length === 4 ? sortPointsAroundCenter(points) : []
 }
