@@ -13,6 +13,10 @@ type XYZ = {
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
+  selectedBlockId?: string
+  pathDrawingMode?: boolean
+  onPathDrawingToggle?: (enabled: boolean) => void
+  onDrawPathPoint?: (x: number, y: number) => void
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: {
     blockId: string
@@ -126,7 +130,16 @@ const getDockedRightRect = (currentWidth: number): Rect => {
   }
 }
 
-function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock, onMovePoint }: Props) {
+function FloatingTrajectoryPanel({
+  startPos,
+  blocks,
+  selectedBlockId,
+  pathDrawingMode = false,
+  onPathDrawingToggle,
+  onDrawPathPoint,
+  onLocateBlock,
+  onMovePoint,
+}: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('2d')
@@ -295,6 +308,18 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock, onMovePoint 
             {viewMode === '2d' ? '飞机平面轨迹（XY）' : '飞机三维轨迹（XYZ）'}
           </Typography.Title>
         </div>
+        {viewMode === '2d' && !!selectedBlockId && (
+          <Tooltip title={pathDrawingMode ? '退出画路径模式' : '连续点击平面点位，自动生成“平移到（异步）”积木'}>
+            <Button
+              className="floating-trajectory-draw-btn"
+              type={pathDrawingMode ? 'primary' : 'default'}
+              size="small"
+              onClick={() => onPathDrawingToggle?.(!pathDrawingMode)}
+            >
+              {pathDrawingMode ? '退出画路径' : '画路径'}
+            </Button>
+          </Tooltip>
+        )}
         <Tooltip title={viewMode === '2d' ? '切换到 3D 轨迹' : '切换到 2D 轨迹'}>
           <Button
             className="floating-trajectory-mode-btn"
@@ -325,6 +350,8 @@ function FloatingTrajectoryPanel({ startPos, blocks, onLocateBlock, onMovePoint 
         <TrajectoryPlane
           startPos={startPos}
           blocks={blocks}
+          pathDrawingMode={pathDrawingMode && viewMode === '2d'}
+          onDrawPathPoint={onDrawPathPoint}
           onLocateBlock={onLocateBlock}
           onMovePoint={onMovePoint}
           viewMode={viewMode}

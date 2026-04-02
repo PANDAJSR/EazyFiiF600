@@ -12,29 +12,13 @@ import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsert
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
+import useDroneDialog from './components/useDroneDialog'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
-import {
-  createEmptyDroneProgram,
-  LOCAL_DRAFT_SOURCE_NAME,
-  readLocalDraftResult,
-  saveLocalDraftPrograms,
-} from './utils/localDraftStorage'
-import {
-  duplicateBlockAfterTarget,
-  insertBlockAfterTarget,
-  insertFirstBlockWhenEmpty,
-  removeBlockById,
-  replaceSelectedProgramBlocks,
-  updateBlockField,
-  updateMovePoint,
-} from './utils/programMutations'
+import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
+import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { saveDesktopProject } from './utils/desktopProjectIO'
 
 function App() {
-  const [droneDialogMode, setDroneDialogMode] = useState<'create' | 'edit'>('create')
-  const [droneDialogOpen, setDroneDialogOpen] = useState(false)
-  const [editingDroneId, setEditingDroneId] = useState<string>()
-  const [droneStartPosDraft, setDroneStartPosDraft] = useState({ x: '0', y: '0' })
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
@@ -46,12 +30,33 @@ function App() {
   const [insertAfterBlockId, setInsertAfterBlockId] = useState<string>()
   const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string>()
   const [desktopProjectDirectory, setDesktopProjectDirectory] = useState<string>()
+  const [pathDrawingMode, setPathDrawingMode] = useState(false)
+  const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
+  const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
   const selectedProgram = useMemo(
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
+  const {
+    droneDialogMode,
+    droneDialogOpen,
+    droneStartPosDraft,
+    setDroneStartPosDraft,
+    setDroneDialogOpen,
+    openCreateDroneDialog,
+    openEditDroneDialog,
+    handleConfirmDroneDialog,
+  } = useDroneDialog({
+    result,
+    setResult,
+    setSelectedDroneId,
+    setSelectedBlockId,
+    setHighlightedBlockId,
+    setHighlightPulse,
+    setHasUnsavedChanges,
+  })
   useSelectedBlockEnterHotkey({
     enabled: !!selectedDroneId && !insertPickerOpen,
     selectedBlockId,
@@ -149,6 +154,39 @@ function App() {
     setResult((prev) => updateMovePoint(prev, selectedDroneId, payload))
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
+  const handlePathDrawingToggle = useCallback((enabled: boolean) => {
+    if (!enabled) {
+      setPathDrawingMode(false)
+      setPathInsertAfterBlockId(undefined)
+      return
+    }
+    if (!selectedBlockId) {
+      message.warning('请先选中一个积木，再进入画路径模式')
+      return
+    }
+    setPathDrawingMode(true)
+    setPathInsertAfterBlockId(selectedBlockId)
+  }, [selectedBlockId])
+  const handlePathPointDraw = useCallback((x: number, y: number) => {
+    if (!pathDrawingMode || !selectedDroneId) {
+      return
+    }
+    const targetBlockId = pathInsertAfterBlockId ?? selectedBlockId
+    if (!targetBlockId) {
+      message.warning('请先选中一个积木，再继续画路径')
+      setPathDrawingMode(false)
+      return
+    }
+    const nextBlock = createInsertedBlock(moveToBlockDefinition)
+    nextBlock.fields.X = String(x)
+    nextBlock.fields.Y = String(y)
+    setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
+    setSelectedBlockId(nextBlock.id)
+    setHighlightedBlockId(nextBlock.id)
+    setHighlightPulse((prev) => prev + 1)
+    setPathInsertAfterBlockId(nextBlock.id)
+    setHasUnsavedChanges(true)
+  }, [moveToBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId])
   const handleDeleteBlock = useCallback((blockId: string) => {
     Modal.confirm({
       title: '删除积木',
@@ -159,6 +197,7 @@ function App() {
       onOk: () => {
         setResult((prev) => removeBlockById(prev, selectedDroneId, blockId))
         setHasUnsavedChanges(true)
+        setPathInsertAfterBlockId((prev) => (prev === blockId ? undefined : prev))
         setSelectedBlockId((prev) => (prev === blockId ? undefined : prev))
         setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
         message.success('积木已删除')
@@ -180,6 +219,15 @@ function App() {
     }
     setSelectedDroneId(result.programs[0]?.drone.id)
   }, [result.programs, selectedDroneId])
+  useEffect(() => {
+    if (!pathDrawingMode) {
+      return
+    }
+    if (!selectedBlockId) {
+      setPathDrawingMode(false)
+      setPathInsertAfterBlockId(undefined)
+    }
+  }, [pathDrawingMode, selectedBlockId])
   useBlockKeyboardNavigation({
     selectedProgram,
     selectedBlockId,
@@ -219,72 +267,6 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${INSERTABLE_BLOCKS[0].label}`)
   }, [selectedDroneId])
-  const handleCreateDrone = useCallback(() => {
-    const nextDrone = createEmptyDroneProgram(result.programs.length + 1, droneStartPosDraft)
-    setResult((prev) => ({
-      ...prev,
-      programs: [...prev.programs, nextDrone],
-      sourceName: prev.sourceName || LOCAL_DRAFT_SOURCE_NAME,
-    }))
-    setSelectedDroneId(nextDrone.drone.id)
-    setSelectedBlockId(undefined)
-    setHighlightedBlockId(undefined)
-    setHighlightPulse(0)
-    setHasUnsavedChanges(true)
-    message.success(`已新建：${nextDrone.drone.name}`)
-  }, [droneStartPosDraft, result.programs.length])
-  const openCreateDroneDialog = useCallback(() => {
-    setDroneDialogMode('create')
-    setEditingDroneId(undefined)
-    setDroneStartPosDraft({ x: '0', y: '0' })
-    setDroneDialogOpen(true)
-  }, [])
-  const openEditDroneDialog = useCallback((droneId: string) => {
-    const target = result.programs.find((program) => program.drone.id === droneId)
-    if (!target) {
-      return
-    }
-    setDroneDialogMode('edit')
-    setEditingDroneId(droneId)
-    setDroneStartPosDraft({
-      x: target.drone.startPos.x || '0',
-      y: target.drone.startPos.y || '0',
-    })
-    setDroneDialogOpen(true)
-  }, [result.programs])
-  const handleConfirmDroneDialog = useCallback(() => {
-    if (droneDialogMode === 'create') {
-      handleCreateDrone()
-      setDroneDialogOpen(false)
-      return
-    }
-    if (!editingDroneId) {
-      setDroneDialogOpen(false)
-      return
-    }
-    setResult((prev) => ({
-      ...prev,
-      programs: prev.programs.map((program) => {
-        if (program.drone.id !== editingDroneId) {
-          return program
-        }
-        return {
-          ...program,
-          drone: {
-            ...program.drone,
-            startPos: {
-              x: droneStartPosDraft.x,
-              y: droneStartPosDraft.y,
-              z: program.drone.startPos.z || '0',
-            },
-          },
-        }
-      }),
-    }))
-    setHasUnsavedChanges(true)
-    setDroneDialogOpen(false)
-    message.success('无人机初始坐标已更新')
-  }, [droneDialogMode, droneStartPosDraft, editingDroneId, handleCreateDrone])
   return (
     <ConfigProvider>
       <Layout className="app-root">
@@ -357,10 +339,7 @@ function App() {
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}
                 insertPickerItems={INSERTABLE_BLOCKS}
-                onInsertPickerCancel={() => {
-                  setInsertPickerOpen(false)
-                  setInsertAfterBlockId(undefined)
-                }}
+                onInsertPickerCancel={() => { setInsertPickerOpen(false); setInsertAfterBlockId(undefined) }}
                 onInsertPickerSubmit={handleInsertBlock}
               />
             </section>
@@ -368,6 +347,10 @@ function App() {
           <FloatingTrajectoryPanel
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
+            selectedBlockId={selectedBlockId}
+            pathDrawingMode={pathDrawingMode}
+            onPathDrawingToggle={handlePathDrawingToggle}
+            onDrawPathPoint={handlePathPointDraw}
             onLocateBlock={handleLocateBlock}
             onMovePoint={handleMovePoint}
           />

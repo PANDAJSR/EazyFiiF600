@@ -4,18 +4,13 @@ import type { ParsedBlock } from '../types/fii'
 import TrajectoryScene3D from './TrajectoryScene3D'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
-import {
-  clamp,
-  clientToSvg,
-  EDITABLE_BLOCK_TYPES,
-  snapToStep,
-  SNAP_STEP,
-  summarizePoints,
-} from './trajectory/trajectoryPlaneUtils'
+import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
 
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
+  pathDrawingMode?: boolean
+  onDrawPathPoint?: (x: number, y: number) => void
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
@@ -33,7 +28,7 @@ type MovePointPayload = {
 const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
 
-function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
+function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPathPoint, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
   const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
@@ -57,9 +52,7 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
   const dragRef = useRef<MovePointPayload | null>(null)
   const dragBoundsRef = useRef<TrajectoryBounds | null>(null)
   const displayBounds = isDraggingPoint && frozenBounds ? frozenBounds : bounds
-  const activePoint = activePointKey
-    ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey)
-    : undefined
+  const activePoint = activePointKey ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey) : undefined
 
   useEffect(() => {
     if (!activePointKey || viewMode !== '2d') {
@@ -214,9 +207,29 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
       <div ref={canvasWrapRef} className="trajectory-canvas-wrap">
         <svg
           ref={svgRef}
-          className="trajectory-svg"
+          className={`trajectory-svg${pathDrawingMode ? ' trajectory-svg-drawing' : ''}`}
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           role="img"
+          onClick={(event) => {
+            if (!pathDrawingMode || !onDrawPathPoint) {
+              return
+            }
+            const svg = svgRef.current
+            if (!svg) {
+              return
+            }
+            const svgPoint = clientToSvg(svg, event.clientX, event.clientY)
+            if (!svgPoint) {
+              return
+            }
+            if (svgPoint.x < plotLeft || svgPoint.x > plotLeft + plotSize || svgPoint.y < plotTop || svgPoint.y > plotTop + plotSize) {
+              return
+            }
+            const x = snapToStep(displayBounds.minX + ((svgPoint.x - plotLeft) / plotSize) * displayBounds.span, SNAP_STEP)
+            const y = snapToStep(displayBounds.minY + (1 - (svgPoint.y - plotTop) / plotSize) * displayBounds.span, SNAP_STEP)
+            onDrawPathPoint(x, y)
+            setActivePointKey(`${x},${y}`)
+          }}
         >
           <rect
             x={plotLeft}
@@ -272,9 +285,16 @@ function TrajectoryPlane({ startPos, blocks, onLocateBlock, onMovePoint, viewMod
               <g
                 key={`point-${point.x}-${point.y}`}
                 className="trajectory-point-group"
-                onClick={() => setActivePointKey(key)}
+                onClick={(event) => {
+                  if (pathDrawingMode) {
+                    event.stopPropagation()
+                    onDrawPathPoint?.(point.x, point.y)
+                    return
+                  }
+                  setActivePointKey(key)
+                }}
                 onPointerDown={(event) => {
-                  if (!canDrag || !onMovePoint) {
+                  if (pathDrawingMode || !canDrag || !onMovePoint) {
                     return
                   }
                   event.preventDefault()

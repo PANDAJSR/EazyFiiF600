@@ -29,6 +29,10 @@
   height: auto;
 }
 
+.trajectory-svg-drawing {
+  cursor: crosshair;
+}
+
 .trajectory-canvas-wrap {
   position: relative;
 }
@@ -471,6 +475,10 @@
 }
 
 .floating-trajectory-toggle-btn {
+  flex: none;
+}
+
+.floating-trajectory-draw-btn {
   flex: none;
 }
 
