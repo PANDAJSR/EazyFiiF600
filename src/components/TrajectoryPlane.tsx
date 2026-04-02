@@ -6,7 +6,8 @@ import TrajectoryScene3D from './TrajectoryScene3D'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
-
+import TrajectoryPlaneOverlay from './trajectory/TrajectoryPlaneOverlay'
+import type { PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
@@ -16,7 +17,6 @@ type Props = {
   onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
 }
-
 type MovePointPayload = {
   blockId: string
   blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
@@ -25,10 +25,8 @@ type MovePointPayload = {
   baseX?: number
   baseY?: number
 }
-
 const VIEWBOX_WIDTH = 680
 const VIEWBOX_HEIGHT = 620
-
 function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPathPoint, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
   const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
@@ -39,14 +37,14 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
   const plotSize = Math.min(innerWidth, innerHeight)
   const plotLeft = margin.left + (innerWidth - plotSize) / 2
   const plotTop = margin.top + (innerHeight - plotSize) / 2
-
   const toSvgX = (x: number) => plotLeft + ((x - displayBounds.minX) / displayBounds.span) * plotSize
   const toSvgY = (y: number) => plotTop + (1 - (y - displayBounds.minY) / displayBounds.span) * plotSize
   const [activePointKey, setActivePointKey] = useState<string>()
   const [isDraggingPoint, setIsDraggingPoint] = useState(false)
   const [frozenBounds, setFrozenBounds] = useState<TrajectoryBounds | null>(null)
   const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
-  const [dragPreview, setDragPreview] = useState<{ clientX: number; clientY: number; x: number; y: number }>()
+  const [dragPreview, setDragPreview] = useState<PreviewPoint>()
+  const [drawPreview, setDrawPreview] = useState<PreviewPoint>()
   const panelRef = useRef<HTMLDivElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -54,58 +52,47 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
   const dragBoundsRef = useRef<TrajectoryBounds | null>(null)
   const displayBounds = isDraggingPoint && frozenBounds ? frozenBounds : bounds
   const activePoint = activePointKey ? summarizedPoints.find((point) => `${point.x},${point.y}` === activePointKey) : undefined
-
   useEffect(() => {
     if (!activePointKey || viewMode !== '2d') {
       return
     }
-
     const onPointerDown = (event: PointerEvent) => {
       const target = event.target as HTMLElement | null
       if (!target) {
         return
       }
-
       if (panelRef.current?.contains(target)) {
         return
       }
-
       if (target.closest('.trajectory-point-group')) {
         return
       }
-
       setActivePointKey(undefined)
     }
-
     document.addEventListener('pointerdown', onPointerDown)
     return () => document.removeEventListener('pointerdown', onPointerDown)
   }, [activePointKey, viewMode])
-
   useEffect(() => {
     if (viewMode !== '2d') {
       dragRef.current = null
       dragBoundsRef.current = null
       return
     }
-
     const onPointerMove = (event: PointerEvent) => {
       const dragging = dragRef.current
       const svg = svgRef.current
       if (!dragging || !svg) {
         return
       }
-
       const svgPoint = clientToSvg(svg, event.clientX, event.clientY)
       if (!svgPoint) {
         return
       }
-
       const clampedX = Math.min(Math.max(svgPoint.x, plotLeft), plotLeft + plotSize)
       const clampedY = Math.min(Math.max(svgPoint.y, plotTop), plotTop + plotSize)
       const dragBounds = dragBoundsRef.current ?? bounds
       const x = snapToStep(dragBounds.minX + ((clampedX - plotLeft) / plotSize) * dragBounds.span, SNAP_STEP)
       const y = snapToStep(dragBounds.minY + (1 - (clampedY - plotTop) / plotSize) * dragBounds.span, SNAP_STEP)
-
       onMovePoint?.({
         ...dragging,
         x,
@@ -114,7 +101,6 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
       setActivePointKey(`${x},${y}`)
       setDragPreview({ clientX: event.clientX, clientY: event.clientY, x, y })
     }
-
     const onPointerUp = () => {
       if (!dragRef.current) {
         return
@@ -126,7 +112,6 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
       setDragPreview(undefined)
       setActivePointKey(undefined)
     }
-
     window.addEventListener('pointermove', onPointerMove)
     window.addEventListener('pointerup', onPointerUp)
     return () => {
@@ -134,39 +119,31 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
       window.removeEventListener('pointerup', onPointerUp)
     }
   }, [bounds, onMovePoint, plotLeft, plotSize, plotTop, viewMode])
-
   useEffect(() => {
     if (viewMode !== '2d' || isDraggingPoint || !activePoint) {
       return
     }
-
     const svg = svgRef.current
     const wrap = canvasWrapRef.current
     if (!svg || !wrap) {
       return
     }
-
     const updateAnchor = () => {
       const svgPointX = plotLeft + ((activePoint.x - displayBounds.minX) / displayBounds.span) * plotSize
       const svgPointY = plotTop + (1 - (activePoint.y - displayBounds.minY) / displayBounds.span) * plotSize
-
       const ctm = svg.getScreenCTM()
       if (!ctm) {
         return
       }
-
       const point = svg.createSVGPoint()
       point.x = svgPointX
       point.y = svgPointY
       const screenPoint = point.matrixTransform(ctm)
       const wrapRect = wrap.getBoundingClientRect()
-
       const xPercent = clamp(((screenPoint.x - wrapRect.left) / wrapRect.width) * 100, 18, 82)
       const yPercent = ((screenPoint.y - wrapRect.top) / wrapRect.height) * 100
-
       setActivePointAnchor({ xPercent, yPercent })
     }
-
     const rafId = window.requestAnimationFrame(updateAnchor)
     window.addEventListener('resize', updateAnchor)
     window.addEventListener('scroll', updateAnchor, true)
@@ -176,16 +153,13 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
       window.removeEventListener('scroll', updateAnchor, true)
     }
   }, [activePoint, displayBounds.maxX, displayBounds.maxY, displayBounds.minX, displayBounds.minY, displayBounds.span, isDraggingPoint, plotLeft, plotSize, plotTop, viewMode])
-
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
-
   const meta =
     viewMode === '3d'
       ? `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm，Z: ${displayBounds.minZ} ~ ${displayBounds.maxZ} cm`
       : `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm`
-
   if (viewMode === '3d') {
     return (
       <div className="trajectory-card">
@@ -194,14 +168,36 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
       </div>
     )
   }
-
   const xTicks = buildTicks(displayBounds.minX, displayBounds.maxX)
   const yTicks = buildTicks(displayBounds.minY, displayBounds.maxY)
-
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const panelDirection =
     activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
-
+  const resolveDrawPreviewPoint = (clientX: number, clientY: number) => {
+    const svg = svgRef.current
+    if (!svg) {
+      return null
+    }
+    const svgPoint = clientToSvg(svg, clientX, clientY)
+    if (!svgPoint) {
+      return null
+    }
+    if (svgPoint.x < plotLeft || svgPoint.x > plotLeft + plotSize || svgPoint.y < plotTop || svgPoint.y > plotTop + plotSize) {
+      return null
+    }
+    const x = snapToStep(displayBounds.minX + ((svgPoint.x - plotLeft) / plotSize) * displayBounds.span, SNAP_STEP)
+    const y = snapToStep(displayBounds.minY + (1 - (svgPoint.y - plotTop) / plotSize) * displayBounds.span, SNAP_STEP)
+    return {
+      clientX,
+      clientY,
+      x,
+      y,
+      svgX: toSvgX(x),
+      svgY: toSvgY(y),
+    }
+  }
+  const activeDrawPreview = pathDrawingMode ? drawPreview : undefined
+  const drawPreviewLinePoints = activeDrawPreview ? `${toSvgX(visits[visits.length - 1].x)},${toSvgY(visits[visits.length - 1].y)} ${toSvgX(activeDrawPreview.x)},${toSvgY(activeDrawPreview.y)}` : ''
   return (
     <div className="trajectory-card">
       <div className="trajectory-meta">{meta}</div>
@@ -211,25 +207,34 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
           className={`trajectory-svg${pathDrawingMode ? ' trajectory-svg-drawing' : ''}`}
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           role="img"
+          onPointerMove={(event) => {
+            if (!pathDrawingMode) {
+              return
+            }
+            const preview = resolveDrawPreviewPoint(event.clientX, event.clientY)
+            if (!preview) {
+              setDrawPreview(undefined)
+              return
+            }
+            setDrawPreview({ clientX: preview.clientX, clientY: preview.clientY, x: preview.x, y: preview.y })
+          }}
+          onPointerLeave={() => {
+            if (!pathDrawingMode) {
+              return
+            }
+            setDrawPreview(undefined)
+          }}
           onClick={(event) => {
             if (!pathDrawingMode || !onDrawPathPoint) {
               return
             }
-            const svg = svgRef.current
-            if (!svg) {
+            const preview = resolveDrawPreviewPoint(event.clientX, event.clientY)
+            if (!preview) {
               return
             }
-            const svgPoint = clientToSvg(svg, event.clientX, event.clientY)
-            if (!svgPoint) {
-              return
-            }
-            if (svgPoint.x < plotLeft || svgPoint.x > plotLeft + plotSize || svgPoint.y < plotTop || svgPoint.y > plotTop + plotSize) {
-              return
-            }
-            const x = snapToStep(displayBounds.minX + ((svgPoint.x - plotLeft) / plotSize) * displayBounds.span, SNAP_STEP)
-            const y = snapToStep(displayBounds.minY + (1 - (svgPoint.y - plotTop) / plotSize) * displayBounds.span, SNAP_STEP)
-            onDrawPathPoint(x, y)
-            setActivePointKey(`${x},${y}`)
+            onDrawPathPoint(preview.x, preview.y)
+            setDrawPreview(undefined)
+            setActivePointKey(`${preview.x},${preview.y}`)
           }}
         >
           <rect
@@ -273,6 +278,12 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
             </g>
           ))}
           <polyline points={polylinePoints} className="trajectory-line" />
+          {!!activeDrawPreview && (
+            <>
+              <polyline points={drawPreviewLinePoints} className="trajectory-draw-preview-line" />
+              <circle cx={toSvgX(activeDrawPreview.x)} cy={toSvgY(activeDrawPreview.y)} r={6} className="trajectory-draw-preview-point" />
+            </>
+          )}
           {summarizedPoints.map((point) => {
             const key = `${point.x},${point.y}`
             const isActive = activePointKey === key
@@ -281,7 +292,6 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
                 !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
             )
             const canDrag = editableVisits.length === 1
-
             return (
               <g
                 key={`point-${point.x}-${point.y}`}
@@ -345,53 +355,20 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
             )
           })}
         </svg>
-        {!!activePoint && !!activePointAnchor && !isDraggingPoint && (
-          <div
-            ref={panelRef}
-            className={`trajectory-visit-panel ${panelDirection}`}
-            style={{ left: `${activePointAnchor.xPercent}%`, top: `${activePointAnchor.yPercent}%` }}
-          >
-            <div className="trajectory-visit-title">
-              点位 ({activePoint.x}, {activePoint.y}) 经过记录：{activePoint.count} 次
-            </div>
-            <div className="trajectory-visit-list">
-              {activePoint.visits.map((visit, index) => (
-                <div key={`${activePointKey}-${index}`} className="trajectory-visit-item">
-                  <span>
-                    第 {index + 1} 次：X {visit.x}，Y {visit.y}，Z {visit.z}
-                  </span>
-                  {!!visit.blockId && (
-                    <button
-                      type="button"
-                      className="trajectory-locate-btn"
-                      onClick={() => {
-                        if (visit.blockId) {
-                          onLocateBlock?.(visit.blockId)
-                        }
-                      }}
-                    >
-                      定位代码
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-        {!!dragPreview && (
-          <div
-            className="trajectory-drag-preview"
-            style={{
-              left: `${dragPreview.clientX + 14}px`,
-              top: `${dragPreview.clientY + 14}px`,
-            }}
-          >
-            X {dragPreview.x} · Y {dragPreview.y}
-          </div>
-        )}
+        <div ref={panelRef}>
+          <TrajectoryPlaneOverlay
+            activePoint={activePoint}
+            activePointAnchor={activePointAnchor}
+            activePointKey={activePointKey}
+            panelDirection={panelDirection}
+            isDraggingPoint={isDraggingPoint}
+            dragPreview={dragPreview}
+            drawPreview={activeDrawPreview}
+            onLocateBlock={onLocateBlock}
+          />
+        </div>
       </div>
     </div>
   )
 }
-
 export default TrajectoryPlane

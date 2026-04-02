@@ -550,3 +550,33 @@
     top: calc(100vh - min(62vh, 520px) - 10px) !important;
   }
 }
+
+
+.trajectory-draw-preview-line {
+  fill: none;
+  stroke: #ff8a2b;
+  stroke-width: 2;
+  stroke-dasharray: 6 4;
+  stroke-linecap: round;
+}
+
+.trajectory-draw-preview-point {
+  fill: #fff4e8;
+  stroke: #ff8a2b;
+  stroke-width: 2;
+}
+
+.trajectory-draw-preview-label {
+  position: fixed;
+  z-index: 1200;
+  pointer-events: none;
+  border: 1px solid #ffd0a8;
+  border-radius: 8px;
+  background: rgba(255, 247, 238, 0.98);
+  color: #ba5a00;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  padding: 6px 8px;
+  box-shadow: 0 10px 24px rgba(186, 90, 0, 0.16);
+}
