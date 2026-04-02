@@ -1,4 +1,5 @@
 import type { Visit } from './trajectoryUtils'
+import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 
 export type PointSummary = {
   x: number
@@ -8,7 +9,7 @@ export type PointSummary = {
 }
 
 export const SNAP_STEP = 10
-export const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move'])
+export const EDITABLE_BLOCK_TYPES = new Set(['Goertek_MoveToCoord2', 'Goertek_Move', AUTO_DELAY_BLOCK_TYPE])
 
 export const snapToStep = (value: number, step: number) => Math.round(value / step) * step
 export const clamp = (value: number, min: number, max: number) => Math.min(Math.max(value, min), max)

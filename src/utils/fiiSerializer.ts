@@ -1,4 +1,5 @@
 import type { ParseResult } from '../types/fii'
+import { expandAutoDelayBlocks } from './autoDelayBlocks'
 
 export type SerializedProjectFile = {
   relativePath: string
@@ -41,9 +42,10 @@ const buildProgramNames = (_program: ParseResult['programs'][number], index: num
 }
 
 const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index: number): string => {
+  const serializedBlocks = expandAutoDelayBlocks(blocks)
   const lines: string[] = []
   const emitBlockFields = (blockIndex: number) => {
-    const block = blocks[blockIndex]
+    const block = serializedBlocks[blockIndex]
     if (!block) {
       return
     }
@@ -56,10 +58,13 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
     if (block.type === 'block_inittime' && !Object.prototype.hasOwnProperty.call(block.fields, 'color')) {
       lines.push('<field name="color">#cccccc</field>')
     }
+    if (block.comment?.trim()) {
+      lines.push(`<comment pinned="false" h="80" w="160">${escapeXml(block.comment)}</comment>`)
+    }
   }
 
   const emitBlockChain = (startIndex: number, isRoot = false) => {
-    const block = blocks[startIndex]
+    const block = serializedBlocks[startIndex]
     if (!block) {
       return
     }
@@ -69,7 +74,7 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
       lines.push(`<block type="${escapeXml(block.type)}">`)
     }
     emitBlockFields(startIndex)
-    if (startIndex + 1 < blocks.length) {
+    if (startIndex + 1 < serializedBlocks.length) {
       lines.push('<next>')
       emitBlockChain(startIndex + 1)
       lines.push('</next>')
@@ -78,8 +83,8 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
   }
 
   const emitOfficialStartChain = () => {
-    const horizontal = blocks[2]
-    const vertical = blocks[3]
+    const horizontal = serializedBlocks[2]
+    const vertical = serializedBlocks[3]
     lines.push('<block type="Goertek_Start" x="100" y="20">')
     lines.push('<next>')
     lines.push('<block type="block_inittime">')
@@ -92,14 +97,14 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
         lines.push('<next>')
         lines.push(`<block type="${escapeXml(vertical.type)}">`)
         emitBlockFields(3)
-        if (blocks.length > 4) {
+        if (serializedBlocks.length > 4) {
           lines.push('<next>')
           emitBlockChain(4)
           lines.push('</next>')
         }
         lines.push('</block>')
         lines.push('</next>')
-      } else if (blocks.length > 3) {
+      } else if (serializedBlocks.length > 3) {
         lines.push('<next>')
         emitBlockChain(3)
         lines.push('</next>')
@@ -114,9 +119,9 @@ const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index:
 
   lines.push('<xml xmlns="http://www.w3.org/1999/xhtml">')
   lines.push('  <variables></variables>')
-  if (blocks.length > 0) {
-    const first = blocks[0]
-    const second = blocks[1]
+  if (serializedBlocks.length > 0) {
+    const first = serializedBlocks[0]
+    const second = serializedBlocks[1]
     if (first?.type === 'Goertek_Start' && second?.type === 'block_inittime') {
       emitOfficialStartChain()
     } else {

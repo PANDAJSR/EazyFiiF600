@@ -1,10 +1,11 @@
 import * as THREE from 'three'
+import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 import { EDITABLE_BLOCK_TYPES } from './trajectoryPlaneUtils'
 import type { Visit } from './trajectoryUtils'
 
 export type MovePointPayload = {
   blockId: string
-  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
   x: number
   y: number
   baseX?: number
@@ -17,7 +18,7 @@ export type PickCandidate = {
 }
 
 export type DragCandidate = PickCandidate & {
-  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
   x: number
   y: number
   baseX?: number
@@ -61,7 +62,7 @@ export const buildDragCandidates = (visits: Visit[], pointOffsetZ: number): Drag
     return [
       {
         blockId: visit.blockId,
-        blockType: visit.blockType as 'Goertek_MoveToCoord2' | 'Goertek_Move',
+        blockType: visit.blockType as 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE,
         x: visit.x,
         y: visit.y,
         baseX: visit.baseX,

@@ -1,4 +1,5 @@
 import type { ParsedBlock } from '../../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 
 export type XYZ = {
   x: string
@@ -54,7 +55,7 @@ export const buildPathVisits = (startPos: XYZ, blocks: ParsedBlock[]): Visit[] =
       return
     }
 
-    if (block.type === 'Goertek_MoveToCoord2') {
+    if (block.type === 'Goertek_MoveToCoord2' || block.type === AUTO_DELAY_BLOCK_TYPE) {
       const baseX = currentX
       const baseY = currentY
       const baseZ = currentZ

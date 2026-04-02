@@ -17,6 +17,7 @@ import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { saveDesktopProject } from './utils/desktopProjectIO'
+import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 
 function App() {
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
@@ -35,6 +36,7 @@ function App() {
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
+  const moveToAutoDelayBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === AUTO_DELAY_BLOCK_TYPE) ?? moveToBlockDefinition
   const selectedProgram = useMemo(
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
@@ -145,7 +147,7 @@ function App() {
   }, [desktopProjectDirectory, result])
   const handleMovePoint = useCallback((payload: {
     blockId: string
-    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
     x: number
     y: number
     baseX?: number
@@ -177,7 +179,7 @@ function App() {
       setPathDrawingMode(false)
       return
     }
-    const nextBlock = createInsertedBlock(moveToBlockDefinition)
+    const nextBlock = createInsertedBlock(moveToAutoDelayBlockDefinition)
     nextBlock.fields.X = String(x)
     nextBlock.fields.Y = String(y)
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
@@ -186,7 +188,7 @@ function App() {
     setHighlightPulse((prev) => prev + 1)
     setPathInsertAfterBlockId(nextBlock.id)
     setHasUnsavedChanges(true)
-  }, [moveToBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId])
+  }, [moveToAutoDelayBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId])
   const handleDeleteBlock = useCallback((blockId: string) => {
     Modal.confirm({
       title: '删除积木',

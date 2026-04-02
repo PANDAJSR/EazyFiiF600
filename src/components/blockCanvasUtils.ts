@@ -1,4 +1,5 @@
 import type { ParsedBlock } from '../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 
 export type BlockFieldInputType = 'text' | 'select' | 'color'
 
@@ -19,6 +20,9 @@ const NUMERIC_TEXT_FIELDS = new Set([
   'Goertek_VerticalSpeed:AV',
   'block_delay:time',
   'Goertek_TakeOff2:alt',
+  `${AUTO_DELAY_BLOCK_TYPE}:X`,
+  `${AUTO_DELAY_BLOCK_TYPE}:Y`,
+  `${AUTO_DELAY_BLOCK_TYPE}:Z`,
   'Goertek_MoveToCoord2:X',
   'Goertek_MoveToCoord2:Y',
   'Goertek_MoveToCoord2:Z',
@@ -54,6 +58,7 @@ export const blockTheme: Record<string, { color: string; bg: string; border: str
   block_delay: { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' },
   Goertek_TakeOff2: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_MoveToCoord2: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
+  [AUTO_DELAY_BLOCK_TYPE]: { color: '#17324d', bg: '#e2fff2', border: '#89c7a7' },
   Goertek_Move: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_Turn: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_Land: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
@@ -98,6 +103,24 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
       return {
         title: '起飞',
         values: [token('Z'), token(f.alt ?? '-', true, false, 'alt'), token('cm')],
+      }
+    case AUTO_DELAY_BLOCK_TYPE:
+      return {
+        title: '平移到（自动延时）',
+        values: [
+          token('X'),
+          token(f.X ?? '-', true, false, 'X'),
+          token('cm'),
+          token('Y'),
+          token(f.Y ?? '-', true, false, 'Y'),
+          token('cm'),
+          token('Z'),
+          token(f.Z ?? '-', true, false, 'Z'),
+          token('cm'),
+          token('自动延时'),
+          token(f.time ?? '800', true),
+          token('ms'),
+        ],
       }
     case 'Goertek_MoveToCoord2':
       return {

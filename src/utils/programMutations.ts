@@ -1,8 +1,9 @@
 import type { ParseResult, ParsedBlock } from '../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE, normalizeAutoDelayBlocks } from './autoDelayBlocks'
 
 type MovePointPayload = {
   blockId: string
-  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
   x: number
   y: number
   baseX?: number
@@ -25,7 +26,7 @@ const updateSelectedProgramBlocks = (
       }
       return {
         ...program,
-        blocks: updateBlocks(program.blocks),
+        blocks: normalizeAutoDelayBlocks(updateBlocks(program.blocks), program.drone.startPos),
       }
     }),
   }
@@ -71,7 +72,7 @@ export const updateMovePoint = (
       if (block.id !== payload.blockId) {
         return block
       }
-      if (payload.blockType === 'Goertek_MoveToCoord2') {
+      if (payload.blockType === 'Goertek_MoveToCoord2' || payload.blockType === AUTO_DELAY_BLOCK_TYPE) {
         return {
           ...block,
           fields: {

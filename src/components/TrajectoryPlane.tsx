@@ -1,6 +1,7 @@
 import { Empty } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryScene3D from './TrajectoryScene3D'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
@@ -18,7 +19,7 @@ type Props = {
 
 type MovePointPayload = {
   blockId: string
-  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
   x: number
   y: number
   baseX?: number
@@ -276,7 +277,7 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
             const key = `${point.x},${point.y}`
             const isActive = activePointKey === key
             const editableVisits = point.visits.filter(
-              (visit): visit is Visit & { blockId: string; blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' } =>
+              (visit): visit is Visit & { blockId: string; blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE } =>
                 !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
             )
             const canDrag = editableVisits.length === 1

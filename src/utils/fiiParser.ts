@@ -1,4 +1,5 @@
 import type { DroneInfo, ParseResult, ParsedBlock } from '../types/fii'
+import { collapseAutoDelayBlocks } from './autoDelayBlocks'
 
 type FileLookup = {
   byName: Map<string, InputFile>
@@ -20,6 +21,7 @@ export type ParsedTextFile = {
 type XmlBlockNode = {
   type: string
   fields: Record<string, string>
+  comment?: string
   statementBlocks: XmlBlockNode[]
   next?: XmlBlockNode
 }
@@ -100,6 +102,9 @@ const parseXmlBlockNode = (blockEl: Element): XmlBlockNode => {
       fields[fieldName] = (field.textContent ?? '').trim()
     })
 
+  const commentNode = Array.from(blockEl.children).find((it) => it.nodeName === 'comment')
+  const comment = (commentNode?.textContent ?? '').trim() || undefined
+
   const statementBlocks: XmlBlockNode[] = []
   Array.from(blockEl.children)
     .filter((it) => it.nodeName === 'statement')
@@ -116,6 +121,7 @@ const parseXmlBlockNode = (blockEl: Element): XmlBlockNode => {
   return {
     type,
     fields,
+    comment,
     statementBlocks,
     next: nextBlock ? parseXmlBlockNode(nextBlock) : undefined,
   }
@@ -130,6 +136,7 @@ const flattenBlocks = (node: XmlBlockNode | undefined, result: ParsedBlock[]): v
     id: `${node.type}-${result.length + 1}`,
     type: node.type,
     fields: node.fields,
+    comment: node.comment,
   })
 
   node.statementBlocks.forEach((child) => flattenBlocks(child, result))
@@ -146,7 +153,7 @@ const parseBlocksFromXml = (xmlText: string): ParsedBlock[] => {
   const tree = parseXmlBlockNode(root)
   const blocks: ParsedBlock[] = []
   flattenBlocks(tree, blocks)
-  return blocks
+  return collapseAutoDelayBlocks(blocks)
 }
 
 const resolveActionXml = (actionGroup: string, lookup: FileLookup): InputFile | undefined => {

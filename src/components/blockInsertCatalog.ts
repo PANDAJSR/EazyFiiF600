@@ -1,4 +1,5 @@
 import type { ParsedBlock } from '../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 
 export type InsertableBlockDefinition = {
   type: string
@@ -43,6 +44,12 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
     label: '起飞',
     keywords: ['起飞', 'takeoff', 'alt'],
     fields: { alt: '100' },
+  },
+  {
+    type: AUTO_DELAY_BLOCK_TYPE,
+    label: '平移到（自动延时）',
+    keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
+    fields: { X: '0', Y: '0', Z: '100', time: '800' },
   },
   {
     type: 'Goertek_MoveToCoord2',

@@ -13,7 +13,10 @@ type Props = {
 
 function BlockLine({ block, editable, onFieldChange, onInputKeyDown }: Props) {
   const text = blockText(block)
-  let textInputSlotIndex = -1
+  const getTextInputSlotIndex = (valueIndex: number) =>
+    text.values
+      .slice(0, valueIndex + 1)
+      .filter((token) => token.fieldKey && (!token.inputType || token.inputType === 'text')).length - 1
 
   return (
     <div className="block-line">
@@ -65,7 +68,7 @@ function BlockLine({ block, editable, onFieldChange, onInputKeyDown }: Props) {
                   value={block.fields[value.fieldKey] ?? ''}
                   inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
                   data-block-id={block.id}
-                  data-slot-index={(textInputSlotIndex += 1)}
+                  data-slot-index={getTextInputSlotIndex(idx)}
                   onChange={(event) => {
                     const nextValue = sanitizeBlockTextFieldInput(block.type, value.fieldKey!, event.target.value)
                     onFieldChange(block.id, value.fieldKey!, nextValue)

@@ -13,6 +13,7 @@ export type ParsedBlock = {
   id: string
   type: string
   fields: Record<string, string>
+  comment?: string
 }
 
 export type DroneProgram = {

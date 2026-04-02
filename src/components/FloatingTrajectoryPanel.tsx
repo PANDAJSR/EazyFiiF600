@@ -2,6 +2,7 @@ import { Button, Tooltip, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryPlane from './TrajectoryPlane'
 
 type XYZ = {
@@ -20,7 +21,7 @@ type Props = {
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: {
     blockId: string
-    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move'
+    blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
     x: number
     y: number
     baseX?: number
@@ -309,7 +310,7 @@ function FloatingTrajectoryPanel({
           </Typography.Title>
         </div>
         {viewMode === '2d' && !!selectedBlockId && (
-          <Tooltip title={pathDrawingMode ? '退出画路径模式' : '连续点击平面点位，自动生成“平移到（异步）”积木'}>
+          <Tooltip title={pathDrawingMode ? '退出画路径模式' : '连续点击平面点位，自动生成“平移到（自动延时）”积木'}>
             <Button
               className="floating-trajectory-draw-btn"
               type={pathDrawingMode ? 'primary' : 'default'}
