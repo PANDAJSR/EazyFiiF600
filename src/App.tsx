@@ -12,6 +12,7 @@ import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsert
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
+import usePathDrawingHotkey from './components/usePathDrawingHotkey'
 import useDroneDialog from './components/useDroneDialog'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
@@ -235,6 +236,10 @@ function App() {
     selectedBlockId,
     onSelectBlock: (blockId) => setSelectedBlockId(blockId),
     onDeleteBlock: handleDeleteBlock,
+  })
+  usePathDrawingHotkey({
+    pathDrawingMode,
+    onToggle: handlePathDrawingToggle,
   })
   const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
     setResult((prev) => replaceSelectedProgramBlocks(prev, selectedDroneId, nextBlocks))
