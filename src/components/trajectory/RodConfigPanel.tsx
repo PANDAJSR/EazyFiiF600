@@ -7,18 +7,35 @@ type Props = {
   onChange: (nextConfig: RodConfig) => void
 }
 
-function RodConfigPanel({ config, onChange }: Props) {
-  const flatFieldOrder = ROD_SUBJECT_SPECS.flatMap((subject) =>
-    Array.from({ length: subject.count }).flatMap((_, pointIndex) => [
-      { subjectId: subject.id, pointIndex, axis: 'x' as const },
-      { subjectId: subject.id, pointIndex, axis: 'y' as const },
-    ]),
-  )
+type FieldTarget = {
+  group: RodSubjectId | 'takeoffZone'
+  pointIndex: number
+  axis: 'x' | 'y'
+}
 
-  const updatePoint = (subjectId: RodSubjectId, pointIndex: number, axis: 'x' | 'y', value: number | null) => {
+function RodConfigPanel({ config, onChange }: Props) {
+  const flatFieldOrder: FieldTarget[] = [
+    ...config.takeoffZone.flatMap((_, pointIndex) => [
+      { group: 'takeoffZone' as const, pointIndex, axis: 'x' as const },
+      { group: 'takeoffZone' as const, pointIndex, axis: 'y' as const },
+    ]),
+    ...ROD_SUBJECT_SPECS.flatMap((subject) =>
+      Array.from({ length: subject.count }).flatMap((_, pointIndex) => [
+        { group: subject.id, pointIndex, axis: 'x' as const },
+        { group: subject.id, pointIndex, axis: 'y' as const },
+      ]),
+    ),
+  ]
+
+  const updatePoint = (
+    group: RodSubjectId | 'takeoffZone',
+    pointIndex: number,
+    axis: 'x' | 'y',
+    value: number | null,
+  ) => {
     onChange({
       ...config,
-      [subjectId]: config[subjectId].map((point, index) => {
+      [group]: config[group].map((point, index) => {
         if (index !== pointIndex) {
           return point
         }
@@ -32,7 +49,7 @@ function RodConfigPanel({ config, onChange }: Props) {
 
   const spreadPasteValues = (
     event: React.ClipboardEvent<HTMLInputElement>,
-    subjectId: RodSubjectId,
+    group: RodSubjectId | 'takeoffZone',
     pointIndex: number,
     axis: 'x' | 'y',
   ) => {
@@ -47,7 +64,7 @@ function RodConfigPanel({ config, onChange }: Props) {
     }
 
     const startIndex = flatFieldOrder.findIndex(
-      (field) => field.subjectId === subjectId && field.pointIndex === pointIndex && field.axis === axis,
+      (field) => field.group === group && field.pointIndex === pointIndex && field.axis === axis,
     )
     if (startIndex < 0) {
       return
@@ -55,7 +72,10 @@ function RodConfigPanel({ config, onChange }: Props) {
 
     event.preventDefault()
 
-    const nextConfig: RodConfig = { ...config }
+    const nextConfig: RodConfig = {
+      ...config,
+      takeoffZone: config.takeoffZone.map((point) => ({ ...point })),
+    }
     for (const spec of ROD_SUBJECT_SPECS) {
       nextConfig[spec.id] = config[spec.id].map((point) => ({ ...point }))
     }
@@ -65,7 +85,7 @@ function RodConfigPanel({ config, onChange }: Props) {
       if (!targetField) {
         return
       }
-      nextConfig[targetField.subjectId][targetField.pointIndex][targetField.axis] = value
+      nextConfig[targetField.group][targetField.pointIndex][targetField.axis] = value
     })
 
     onChange(nextConfig)
@@ -73,8 +93,35 @@ function RodConfigPanel({ config, onChange }: Props) {
 
   return (
     <div className="rod-config-panel">
-      <Typography.Text className="rod-config-tip">配置杆子坐标后，会在 2D 轨迹图中以黄色科目标记显示。</Typography.Text>
+      <Typography.Text className="rod-config-tip">配置杆子坐标后，会在 2D 轨迹图中以黄色科目标记显示；起降区会显示橙色透明虚线四边形。</Typography.Text>
       <div className="rod-config-list">
+        <section className="rod-config-subject">
+          <div className="rod-config-subject-title">
+            <span className="rod-config-subject-marker">TZ</span>
+            <span>起降区（4 点）</span>
+          </div>
+          <div className="rod-config-points">
+            {config.takeoffZone.map((point, pointIndex) => (
+              <div key={`takeoff-zone-${pointIndex}`} className="rod-config-point-row">
+                <span className="rod-config-point-label">点{pointIndex + 1}</span>
+                <InputNumber
+                  className="rod-config-input"
+                  value={point.x}
+                  placeholder="X"
+                  onChange={(value) => updatePoint('takeoffZone', pointIndex, 'x', value)}
+                  onPaste={(event) => spreadPasteValues(event, 'takeoffZone', pointIndex, 'x')}
+                />
+                <InputNumber
+                  className="rod-config-input"
+                  value={point.y}
+                  placeholder="Y"
+                  onChange={(value) => updatePoint('takeoffZone', pointIndex, 'y', value)}
+                  onPaste={(event) => spreadPasteValues(event, 'takeoffZone', pointIndex, 'y')}
+                />
+              </div>
+            ))}
+          </div>
+        </section>
         {ROD_SUBJECT_SPECS.map((subject) => (
           <section key={subject.id} className="rod-config-subject">
             <div className="rod-config-subject-title">

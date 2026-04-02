@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryScene3D from './TrajectoryScene3D'
-import { ROD_SUBJECT_SPECS, type RodConfig } from './trajectory/rodConfig'
+import type { RodConfig } from './trajectory/rodConfig'
+import { buildRodMarkers, buildTakeoffZone } from './trajectory/trajectoryPlaneDecorations'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, isCountedVisit, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
@@ -178,17 +179,10 @@ function TrajectoryPlane({
       </div>
     )
   }
-  const xTicks = buildTicks(displayBounds.minX, displayBounds.maxX)
-  const yTicks = buildTicks(displayBounds.minY, displayBounds.maxY)
+  const [xTicks, yTicks] = [buildTicks(displayBounds.minX, displayBounds.maxX), buildTicks(displayBounds.minY, displayBounds.maxY)]
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
-  const rodMarkers =
-    rodConfig === undefined
-      ? []
-      : ROD_SUBJECT_SPECS.flatMap((subject) =>
-          rodConfig[subject.id]
-            .map((point) => ({ marker: subject.marker, x: point.x, y: point.y }))
-            .filter((point): point is { marker: string; x: number; y: number } => Number.isFinite(point.x) && Number.isFinite(point.y)),
-        )
+  const rodMarkers = buildRodMarkers(rodConfig)
+  const takeoffZonePoints = buildTakeoffZone(rodConfig), takeoffZonePolygon = takeoffZonePoints.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const panelDirection =
     activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
   const resolveDrawPreviewPoint = (clientX: number, clientY: number) => {
@@ -294,6 +288,7 @@ function TrajectoryPlane({
               </text>
             </g>
           ))}
+          {takeoffZonePoints.length === 4 && <polygon points={takeoffZonePolygon} className="trajectory-takeoff-zone" />}
           <polyline points={polylinePoints} className="trajectory-line" />
           {rodMarkers.map((marker, index) => (
             <g key={`rod-${index}-${marker.marker}-${marker.x}-${marker.y}`} className="trajectory-rod-marker">

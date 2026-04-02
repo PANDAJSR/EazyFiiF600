@@ -60,6 +60,14 @@
   stroke-linecap: round;
 }
 
+.trajectory-takeoff-zone {
+  fill: rgba(255, 138, 43, 0.2);
+  stroke: rgba(255, 138, 43, 0.9);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-dasharray: 8 5;
+}
+
 .trajectory-point {
   fill: #fff;
   stroke: #1b6ed6;

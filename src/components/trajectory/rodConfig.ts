@@ -15,7 +15,9 @@ export type RodPoint = {
   y?: number
 }
 
-export type RodConfig = Record<RodSubjectId, RodPoint[]>
+export type RodConfig = Record<RodSubjectId, RodPoint[]> & {
+  takeoffZone: RodPoint[]
+}
 
 export type RodSubjectSpec = {
   id: RodSubjectId
@@ -41,4 +43,4 @@ export const createDefaultRodConfig = (): RodConfig =>
   ROD_SUBJECT_SPECS.reduce<RodConfig>((acc, spec) => {
     acc[spec.id] = Array.from({ length: spec.count }, () => ({}))
     return acc
-  }, {} as RodConfig)
+  }, { takeoffZone: Array.from({ length: 4 }, () => ({})) } as RodConfig)
