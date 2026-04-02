@@ -1,4 +1,4 @@
-import type { PointSummary } from './trajectoryPlaneUtils'
+import { isCountedVisit, type PointSummary } from './trajectoryPlaneUtils'
 
 type PreviewPoint = {
   clientX: number
@@ -28,6 +28,7 @@ function TrajectoryPlaneOverlay({
   drawPreview,
   onLocateBlock,
 }: Props) {
+  const countedVisits = activePoint?.visits.filter(isCountedVisit) ?? []
   return (
     <>
       {!!activePoint && !!activePointAnchor && !isDraggingPoint && (
@@ -39,26 +40,21 @@ function TrajectoryPlaneOverlay({
             点位 ({activePoint.x}, {activePoint.y}) 经过记录：{activePoint.count} 次
           </div>
           <div className="trajectory-visit-list">
-            {activePoint.visits.map((visit, index) => (
+            {countedVisits.map((visit, index) => (
               <div key={`${activePointKey}-${index}`} className="trajectory-visit-item">
                 <span>
                   第 {index + 1} 次：X {visit.x}，Y {visit.y}，Z {visit.z}
                 </span>
-                {!!visit.blockId && (
-                  <button
-                    type="button"
-                    className="trajectory-locate-btn"
-                    onClick={() => {
-                      if (visit.blockId) {
-                        onLocateBlock?.(visit.blockId)
-                      }
-                    }}
-                  >
-                    定位代码
-                  </button>
-                )}
+                <button
+                  type="button"
+                  className="trajectory-locate-btn"
+                  onClick={() => onLocateBlock?.(visit.blockId)}
+                >
+                  定位代码
+                </button>
               </div>
             ))}
+            {!countedVisits.length && <div className="trajectory-visit-item">无可定位的经过记录</div>}
           </div>
         </div>
       )}

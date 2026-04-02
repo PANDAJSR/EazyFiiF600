@@ -6,7 +6,7 @@ import TrajectoryScene3D from './TrajectoryScene3D'
 import { ROD_SUBJECT_SPECS, type RodConfig } from './trajectory/rodConfig'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
-import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
+import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, isCountedVisit, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
 import TrajectoryPlaneOverlay from './trajectory/TrajectoryPlaneOverlay'
 import type { PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
 type Props = {
@@ -316,6 +316,7 @@ function TrajectoryPlane({
               (visit): visit is Visit & { blockId: string; blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE } =>
                 !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
             )
+            const countedVisits = point.visits.filter(isCountedVisit)
             const canDrag = editableVisits.length === 1
             return (
               <g
@@ -325,6 +326,11 @@ function TrajectoryPlane({
                   if (pathDrawingMode) {
                     event.stopPropagation()
                     onDrawPathPoint?.(point.x, point.y)
+                    return
+                  }
+                  if (countedVisits.length === 1) {
+                    onLocateBlock?.(countedVisits[0].blockId)
+                    setActivePointKey(undefined)
                     return
                   }
                   setActivePointKey(key)
@@ -373,7 +379,7 @@ function TrajectoryPlane({
                     textAnchor="middle"
                     className="trajectory-point-count"
                   >
-                    {point.count - 1}
+                    {point.count}
                   </text>
                 )}
               </g>
