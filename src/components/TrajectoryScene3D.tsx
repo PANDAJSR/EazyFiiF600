@@ -15,17 +15,16 @@ import {
 } from './trajectory/trajectoryScene3dUtils'
 import type { TrajectoryBounds, Visit } from './trajectory/trajectoryUtils'
 import { GRID_STEP } from './trajectory/trajectoryUtils'
-
 type Props = {
   visits: Visit[]
   bounds: TrajectoryBounds
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
+  backgroundTrajectories?: Array<{ droneId: string; color: string; visits: Visit[] }>
+  activeTrajectoryColor?: string
 }
-
-function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props) {
+function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint, backgroundTrajectories = [], activeTrajectoryColor = '#1b6ed6' }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
-
   const center = useMemo(
     () => ({
       x: bounds.minX + bounds.span / 2,
@@ -34,19 +33,15 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
     }),
     [bounds.maxZ, bounds.minX, bounds.minY, bounds.minZ, bounds.span],
   )
-
   useEffect(() => {
     const container = containerRef.current
     if (!container || !visits.length) {
       return
     }
-
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#fafdff')
-
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 12000)
     camera.up.set(0, 0, 1)
-
     const zSpan = Math.max(bounds.maxZ - bounds.minZ, GRID_STEP)
     const viewDistance = Math.max(bounds.span * 1.35, zSpan * 5, 260)
     camera.position.set(
@@ -54,26 +49,21 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       center.y - viewDistance * 0.8,
       center.z + viewDistance * 0.75,
     )
-
     const renderer = new THREE.WebGLRenderer({ antialias: true })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
     renderer.outputColorSpace = THREE.SRGBColorSpace
     container.appendChild(renderer.domElement)
-
     const controls = new OrbitControls(camera, renderer.domElement)
     controls.target.set(center.x, center.y, center.z)
     controls.enableDamping = true
     controls.dampingFactor = 0.06
     controls.maxPolarAngle = Math.PI * 0.495
-
     const ambientLight = new THREE.AmbientLight('#d9e8ff', 0.85)
     scene.add(ambientLight)
     const directionalLight = new THREE.DirectionalLight('#ffffff', 0.9)
     directionalLight.position.set(bounds.maxX, bounds.minY - bounds.span, bounds.maxZ + bounds.span)
     scene.add(directionalLight)
-
     const disposers: Array<() => void> = []
-
     const groundGeometry = new THREE.PlaneGeometry(bounds.span, bounds.span)
     const groundMaterial = new THREE.MeshBasicMaterial({
       color: '#ffffff',
@@ -88,7 +78,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       groundGeometry.dispose()
       groundMaterial.dispose()
     })
-
     const gridGroup = new THREE.Group()
     for (let x = bounds.minX; x <= bounds.maxX; x += GRID_STEP) {
       const isMajor = (x - bounds.minX) % (GRID_STEP * 5) === 0
@@ -111,37 +100,44 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       disposers.push(dispose)
     }
     scene.add(gridGroup)
-
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    const pathMaterial = new THREE.LineBasicMaterial({ color: '#1b6ed6' })
+    const pathMaterial = new THREE.LineBasicMaterial({ color: activeTrajectoryColor })
     const pathLine = new THREE.Line(pathGeometry, pathMaterial)
     scene.add(pathLine)
     disposers.push(() => {
       pathGeometry.dispose()
       pathMaterial.dispose()
     })
-
+    backgroundTrajectories.forEach((item) => {
+      if (!item.visits.length) {
+        return
+      }
+      const linePoints = item.visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
+      const lineGeometry = new THREE.BufferGeometry().setFromPoints(linePoints)
+      const lineMaterial = new THREE.LineBasicMaterial({ color: item.color, transparent: true, opacity: 0.82 })
+      scene.add(new THREE.Line(lineGeometry, lineMaterial))
+      disposers.push(() => {
+        lineGeometry.dispose()
+        lineMaterial.dispose()
+      })
+    })
     const markerGeometry = new THREE.SphereGeometry(Math.max(bounds.span * 0.008, 2.8), 18, 18)
     const startMarkerMaterial = new THREE.MeshStandardMaterial({ color: '#1f8f3f' })
     const endMarkerMaterial = new THREE.MeshStandardMaterial({ color: '#db4f3d' })
     const startPoint = pathPoints[0]
     const endPoint = pathPoints[pathPoints.length - 1]
-
     const startMarker = new THREE.Mesh(markerGeometry, startMarkerMaterial)
     startMarker.position.copy(startPoint)
     scene.add(startMarker)
-
     const endMarker = new THREE.Mesh(markerGeometry, endMarkerMaterial)
     endMarker.position.copy(endPoint)
     scene.add(endMarker)
-
     disposers.push(() => {
       markerGeometry.dispose()
       startMarkerMaterial.dispose()
       endMarkerMaterial.dispose()
     })
-
     const pointGeometry = new THREE.SphereGeometry(Math.max(bounds.span * 0.0055, 2.2), 14, 14)
     const hoverPointMaterial = new THREE.MeshStandardMaterial({
       color: '#6ea4e8',
@@ -156,15 +152,12 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
     hoverMesh.visible = false
     hoverMesh.scale.setScalar(pointScale)
     scene.add(hoverMesh)
-
     const pickCandidates = buildPickCandidates(visits, pointOffsetZ)
     const dragCandidates = buildDragCandidates(visits, pointOffsetZ)
-
     disposers.push(() => {
       pointGeometry.dispose()
       hoverPointMaterial.dispose()
     })
-
     let hoveredCandidate: PickCandidate | null = null
     let draggingCandidate: DragCandidate | null = null
     let hasDragDelta = false
@@ -175,12 +168,10 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
     const pointer = new THREE.Vector2()
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
     const dragPlaneHit = new THREE.Vector3()
-
     const pickCandidateAtPointer = (event: PointerEvent) =>
       pickNearestAtPointer(event, pickCandidates, camera, renderer.domElement)
     const pickDragCandidateAtPointer = (event: PointerEvent) =>
       pickNearestAtPointer(event, dragCandidates, camera, renderer.domElement)
-
     const setHoveredCandidate = (candidate: PickCandidate | null) => {
       hoveredCandidate = candidate
       if (!candidate) {
@@ -193,7 +184,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       const draggable = dragCandidates.some((item) => item.blockId === candidate.blockId)
       renderer.domElement.style.cursor = draggable ? 'grab' : 'pointer'
     }
-
     const resetHovered = () => {
       if (draggingCandidate) {
         return
@@ -201,7 +191,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       setHoveredCandidate(null)
       renderer.domElement.style.cursor = 'default'
     }
-
     const onPointerDown = (event: PointerEvent) => {
       if (event.button !== 0) {
         return
@@ -209,16 +198,13 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       pointerDown = { x: event.clientX, y: event.clientY }
       pointerMoved = false
       hasDragDelta = false
-
       if (!onMovePoint) {
         return
       }
-
       const hit = pickDragCandidateAtPointer(event)
       if (!hit) {
         return
       }
-
       draggingCandidate = {
         ...hit,
         position: hit.position.clone(),
@@ -229,7 +215,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       renderer.domElement.setPointerCapture(event.pointerId)
       event.preventDefault()
     }
-
     const onPointerMove = (event: PointerEvent) => {
       if (draggingCandidate && onMovePoint) {
         const next = projectPointerToPlane(
@@ -245,7 +230,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
         if (next) {
           const x = snapToStep(Math.min(Math.max(next.x, bounds.minX), bounds.maxX), SNAP_STEP)
           const y = snapToStep(Math.min(Math.max(next.y, bounds.minY), bounds.maxY), SNAP_STEP)
-
           if (x !== draggingCandidate.x || y !== draggingCandidate.y) {
             hasDragDelta = true
             draggingCandidate.x = x
@@ -258,7 +242,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
         }
         return
       }
-
       if (!pointerMoved) {
         const dx = event.clientX - pointerDown.x
         const dy = event.clientY - pointerDown.y
@@ -266,19 +249,16 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
           pointerMoved = true
         }
       }
-
       const nextCandidate = pickDragCandidateAtPointer(event) ?? pickCandidateAtPointer(event)
       if (nextCandidate?.blockId === hoveredCandidate?.blockId) {
         return
       }
       setHoveredCandidate(nextCandidate)
     }
-
     const onPointerUp = (event: PointerEvent) => {
       if (event.button !== 0) {
         return
       }
-
       if (draggingCandidate) {
         const blockId = draggingCandidate.blockId
         if (hasDragDelta) {
@@ -303,7 +283,6 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
         setHoveredCandidate(nextCandidate)
         return
       }
-
       if (pointerMoved) {
         return
       }
@@ -313,12 +292,10 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
         onLocateBlock?.(blockId)
       }
     }
-
     renderer.domElement.addEventListener('pointerdown', onPointerDown)
     renderer.domElement.addEventListener('pointermove', onPointerMove)
     renderer.domElement.addEventListener('pointerup', onPointerUp)
     renderer.domElement.addEventListener('pointerleave', resetHovered)
-
     const resize = () => {
       const width = Math.max(1, container.clientWidth)
       const height = Math.max(1, container.clientHeight)
@@ -326,20 +303,16 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
       camera.aspect = width / height
       camera.updateProjectionMatrix()
     }
-
     const resizeObserver = new ResizeObserver(resize)
     resizeObserver.observe(container)
     resize()
-
     let animationFrameId = 0
     const render = () => {
       controls.update()
       renderer.render(scene, camera)
       animationFrameId = window.requestAnimationFrame(render)
     }
-
     render()
-
     return () => {
       window.cancelAnimationFrame(animationFrameId)
       resizeObserver.disconnect()
@@ -371,13 +344,13 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
     center.z,
     onLocateBlock,
     onMovePoint,
+    backgroundTrajectories,
+    activeTrajectoryColor,
     visits,
   ])
-
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
-
   return (
     <div className="trajectory-3d-stage">
       <div ref={containerRef} className="trajectory-3d-canvas" />
@@ -385,5 +358,4 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint }: Props
     </div>
   )
 }
-
 export default TrajectoryScene3D

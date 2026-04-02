@@ -14,6 +14,7 @@ import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
 import usePathDrawingHotkey from './components/usePathDrawingHotkey'
 import useDroneDialog from './components/useDroneDialog'
+import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, updateBlockField, updateMovePoint } from './utils/programMutations'
@@ -42,6 +43,8 @@ function App() {
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
+  const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
+  const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
   const {
     droneDialogMode,
     droneDialogOpen,
@@ -295,8 +298,10 @@ function App() {
           <DroneSidebar
             programs={result.programs}
             selectedId={selectedDroneId}
+            visibleTrajectoryIds={visibleTrajectoryIds}
             onCreateDrone={openCreateDroneDialog}
             onEditDrone={openEditDroneDialog}
+            onToggleTrajectoryVisibility={toggleTrajectoryVisibility}
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
@@ -360,6 +365,8 @@ function App() {
             onDrawPathPoint={handlePathPointDraw}
             onLocateBlock={handleLocateBlock}
             onMovePoint={handleMovePoint}
+            backgroundTrajectories={backgroundTrajectories.filter((item) => item.droneId !== selectedDroneId)}
+            activeTrajectoryColor={selectedTrajectoryColor}
           />
         </Layout.Content>
       </Layout>

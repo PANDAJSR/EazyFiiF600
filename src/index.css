@@ -104,6 +104,13 @@ body {
   font-weight: 600;
 }
 
+.drone-item-title-wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
 .drone-item-meta {
   color: #55718f;
   font-size: 12px;

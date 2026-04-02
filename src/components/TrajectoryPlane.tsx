@@ -1,15 +1,14 @@
 import { Empty } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
-import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryScene3D from './TrajectoryScene3D'
+import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import type { RodConfig } from './trajectory/rodConfig'
+import type { MovePointPayload } from './trajectory/trajectoryScene3dUtils'
 import { buildRodMarkers, buildTakeoffZone } from './trajectory/trajectoryPlaneDecorations'
-import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
-import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
+import { buildPathVisits, buildTicks, calcTrajectoryBounds, type TrajectoryBounds, type XYZ, type Visit } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, isCountedVisit, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
-import TrajectoryPlaneOverlay from './trajectory/TrajectoryPlaneOverlay'
-import type { PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
+import TrajectoryPlaneOverlay, { type PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
@@ -19,14 +18,8 @@ type Props = {
   onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
   rodConfig?: RodConfig
-}
-type MovePointPayload = {
-  blockId: string
-  blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
-  x: number
-  y: number
-  baseX?: number
-  baseY?: number
+  backgroundTrajectories?: TrajectoryDisplay[]
+  activeTrajectoryColor?: string
 }
 const VIEWBOX_WIDTH = 680, VIEWBOX_HEIGHT = 620
 function TrajectoryPlane({
@@ -38,9 +31,13 @@ function TrajectoryPlane({
   onMovePoint,
   viewMode = '2d',
   rodConfig,
+  backgroundTrajectories = [],
+  activeTrajectoryColor = '#1b6ed6',
 }: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
-  const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
+  const backgroundVisits = useMemo(() => backgroundTrajectories.map((item) => ({ ...item, visits: buildPathVisits(item.startPos, item.blocks) })), [backgroundTrajectories])
+  const allRenderedVisits = useMemo(() => [...visits, ...backgroundVisits.flatMap((item) => item.visits)], [backgroundVisits, visits])
+  const bounds = useMemo(() => calcTrajectoryBounds(allRenderedVisits), [allRenderedVisits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
   const margin = { top: 16, right: 16, bottom: 44, left: 44 }
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
@@ -164,27 +161,29 @@ function TrajectoryPlane({
       window.removeEventListener('scroll', updateAnchor, true)
     }
   }, [activePoint, displayBounds.maxX, displayBounds.maxY, displayBounds.minX, displayBounds.minY, displayBounds.span, isDraggingPoint, plotLeft, plotSize, plotTop, viewMode])
-  if (!visits.length) {
+  if (!allRenderedVisits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
-  const meta =
-    viewMode === '3d'
-      ? `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm，Z: ${displayBounds.minZ} ~ ${displayBounds.maxZ} cm`
-      : `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm`
+  const meta = viewMode === '3d' ? `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm，Z: ${displayBounds.minZ} ~ ${displayBounds.maxZ} cm` : `范围 X: ${displayBounds.minX} ~ ${displayBounds.maxX} cm，Y: ${displayBounds.minY} ~ ${displayBounds.maxY} cm`
   if (viewMode === '3d') {
     return (
       <div className="trajectory-card">
         <div className="trajectory-meta">{meta}</div>
-        <TrajectoryScene3D visits={visits} bounds={bounds} onLocateBlock={onLocateBlock} onMovePoint={onMovePoint} />
+        <TrajectoryScene3D
+          visits={visits}
+          bounds={bounds}
+          onLocateBlock={onLocateBlock}
+          onMovePoint={onMovePoint}
+          backgroundTrajectories={backgroundVisits}
+          activeTrajectoryColor={activeTrajectoryColor}
+        />
       </div>
     )
   }
-  const [xTicks, yTicks] = [buildTicks(displayBounds.minX, displayBounds.maxX), buildTicks(displayBounds.minY, displayBounds.maxY)]
-  const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
+  const [xTicks, yTicks] = [buildTicks(displayBounds.minX, displayBounds.maxX), buildTicks(displayBounds.minY, displayBounds.maxY)], polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const rodMarkers = buildRodMarkers(rodConfig)
   const takeoffZonePoints = buildTakeoffZone(rodConfig), takeoffZonePolygon = takeoffZonePoints.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
-  const panelDirection =
-    activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
+  const panelDirection = activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
   const resolveDrawPreviewPoint = (clientX: number, clientY: number) => {
     const svg = svgRef.current
     if (!svg) {
@@ -289,7 +288,8 @@ function TrajectoryPlane({
             </g>
           ))}
           {takeoffZonePoints.length === 4 && <polygon points={takeoffZonePolygon} className="trajectory-takeoff-zone" />}
-          <polyline points={polylinePoints} className="trajectory-line" />
+          {backgroundVisits.map((item) => <polyline key={`trajectory-bg-${item.droneId}`} points={item.visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')} className="trajectory-line" style={{ stroke: item.color, opacity: 0.8 }} />)}
+          <polyline points={polylinePoints} className="trajectory-line" style={{ stroke: activeTrajectoryColor }} />
           {rodMarkers.map((marker, index) => (
             <g key={`rod-${index}-${marker.marker}-${marker.x}-${marker.y}`} className="trajectory-rod-marker">
               <circle cx={toSvgX(marker.x)} cy={toSvgY(marker.y)} r={10} className="trajectory-rod-marker-circle" />
@@ -308,7 +308,7 @@ function TrajectoryPlane({
             const key = `${point.x},${point.y}`
             const isActive = activePointKey === key
             const editableVisits = point.visits.filter(
-              (visit): visit is Visit & { blockId: string; blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE } =>
+              (visit): visit is Visit & { blockId: string; blockType: MovePointPayload['blockType'] } =>
                 !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
             )
             const countedVisits = point.visits.filter(isCountedVisit)

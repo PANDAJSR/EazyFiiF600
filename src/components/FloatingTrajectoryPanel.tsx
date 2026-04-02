@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryPlane from './TrajectoryPlane'
+import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 
@@ -29,6 +30,8 @@ type Props = {
     baseX?: number
     baseY?: number
   }) => void
+  backgroundTrajectories?: TrajectoryDisplay[]
+  activeTrajectoryColor?: string
 }
 
 type ViewMode = '2d' | '3d' | 'rod'
@@ -142,6 +145,8 @@ function FloatingTrajectoryPanel({
   onDrawPathPoint,
   onLocateBlock,
   onMovePoint,
+  backgroundTrajectories = [],
+  activeTrajectoryColor = '#1b6ed6',
 }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
@@ -364,6 +369,8 @@ function FloatingTrajectoryPanel({
             onMovePoint={onMovePoint}
             viewMode={viewMode}
             rodConfig={rodConfig}
+            backgroundTrajectories={backgroundTrajectories}
+            activeTrajectoryColor={activeTrajectoryColor}
           />
         )}
       </div>
