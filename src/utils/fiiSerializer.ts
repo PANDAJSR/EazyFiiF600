@@ -41,8 +41,8 @@ const buildProgramNames = (_program: ParseResult['programs'][number], index: num
   return { actionGroup, flightName, flightId }
 }
 
-const buildBlockXml = (blocks: ParseResult['programs'][number]['blocks'], index: number): string => {
-  const serializedBlocks = expandAutoDelayBlocks(blocks)
+const buildBlockXml = (program: ParseResult['programs'][number], index: number): string => {
+  const serializedBlocks = expandAutoDelayBlocks(program.blocks, program.drone.startPos)
   const lines: string[] = []
   const emitBlockFields = (blockIndex: number) => {
     const block = serializedBlocks[blockIndex]
@@ -178,7 +178,7 @@ export const serializeProjectFiles = (result: ParseResult): SerializedProjectFil
     const { actionGroup } = buildProgramNames(program, index)
     files.push({
       relativePath: `动作组/${actionGroup}/webCodeAll.xml`,
-      content: buildBlockXml(program.blocks, index),
+      content: buildBlockXml(program, index),
     })
   })
   return files

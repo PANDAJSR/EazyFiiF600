@@ -1,4 +1,5 @@
 import type { ParsedBlock } from '../types/fii'
+import { clampAsyncMoveX, clampAsyncMoveY, clampAsyncMoveZ, MIN_ABSOLUTE_MOVE_Z } from './moveBlockConstraints'
 
 type XYZ = {
   x: string
@@ -89,35 +90,112 @@ export const collapseAutoDelayBlocks = (blocks: ParsedBlock[]): ParsedBlock[] =>
   return next
 }
 
-export const expandAutoDelayBlocks = (blocks: ParsedBlock[]): ParsedBlock[] =>
-  blocks.flatMap((block) => {
-    if (!isAutoDelayBlock(block)) {
-      return [block]
+export const expandAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): ParsedBlock[] => {
+  const next: ParsedBlock[] = []
+  let currentX = toFieldNumber(startPos.x, 0)
+  let currentY = toFieldNumber(startPos.y, 0)
+  let currentZ = toFieldNumber(startPos.z, 0)
+
+  blocks.forEach((block) => {
+    if (block.type === 'Goertek_TakeOff2') {
+      const nextAlt = toNumber(block.fields.alt)
+      if (nextAlt !== null) {
+        currentZ = nextAlt
+      }
+      next.push(block)
+      return
     }
+
+    if (block.type === 'Goertek_MoveToCoord2') {
+      const nextX = clampAsyncMoveX(toFieldNumber(block.fields.X, currentX))
+      const nextY = clampAsyncMoveY(toFieldNumber(block.fields.Y, currentY))
+      const nextZ = clampAsyncMoveZ(toFieldNumber(block.fields.Z, currentZ))
+      currentX = nextX
+      currentY = nextY
+      currentZ = nextZ
+      next.push({
+        ...block,
+        fields: {
+          ...block.fields,
+          X: String(nextX),
+          Y: String(nextY),
+          Z: String(nextZ),
+        },
+      })
+      return
+    }
+
+    if (block.type === 'Goertek_Move') {
+      const deltaX = toFieldNumber(block.fields.X, 0)
+      const deltaY = toFieldNumber(block.fields.Y, 0)
+      const deltaZ = toFieldNumber(block.fields.Z, 0)
+      currentX += deltaX
+      currentY += deltaY
+      currentZ += deltaZ
+      next.push(block)
+      return
+    }
+
+    if (!isAutoDelayBlock(block)) {
+      if (block.type === 'Goertek_Land') {
+        currentZ = 0
+      }
+      next.push(block)
+      return
+    }
+
     const existedUuid = readAutoDelayUuidFromComment(block.comment)
     const blockUuid = existedUuid ?? createRuntimeUuid()
     const comment = createAutoDelayComment(blockUuid)
-    return [
-      {
+    const nextX = toFieldNumber(block.fields.X, currentX)
+    const nextY = toFieldNumber(block.fields.Y, currentY)
+    const nextZ = toFieldNumber(block.fields.Z, currentZ)
+    const nextTime = block.fields.time ?? '0'
+
+    if (nextZ < MIN_ABSOLUTE_MOVE_Z) {
+      next.push({
+        id: `${block.id}__move`,
+        type: 'Goertek_Move',
+        fields: {
+          X: String(nextX - currentX),
+          Y: String(nextY - currentY),
+          Z: String(nextZ - currentZ),
+        },
+        comment,
+      })
+      currentX = nextX
+      currentY = nextY
+      currentZ = nextZ
+    } else {
+      const safeX = clampAsyncMoveX(nextX)
+      const safeY = clampAsyncMoveY(nextY)
+      const safeZ = clampAsyncMoveZ(nextZ)
+      next.push({
         id: `${block.id}__move`,
         type: 'Goertek_MoveToCoord2',
         fields: {
-          X: block.fields.X ?? '0',
-          Y: block.fields.Y ?? '0',
-          Z: block.fields.Z ?? '100',
+          X: String(safeX),
+          Y: String(safeY),
+          Z: String(safeZ),
         },
         comment,
+      })
+      currentX = safeX
+      currentY = safeY
+      currentZ = safeZ
+    }
+    next.push({
+      id: `${block.id}__delay`,
+      type: 'block_delay',
+      fields: {
+        time: nextTime,
       },
-      {
-        id: `${block.id}__delay`,
-        type: 'block_delay',
-        fields: {
-          time: block.fields.time ?? '0',
-        },
-        comment,
-      },
-    ]
+      comment,
+    })
   })
+
+  return next
+}
 
 export const normalizeAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): ParsedBlock[] => {
   const startX = toFieldNumber(startPos.x, 0)
@@ -163,9 +241,23 @@ export const normalizeAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): 
         }
       }
 
-      currentX = nextX
-      currentY = nextY
-      currentZ = nextZ
+      if (block.type === 'Goertek_MoveToCoord2') {
+        const safeX = clampAsyncMoveX(nextX)
+        const safeY = clampAsyncMoveY(nextY)
+        const safeZ = clampAsyncMoveZ(nextZ)
+        currentX = safeX
+        currentY = safeY
+        currentZ = safeZ
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            X: String(safeX),
+            Y: String(safeY),
+            Z: String(safeZ),
+          },
+        }
+      }
       return block
     }
 
