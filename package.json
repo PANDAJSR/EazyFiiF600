@@ -12,15 +12,53 @@
     "electron:install": "node node_modules/electron/install.js",
     "build": "tsc -b && vite build",
     "build:desktop": "pnpm build",
+    "pack:win:portable": "pnpm build && electron-builder --win portable --x64",
+    "pack:linux": "pnpm build && electron-builder --linux AppImage tar.gz",
+    "pack:mac": "pnpm build && electron-builder --mac dmg zip",
     "lint": "eslint .",
     "preview": "vite preview"
   },
-  "dependencies": {
-    "antd": "^6.3.4",
-    "react": "^19.2.4",
-    "react-dom": "^19.2.4",
-    "three": "^0.183.2"
+  "build": {
+    "appId": "com.pandajsr.eazyfiif600",
+    "productName": "EazyFiiF600",
+    "directories": {
+      "output": "release"
+    },
+    "asar": true,
+    "files": [
+      "dist/**",
+      "electron/**",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "electron/main.mjs"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Utility"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.utilities"
+    }
   },
+  "dependencies": {},
   "devDependencies": {
     "@eslint/js": "^9.39.4",
     "@types/node": "^24.12.0",
@@ -30,10 +68,15 @@
     "@vitejs/plugin-react": "^6.0.1",
     "concurrently": "^9.2.1",
     "electron": "^37.2.0",
+    "electron-builder": "^26.8.1",
+    "antd": "^6.3.4",
     "eslint": "^9.39.4",
     "eslint-plugin-react-hooks": "^7.0.1",
     "eslint-plugin-react-refresh": "^0.5.2",
     "globals": "^17.4.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "three": "^0.183.2",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.57.0",
     "vite": "^8.0.1",
