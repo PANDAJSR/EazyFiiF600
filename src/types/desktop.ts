@@ -19,3 +19,22 @@ export type DesktopWritePayload = {
 export type DesktopWriteResult = {
   writtenCount: number
 }
+
+export type DesktopReadTextFilePayload = {
+  directoryPath: string
+  relativePath: string
+}
+
+export type DesktopReadTextFileResult = {
+  content: string | null
+}
+
+export type DesktopWriteTextFilePayload = {
+  directoryPath: string
+  relativePath: string
+  content: string
+}
+
+export type DesktopWriteTextFileResult = {
+  written: boolean
+}

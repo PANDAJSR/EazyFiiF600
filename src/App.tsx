@@ -18,7 +18,7 @@ import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTra
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, updateBlockField, updateMovePoint } from './utils/programMutations'
-import { saveDesktopProject } from './utils/desktopProjectIO'
+import { openDesktopProject, saveDesktopProject } from './utils/desktopProjectIO'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 
 function App() {
@@ -97,6 +97,7 @@ function App() {
       }
       const merged = applySavedEdits(parsed)
       setResult(merged)
+      setDesktopProjectDirectory(undefined)
       setSelectedDroneId(merged.programs[0]?.drone.id)
       setHighlightedBlockId(undefined)
       setSelectedBlockId(undefined)
@@ -113,6 +114,46 @@ function App() {
       setLoading(false)
     }
   }
+  const handleOpenDirectory = useCallback(async () => {
+    if (isDesktopRuntime()) {
+      setLoading(true)
+      try {
+        const openResult = await openDesktopProject()
+        if (!openResult) {
+          return
+        }
+
+        const merged = applySavedEdits(openResult.parseResult)
+        if (!merged.sourceName) {
+          console.warn('[fii] parse skipped: no .fii source found in selected files', {
+            warnings: merged.warnings,
+          })
+          message.error('所选路径未找到 .fii 文件，未更新当前程序。请重新选择包含 .fii 的目录。')
+          return
+        }
+
+        setResult(merged)
+        setDesktopProjectDirectory(openResult.directoryPath)
+        setSelectedDroneId(merged.programs[0]?.drone.id)
+        setHighlightedBlockId(undefined)
+        setSelectedBlockId(undefined)
+        setHighlightPulse(0)
+        setHasUnsavedChanges(false)
+        if (merged.warnings.length) {
+          message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
+        } else {
+          message.success('文件读取成功')
+        }
+      } catch {
+        message.error('文件解析失败，请确认目录内容和 XML 格式是否正确')
+      } finally {
+        setLoading(false)
+      }
+      return
+    }
+
+    openDomDirectoryPicker(directoryPickerRef)
+  }, [])
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
@@ -283,7 +324,7 @@ function App() {
         <Layout.Sider width={340} className="app-sider">
           <div className="brand-title">Fii 动作查看器</div>
           <div className="sider-actions">
-            <Button type="primary" onClick={() => openDomDirectoryPicker(directoryPickerRef)} loading={loading} block>
+            <Button type="primary" onClick={() => void handleOpenDirectory()} loading={loading} block>
               选择文件夹
             </Button>
             <Button onClick={() => filesPickerRef.current?.click()} disabled={loading} block>
@@ -359,6 +400,7 @@ function App() {
           <FloatingTrajectoryPanel
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
+            openedDirectoryPath={desktopProjectDirectory}
             selectedBlockId={selectedBlockId}
             pathDrawingMode={pathDrawingMode}
             onPathDrawingToggle={handlePathDrawingToggle}

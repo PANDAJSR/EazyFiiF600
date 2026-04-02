@@ -92,6 +92,40 @@ ipcMain.handle('desktop:write-project-files', async (_event, payload) => {
   return { writtenCount: files.length }
 })
 
+ipcMain.handle('desktop:read-text-file', async (_event, payload) => {
+  const { directoryPath, relativePath } = payload ?? {}
+  if (!directoryPath || !relativePath) {
+    throw new Error('invalid read payload')
+  }
+
+  const targetPath = path.join(directoryPath, relativePath)
+  try {
+    const content = await fs.readFile(targetPath, 'utf8')
+    return { content }
+  } catch (error) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+      return { content: null }
+    }
+    throw error
+  }
+})
+
+ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
+  const { directoryPath, relativePath, content } = payload ?? {}
+  if (!directoryPath || !relativePath || typeof content !== 'string') {
+    throw new Error('invalid text write payload')
+  }
+
+  if (!existsSync(directoryPath)) {
+    await fs.mkdir(directoryPath, { recursive: true })
+  }
+
+  const targetPath = path.join(directoryPath, relativePath)
+  await fs.mkdir(path.dirname(targetPath), { recursive: true })
+  await fs.writeFile(targetPath, content, 'utf8')
+  return { written: true }
+})
+
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {

@@ -7,6 +7,7 @@ import TrajectoryPlane from './TrajectoryPlane'
 import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
+import { loadRodConfigFromDirectory, saveRodConfigToDirectory } from './trajectory/rodConfigStorage'
 
 type XYZ = {
   x: string
@@ -15,6 +16,7 @@ type XYZ = {
 }
 
 type Props = {
+  openedDirectoryPath?: string
   startPos: XYZ
   blocks: ParsedBlock[]
   selectedBlockId?: string
@@ -137,6 +139,7 @@ const getDockedRightRect = (currentWidth: number): Rect => {
 }
 
 function FloatingTrajectoryPanel({
+  openedDirectoryPath,
   startPos,
   blocks,
   selectedBlockId,
@@ -154,6 +157,62 @@ function FloatingTrajectoryPanel({
   const [rodConfig, setRodConfig] = useState<RodConfig>(() => createDefaultRodConfig())
   const dragRef = useRef<DragState | null>(null)
   const floatingRectRef = useRef<Rect>(getInitialRect())
+  const skipSaveOnceRef = useRef(false)
+  const saveTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+    const loadConfig = async () => {
+      if (!openedDirectoryPath) {
+        skipSaveOnceRef.current = true
+        setRodConfig(createDefaultRodConfig())
+        return
+      }
+
+      const loadedConfig = await loadRodConfigFromDirectory(openedDirectoryPath)
+      if (cancelled) {
+        return
+      }
+
+      skipSaveOnceRef.current = true
+      setRodConfig(loadedConfig ?? createDefaultRodConfig())
+    }
+
+    void loadConfig()
+    return () => {
+      cancelled = true
+    }
+  }, [openedDirectoryPath])
+
+  useEffect(() => {
+    if (!openedDirectoryPath) {
+      return
+    }
+
+    if (skipSaveOnceRef.current) {
+      skipSaveOnceRef.current = false
+      return
+    }
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+    }
+
+    saveTimerRef.current = window.setTimeout(() => {
+      void saveRodConfigToDirectory(openedDirectoryPath, rodConfig).then((success) => {
+        if (!success) {
+          console.warn('[rod-config] failed to write eazyfii_config.json')
+        }
+      })
+    }, 1000)
+
+    return () => {
+      if (saveTimerRef.current) {
+        window.clearTimeout(saveTimerRef.current)
+        saveTimerRef.current = null
+      }
+    }
+  }, [openedDirectoryPath, rodConfig])
 
   useEffect(() => {
     const onWindowResize = () => {

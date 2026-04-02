@@ -1,9 +1,19 @@
-import type { DesktopOpenResult, DesktopWritePayload, DesktopWriteResult } from './desktop'
+import type {
+  DesktopOpenResult,
+  DesktopReadTextFilePayload,
+  DesktopReadTextFileResult,
+  DesktopWritePayload,
+  DesktopWriteResult,
+  DesktopWriteTextFilePayload,
+  DesktopWriteTextFileResult,
+} from './desktop'
 
 type DesktopApi = {
   pickOpenDirectory: () => Promise<DesktopOpenResult | null>
   pickSaveDirectory: () => Promise<string | null>
   writeProjectFiles: (payload: DesktopWritePayload) => Promise<DesktopWriteResult>
+  readTextFile: (payload: DesktopReadTextFilePayload) => Promise<DesktopReadTextFileResult>
+  writeTextFile: (payload: DesktopWriteTextFilePayload) => Promise<DesktopWriteTextFileResult>
 }
 
 declare global {

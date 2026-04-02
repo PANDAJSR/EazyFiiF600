@@ -1,4 +1,10 @@
-import type { DesktopOpenResult, DesktopWritePayload, DesktopWriteResult } from '../types/desktop'
+import type {
+  DesktopOpenResult,
+  DesktopReadTextFilePayload,
+  DesktopWritePayload,
+  DesktopWriteResult,
+  DesktopWriteTextFilePayload,
+} from '../types/desktop'
 
 export const isDesktopRuntime = () => Boolean(window.eazyFiiDesktop)
 export const isElectronShell = () => navigator.userAgent.includes('Electron')
@@ -24,4 +30,24 @@ export const writeProjectFiles = async (
     return null
   }
   return window.eazyFiiDesktop.writeProjectFiles(payload)
+}
+
+export const readDesktopTextFile = async (
+  payload: DesktopReadTextFilePayload,
+): Promise<string | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  const result = await window.eazyFiiDesktop.readTextFile(payload)
+  return result.content
+}
+
+export const writeDesktopTextFile = async (
+  payload: DesktopWriteTextFilePayload,
+): Promise<boolean> => {
+  if (!window.eazyFiiDesktop) {
+    return false
+  }
+  const result = await window.eazyFiiDesktop.writeTextFile(payload)
+  return result.written
 }
