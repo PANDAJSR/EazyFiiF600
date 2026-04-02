@@ -347,7 +347,7 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
                     textAnchor="middle"
                     className="trajectory-point-count"
                   >
-                    {point.count}
+                    {point.count - 1}
                   </text>
                 )}
               </g>
