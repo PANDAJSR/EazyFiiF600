@@ -1,16 +1,89 @@
-import { InputNumber, Typography } from 'antd'
+import { Button, InputNumber, Typography } from 'antd'
+import { createDefaultRodConfig, ROD_SUBJECT_SPECS } from './rodConfig'
 import type { RodConfig, RodSubjectId } from './rodConfig'
-import { ROD_SUBJECT_SPECS } from './rodConfig'
 
 type Props = {
   config: RodConfig
   onChange: (nextConfig: RodConfig) => void
 }
 
+type GroupId = RodSubjectId | 'takeoffZone'
+
 type FieldTarget = {
-  group: RodSubjectId | 'takeoffZone'
+  group: GroupId
   pointIndex: number
   axis: 'x' | 'y'
+}
+
+type CoordPair = {
+  x: number
+  y: number
+}
+
+const SUBJECT_NUMBER_TO_ID: Record<number, RodSubjectId> = {
+  1: 'subject1',
+  2: 'subject2',
+  3: 'subject3',
+  4: 'subject4',
+  5: 'subject5',
+  6: 'subject6',
+  7: 'subject7',
+  8: 'subject8',
+  9: 'subject9',
+  10: 'subject10',
+}
+
+const cloneConfig = (source: RodConfig): RodConfig => {
+  const nextConfig: RodConfig = {
+    ...source,
+    takeoffZone: source.takeoffZone.map((point) => ({ ...point })),
+  }
+
+  for (const spec of ROD_SUBJECT_SPECS) {
+    nextConfig[spec.id] = source[spec.id].map((point) => ({ ...point }))
+  }
+
+  return nextConfig
+}
+
+const parseLabeledCoordinates = (rawText: string): Partial<Record<GroupId, CoordPair[]>> => {
+  const normalizedText = rawText
+    .replace(/（/g, '(')
+    .replace(/）/g, ')')
+    .replace(/，/g, ',')
+    .replace(/：/g, ':')
+    .replace(/\u3000/g, ' ')
+
+  const sectionMatches = [...normalizedText.matchAll(/(起降区|科目\s*(10|[1-9]))/g)]
+  if (sectionMatches.length === 0) {
+    return {}
+  }
+
+  const parsed: Partial<Record<GroupId, CoordPair[]>> = {}
+
+  sectionMatches.forEach((match, index) => {
+    const [label, , subjectNumber] = match
+    const start = (match.index ?? 0) + label.length
+    const end = sectionMatches[index + 1]?.index ?? normalizedText.length
+    const sectionText = normalizedText.slice(start, end)
+
+    const group: GroupId =
+      label === '起降区' ? 'takeoffZone' : SUBJECT_NUMBER_TO_ID[Number(subjectNumber)]
+
+    if (!group) {
+      return
+    }
+
+    const pairs: CoordPair[] = [...sectionText.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)]
+      .map((coordMatch) => ({ x: Number(coordMatch[1]), y: Number(coordMatch[2]) }))
+      .filter((pair) => Number.isFinite(pair.x) && Number.isFinite(pair.y))
+
+    if (pairs.length > 0) {
+      parsed[group] = pairs
+    }
+  })
+
+  return parsed
 }
 
 function RodConfigPanel({ config, onChange }: Props) {
@@ -27,8 +100,15 @@ function RodConfigPanel({ config, onChange }: Props) {
     ),
   ]
 
+  const clearGroup = (group: GroupId) => {
+    onChange({
+      ...config,
+      [group]: config[group].map(() => ({})),
+    })
+  }
+
   const updatePoint = (
-    group: RodSubjectId | 'takeoffZone',
+    group: GroupId,
     pointIndex: number,
     axis: 'x' | 'y',
     value: number | null,
@@ -49,11 +129,28 @@ function RodConfigPanel({ config, onChange }: Props) {
 
   const spreadPasteValues = (
     event: React.ClipboardEvent<HTMLInputElement>,
-    group: RodSubjectId | 'takeoffZone',
+    group: GroupId,
     pointIndex: number,
     axis: 'x' | 'y',
   ) => {
     const pastedText = event.clipboardData.getData('text')
+    const labeledCoordinates = parseLabeledCoordinates(pastedText)
+
+    if (Object.keys(labeledCoordinates).length > 0) {
+      event.preventDefault()
+      const nextConfig = cloneConfig(config)
+
+      for (const [targetGroup, pairs] of Object.entries(labeledCoordinates) as [GroupId, CoordPair[]][]) {
+        nextConfig[targetGroup] = nextConfig[targetGroup].map((_, index) => {
+          const pair = pairs[index]
+          return pair ? { x: pair.x, y: pair.y } : {}
+        })
+      }
+
+      onChange(nextConfig)
+      return
+    }
+
     const numbers = pastedText
       .match(/-?\d+(?:\.\d+)?/g)
       ?.map((value) => Number(value))
@@ -72,13 +169,7 @@ function RodConfigPanel({ config, onChange }: Props) {
 
     event.preventDefault()
 
-    const nextConfig: RodConfig = {
-      ...config,
-      takeoffZone: config.takeoffZone.map((point) => ({ ...point })),
-    }
-    for (const spec of ROD_SUBJECT_SPECS) {
-      nextConfig[spec.id] = config[spec.id].map((point) => ({ ...point }))
-    }
+    const nextConfig = cloneConfig(config)
 
     numbers.forEach((value, offset) => {
       const targetField = flatFieldOrder[startIndex + offset]
@@ -93,12 +184,22 @@ function RodConfigPanel({ config, onChange }: Props) {
 
   return (
     <div className="rod-config-panel">
-      <Typography.Text className="rod-config-tip">配置杆子坐标后，会在 2D 轨迹图中以黄色科目标记显示；起降区会显示橙色透明虚线四边形。</Typography.Text>
+      <div className="rod-config-toolbar">
+        <Typography.Text className="rod-config-tip">配置杆子坐标后，会在 2D 轨迹图中以黄色科目标记显示；起降区会显示橙色透明虚线四边形。</Typography.Text>
+        <Button size="small" danger onClick={() => onChange(createDefaultRodConfig())}>
+          清空全部
+        </Button>
+      </div>
       <div className="rod-config-list">
         <section className="rod-config-subject">
           <div className="rod-config-subject-title">
-            <span className="rod-config-subject-marker">TZ</span>
-            <span>起降区（4 点）</span>
+            <div className="rod-config-subject-title-main">
+              <span className="rod-config-subject-marker">TZ</span>
+              <span>起降区（4 点）</span>
+            </div>
+            <Button size="small" type="link" onClick={() => clearGroup('takeoffZone')}>
+              清空
+            </Button>
           </div>
           <div className="rod-config-points">
             {config.takeoffZone.map((point, pointIndex) => (
@@ -125,8 +226,13 @@ function RodConfigPanel({ config, onChange }: Props) {
         {ROD_SUBJECT_SPECS.map((subject) => (
           <section key={subject.id} className="rod-config-subject">
             <div className="rod-config-subject-title">
-              <span className="rod-config-subject-marker">{subject.marker}</span>
-              <span>{subject.label}</span>
+              <div className="rod-config-subject-title-main">
+                <span className="rod-config-subject-marker">{subject.marker}</span>
+                <span>{subject.label}</span>
+              </div>
+              <Button size="small" type="link" onClick={() => clearGroup(subject.id)}>
+                清空
+              </Button>
             </div>
             <div className="rod-config-points">
               {config[subject.id].map((point, pointIndex) => (

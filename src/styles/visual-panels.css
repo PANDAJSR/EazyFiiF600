@@ -618,6 +618,13 @@
   font-size: 12px;
 }
 
+.rod-config-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .rod-config-list {
   display: grid;
   gap: 10px;
@@ -633,11 +640,18 @@
 .rod-config-subject-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: space-between;
+  gap: 8px;
   color: #244b77;
   font-size: 13px;
   font-weight: 700;
   margin-bottom: 8px;
+}
+
+.rod-config-subject-title-main {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .rod-config-subject-marker {
