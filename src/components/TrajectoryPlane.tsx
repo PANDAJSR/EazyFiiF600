@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryScene3D from './TrajectoryScene3D'
+import { ROD_SUBJECT_SPECS, type RodConfig } from './trajectory/rodConfig'
 import type { TrajectoryBounds, XYZ, Visit } from './trajectory/trajectoryUtils'
 import { buildPathVisits, buildTicks, calcTrajectoryBounds } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
@@ -16,6 +17,7 @@ type Props = {
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
   viewMode?: '2d' | '3d'
+  rodConfig?: RodConfig
 }
 type MovePointPayload = {
   blockId: string
@@ -25,9 +27,17 @@ type MovePointPayload = {
   baseX?: number
   baseY?: number
 }
-const VIEWBOX_WIDTH = 680
-const VIEWBOX_HEIGHT = 620
-function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPathPoint, onLocateBlock, onMovePoint, viewMode = '2d' }: Props) {
+const VIEWBOX_WIDTH = 680, VIEWBOX_HEIGHT = 620
+function TrajectoryPlane({
+  startPos,
+  blocks,
+  pathDrawingMode = false,
+  onDrawPathPoint,
+  onLocateBlock,
+  onMovePoint,
+  viewMode = '2d',
+  rodConfig,
+}: Props) {
   const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
   const bounds = useMemo(() => calcTrajectoryBounds(visits), [visits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
@@ -171,6 +181,14 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
   const xTicks = buildTicks(displayBounds.minX, displayBounds.maxX)
   const yTicks = buildTicks(displayBounds.minY, displayBounds.maxY)
   const polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
+  const rodMarkers =
+    rodConfig === undefined
+      ? []
+      : ROD_SUBJECT_SPECS.flatMap((subject) =>
+          rodConfig[subject.id]
+            .map((point) => ({ marker: subject.marker, x: point.x, y: point.y }))
+            .filter((point): point is { marker: string; x: number; y: number } => Number.isFinite(point.x) && Number.isFinite(point.y)),
+        )
   const panelDirection =
     activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
   const resolveDrawPreviewPoint = (clientX: number, clientY: number) => {
@@ -277,6 +295,14 @@ function TrajectoryPlane({ startPos, blocks, pathDrawingMode = false, onDrawPath
             </g>
           ))}
           <polyline points={polylinePoints} className="trajectory-line" />
+          {rodMarkers.map((marker, index) => (
+            <g key={`rod-${index}-${marker.marker}-${marker.x}-${marker.y}`} className="trajectory-rod-marker">
+              <circle cx={toSvgX(marker.x)} cy={toSvgY(marker.y)} r={10} className="trajectory-rod-marker-circle" />
+              <text x={toSvgX(marker.x)} y={toSvgY(marker.y) + 4} textAnchor="middle" className="trajectory-rod-marker-text">
+                {marker.marker}
+              </text>
+            </g>
+          ))}
           {!!activeDrawPreview && (
             <>
               <polyline points={drawPreviewLinePoints} className="trajectory-draw-preview-line" />

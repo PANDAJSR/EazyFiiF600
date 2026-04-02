@@ -1,9 +1,11 @@
-import { Button, Tooltip, Typography } from 'antd'
+import { Button, Segmented, Tooltip, Typography } from 'antd'
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryPlane from './TrajectoryPlane'
+import RodConfigPanel from './trajectory/RodConfigPanel'
+import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 
 type XYZ = {
   x: string
@@ -29,7 +31,7 @@ type Props = {
   }) => void
 }
 
-type ViewMode = '2d' | '3d'
+type ViewMode = '2d' | '3d' | 'rod'
 
 type Rect = {
   x: number
@@ -144,6 +146,7 @@ function FloatingTrajectoryPanel({
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('2d')
+  const [rodConfig, setRodConfig] = useState<RodConfig>(() => createDefaultRodConfig())
   const dragRef = useRef<DragState | null>(null)
   const floatingRectRef = useRef<Rect>(getInitialRect())
 
@@ -306,7 +309,7 @@ function FloatingTrajectoryPanel({
       <div className="floating-trajectory-header">
         <div className="floating-trajectory-drag-handle" onPointerDown={startMove}>
           <Typography.Title level={5} className="trajectory-title">
-            {viewMode === '2d' ? '飞机平面轨迹（XY）' : '飞机三维轨迹（XYZ）'}
+            {viewMode === '2d' ? '飞机平面轨迹（XY）' : viewMode === '3d' ? '飞机三维轨迹（XYZ）' : '杆子配置'}
           </Typography.Title>
         </div>
         {viewMode === '2d' && !!selectedBlockId && (
@@ -321,16 +324,17 @@ function FloatingTrajectoryPanel({
             </Button>
           </Tooltip>
         )}
-        <Tooltip title={viewMode === '2d' ? '切换到 3D 轨迹' : '切换到 2D 轨迹'}>
-          <Button
-            className="floating-trajectory-mode-btn"
-            type={viewMode === '2d' ? 'default' : 'primary'}
-            size="small"
-            onClick={() => setViewMode((prev) => (prev === '2d' ? '3d' : '2d'))}
-          >
-            {viewMode === '2d' ? '3D' : '2D'}
-          </Button>
-        </Tooltip>
+        <Segmented<ViewMode>
+          className="floating-trajectory-view-tabs"
+          size="small"
+          value={viewMode}
+          onChange={(value) => setViewMode(value)}
+          options={[
+            { label: '2D', value: '2d' },
+            { label: '3D', value: '3d' },
+            { label: '杆子配置', value: 'rod' },
+          ]}
+        />
         <Tooltip title={dockedRight ? '切换为悬浮面板' : '贴右侧面板'}>
           <Button
             className="floating-trajectory-toggle-btn"
@@ -348,15 +352,20 @@ function FloatingTrajectoryPanel({
         </Tooltip>
       </div>
       <div className="floating-trajectory-body">
-        <TrajectoryPlane
-          startPos={startPos}
-          blocks={blocks}
-          pathDrawingMode={pathDrawingMode && viewMode === '2d'}
-          onDrawPathPoint={onDrawPathPoint}
-          onLocateBlock={onLocateBlock}
-          onMovePoint={onMovePoint}
-          viewMode={viewMode}
-        />
+        {viewMode === 'rod' ? (
+          <RodConfigPanel config={rodConfig} onChange={setRodConfig} />
+        ) : (
+          <TrajectoryPlane
+            startPos={startPos}
+            blocks={blocks}
+            pathDrawingMode={pathDrawingMode && viewMode === '2d'}
+            onDrawPathPoint={onDrawPathPoint}
+            onLocateBlock={onLocateBlock}
+            onMovePoint={onMovePoint}
+            viewMode={viewMode}
+            rodConfig={rodConfig}
+          />
+        )}
       </div>
       {!dockedRight && (
         <div

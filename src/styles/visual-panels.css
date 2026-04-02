@@ -90,6 +90,19 @@
   pointer-events: none;
 }
 
+.trajectory-rod-marker-circle {
+  fill: #ffea7d;
+  stroke: #d89a00;
+  stroke-width: 1.6;
+}
+
+.trajectory-rod-marker-text {
+  fill: #805100;
+  font-size: 12px;
+  font-weight: 700;
+  pointer-events: none;
+}
+
 .trajectory-visit-panel {
   position: absolute;
   z-index: 6;
@@ -482,6 +495,10 @@
   flex: none;
 }
 
+.floating-trajectory-view-tabs {
+  flex: none;
+}
+
 .floating-trajectory-toggle-icon {
   display: inline-block;
   font-size: 14px;
@@ -579,4 +596,63 @@
   line-height: 1;
   padding: 6px 8px;
   box-shadow: 0 10px 24px rgba(186, 90, 0, 0.16);
+}
+
+.rod-config-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  height: 100%;
+}
+
+.rod-config-tip {
+  color: #53739a;
+  font-size: 12px;
+}
+
+.rod-config-list {
+  display: grid;
+  gap: 10px;
+}
+
+.rod-config-subject {
+  border: 1px solid #d7e6f8;
+  border-radius: 10px;
+  background: #fbfdff;
+  padding: 8px 10px;
+}
+
+.rod-config-subject-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #244b77;
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.rod-config-subject-marker {
+  color: #b87900;
+}
+
+.rod-config-points {
+  display: grid;
+  gap: 6px;
+}
+
+.rod-config-point-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.rod-config-point-label {
+  width: 32px;
+  color: #4f7097;
+  font-size: 12px;
+}
+
+.rod-config-input {
+  width: 120px;
 }
