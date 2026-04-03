@@ -192,6 +192,10 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
         return
       }
       if (event.type === 'text-delta') {
+        console.debug('[AgentChatPanel] token', {
+          requestId: event.requestId,
+          delta: event.delta,
+        })
         setMessages((prev) => prev.map((item) => {
           if (item.id !== assistantMessageId) {
             return item
