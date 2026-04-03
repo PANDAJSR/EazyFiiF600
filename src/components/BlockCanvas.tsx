@@ -9,6 +9,7 @@ import useBlockInputNavigation from './useBlockInputNavigation'
 import BlockInsertPicker from './BlockInsertPicker'
 import type { InsertableBlockDefinition } from './blockInsertCatalog'
 import BlockLine from './BlockLine'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 
 type Props = {
   droneName?: string
@@ -20,6 +21,7 @@ type Props = {
   onSelectBlock?: (blockId?: string) => void
   onDeleteBlock?: (blockId: string) => void
   onDuplicateBlock?: (blockId: string) => void
+  onSplitAutoDelayBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
   insertPickerItems?: InsertableBlockDefinition[]
@@ -37,6 +39,7 @@ function BlockCanvas({
   onSelectBlock,
   onDeleteBlock,
   onDuplicateBlock,
+  onSplitAutoDelayBlock,
   onReorderBlocks,
   insertPickerOpen,
   insertPickerItems,
@@ -157,10 +160,11 @@ function BlockCanvas({
       classNames.push('block-card-selected')
     }
 
-    const menuItems: MenuProps['items'] = [
-      { key: 'duplicate', label: '复制' },
-      { key: 'delete', label: '删除', danger: true },
-    ]
+    const menuItems: MenuProps['items'] = [{ key: 'duplicate', label: '复制' }]
+    if (block.type === AUTO_DELAY_BLOCK_TYPE && onSplitAutoDelayBlock) {
+      menuItems.push({ key: 'split', label: '拆散成两个积木' })
+    }
+    menuItems.push({ key: 'delete', label: '删除', danger: true })
 
     const handleCardMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
       domEvent.preventDefault()
@@ -171,6 +175,10 @@ function BlockCanvas({
       }
       if (key === 'delete') {
         onDeleteBlock?.(block.id)
+        return
+      }
+      if (key === 'split') {
+        onSplitAutoDelayBlock?.(block.id)
       }
     }
 
@@ -246,7 +254,7 @@ function BlockCanvas({
     )
 
     const cardNodeWithMenu =
-      onDuplicateBlock || onDeleteBlock ? (
+      onDuplicateBlock || onDeleteBlock || onSplitAutoDelayBlock ? (
         <Dropdown trigger={['contextMenu']} menu={{ items: menuItems, onClick: handleCardMenuClick }}>
           {cardNode}
         </Dropdown>

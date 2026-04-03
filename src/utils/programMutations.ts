@@ -143,6 +143,41 @@ export const duplicateBlockAfterTarget = (
   })
 }
 
+export const splitAutoDelayBlockById = (
+  result: ParseResult,
+  selectedDroneId: string | undefined,
+  blockId: string,
+): ParseResult => {
+  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) => {
+    const targetIndex = blocks.findIndex((block) => block.id === blockId && block.type === AUTO_DELAY_BLOCK_TYPE)
+    if (targetIndex < 0) {
+      return blocks
+    }
+    const sourceBlock = blocks[targetIndex]
+    const moveBlock: ParsedBlock = {
+      id: createRuntimeBlockId(),
+      type: 'Goertek_MoveToCoord2',
+      fields: {
+        X: sourceBlock.fields.X ?? '0',
+        Y: sourceBlock.fields.Y ?? '0',
+        Z: sourceBlock.fields.Z ?? '100',
+      },
+      comment: sourceBlock.comment,
+    }
+    const delayBlock: ParsedBlock = {
+      id: createRuntimeBlockId(),
+      type: 'block_delay',
+      fields: {
+        time: sourceBlock.fields.time ?? '800',
+      },
+      comment: sourceBlock.comment,
+    }
+    const nextBlocks = [...blocks]
+    nextBlocks.splice(targetIndex, 1, moveBlock, delayBlock)
+    return nextBlocks
+  })
+}
+
 export const replaceSelectedProgramBlocks = (
   result: ParseResult,
   selectedDroneId: string | undefined,

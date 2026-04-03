@@ -17,7 +17,7 @@ import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
-import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { openDesktopProject, saveDesktopProject } from './utils/desktopProjectIO'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 
@@ -256,6 +256,11 @@ function App() {
     setHasUnsavedChanges(true)
     message.success('已复制积木')
   }, [selectedDroneId])
+  const handleSplitAutoDelayBlock = useCallback((blockId: string) => {
+    setResult((prev) => splitAutoDelayBlockById(prev, selectedDroneId, blockId))
+    setHasUnsavedChanges(true)
+    message.success('已拆散为两个积木')
+  }, [selectedDroneId])
   useEffect(() => {
     if (!selectedDroneId) {
       setSelectedDroneId(result.programs[0]?.drone.id)
@@ -388,6 +393,7 @@ function App() {
                 onFieldChange={handleFieldChange}
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
                 onDuplicateBlock={handleDuplicateBlock}
+                onSplitAutoDelayBlock={handleSplitAutoDelayBlock}
                 onDeleteBlock={handleDeleteBlock}
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}
