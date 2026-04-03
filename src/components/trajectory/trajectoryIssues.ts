@@ -4,6 +4,7 @@ import type { RodConfig } from './rodConfig'
 import { checkSubject1ClosedLoopUnder150 } from './subject1Issues'
 import { checkSubject2ClosedLoopAroundRod } from './subject2Issues'
 import { checkSubject3PassThroughVerticalRing, checkSubject4PassThroughHorizontalRing } from './subject34Issues'
+import { checkSubject5FigureEightAroundVerticalRods } from './subject5Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -215,6 +216,7 @@ export const buildTrajectoryIssues = (
   const [subject2RodA, subject2RodB] = rodConfig.subject2
   const [subject3RodA, subject3RodB] = rodConfig.subject3
   const [subject4RodA, subject4RodB] = rodConfig.subject4
+  const [subject5RodA, subject5RodB] = rodConfig.subject5
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -279,6 +281,26 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject4-not-completed',
         message: '科目④穿越横圈未完成：未穿过圆圈',
+      })
+    }
+  }
+
+  if (subject5RodA && subject5RodB && hasFiniteXY(subject5RodA) && hasFiniteXY(subject5RodB)) {
+    const subject5Result = checkSubject5FigureEightAroundVerticalRods(subject5RodA, subject5RodB, startPos, blocks)
+    if (subject5Result === 'height-too-high') {
+      issues.push({
+        key: 'subject5-height-too-high',
+        message: '科目⑤绕横8字未完成：8字飞行高度需低于150cm',
+      })
+    } else if (subject5Result === 'entry-exit-invalid') {
+      issues.push({
+        key: 'subject5-entry-exit-invalid',
+        message: '科目⑤绕横8字未完成：需从左/右侧进入8字并在同侧改出',
+      })
+    } else if (subject5Result === 'no-eight') {
+      issues.push({
+        key: 'subject5-no-eight',
+        message: '科目⑤绕横8字未完成：未检测到绕两根竖杆形成8字',
       })
     }
   }
