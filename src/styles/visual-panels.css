@@ -558,6 +558,22 @@
   line-height: 1.5;
 }
 
+.trajectory-issue-link {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.trajectory-issue-link:hover {
+  text-decoration: underline;
+}
+
 .trajectory-issue-item-warn {
   color: #ffd280;
 }

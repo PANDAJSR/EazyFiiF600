@@ -8,7 +8,7 @@ import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 import { loadRodConfigFromDirectory, saveRodConfigToDirectory } from './trajectory/rodConfigStorage'
-import { buildTrajectoryIssueWarnings } from './trajectory/trajectoryIssues'
+import { buildTrajectoryIssues } from './trajectory/trajectoryIssues'
 
 type XYZ = {
   x: string
@@ -298,7 +298,7 @@ function FloatingTrajectoryPanel({
   }, [])
 
   const issueWarnings = useMemo(
-    () => buildTrajectoryIssueWarnings(startPos, blocks, rodConfig),
+    () => buildTrajectoryIssues(startPos, blocks, rodConfig),
     [blocks, rodConfig, startPos],
   )
 
@@ -444,9 +444,23 @@ function FloatingTrajectoryPanel({
           <div className="trajectory-issue-title">问题</div>
           {issueWarnings.length ? (
             <ul className="trajectory-issue-list">
-              {issueWarnings.map((warning, index) => (
-                <li key={`${warning}-${index}`} className="trajectory-issue-item trajectory-issue-item-warn">
-                  [{String(index + 1).padStart(2, '0')}] {warning}
+              {issueWarnings.map((issue, index) => (
+                <li key={issue.key} className="trajectory-issue-item trajectory-issue-item-warn">
+                  {issue.blockId ? (
+                    <button
+                      type="button"
+                      className="trajectory-issue-link"
+                      onClick={() => {
+                        if (issue.blockId) {
+                          onLocateBlock?.(issue.blockId)
+                        }
+                      }}
+                    >
+                      [{String(index + 1).padStart(2, '0')}] {issue.message}
+                    </button>
+                  ) : (
+                    <span>[{String(index + 1).padStart(2, '0')}] {issue.message}</span>
+                  )}
                 </li>
               ))}
             </ul>

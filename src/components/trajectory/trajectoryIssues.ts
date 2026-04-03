@@ -25,6 +25,12 @@ type DelayAnchor = {
   minDelayMs: number
 }
 
+export type TrajectoryIssue = {
+  key: string
+  message: string
+  blockId?: string
+}
+
 const ASYNC_MOVE_DELAY_ANCHORS: DelayAnchor[] = [
   { distance: 40, minDelayMs: 500 },
   { distance: 60, minDelayMs: 700 },
@@ -200,8 +206,8 @@ const findMinDelayByDistance = (distanceCm: number): number => {
   return last.minDelayMs
 }
 
-const findAsyncMoveDelayWarnings = (startPos: XYZ, blocks: ParsedBlock[]): string[] => {
-  const warnings: string[] = []
+const findAsyncMoveDelayIssues = (startPos: XYZ, blocks: ParsedBlock[]): TrajectoryIssue[] => {
+  const issues: TrajectoryIssue[] = []
   let runtimePosition: Position3D = {
     x: toNumber(startPos.x) ?? 0,
     y: toNumber(startPos.y) ?? 0,
@@ -262,26 +268,31 @@ const findAsyncMoveDelayWarnings = (startPos: XYZ, blocks: ParsedBlock[]): strin
       continue
     }
 
-    warnings.push(
-      `异步平移延时不足：第${startIndex + 1}到第${nextMoveIndex + 1}个平移到距离${distance.toFixed(1)}cm，需≥${requiredDelayMs}ms，当前${Math.round(accumulatedDelayMs)}ms`,
-    )
+    issues.push({
+      key: `async-delay-${current.id}-${blocks[nextMoveIndex].id}`,
+      blockId: current.id,
+      message: `异步平移延时不足：第${startIndex + 1}到第${nextMoveIndex + 1}个平移到距离${distance.toFixed(1)}cm，需≥${requiredDelayMs}ms，当前${Math.round(accumulatedDelayMs)}ms`,
+    })
   }
 
-  return warnings
+  return issues
 }
 
-export const buildTrajectoryIssueWarnings = (
+export const buildTrajectoryIssues = (
   startPos: XYZ,
   blocks: ParsedBlock[],
   rodConfig: RodConfig,
-): string[] => {
-  const warnings: string[] = []
+): TrajectoryIssue[] => {
+  const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
 
   if (subject1 && hasFiniteXY(subject1) && !hasSubject1ClosedLoopUnder150(subject1, startPos, blocks)) {
-    warnings.push('科目一未完成')
+    issues.push({
+      key: 'subject1-not-completed',
+      message: '科目一未完成',
+    })
   }
 
-  warnings.push(...findAsyncMoveDelayWarnings(startPos, blocks))
-  return warnings
+  issues.push(...findAsyncMoveDelayIssues(startPos, blocks))
+  return issues
 }
