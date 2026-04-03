@@ -124,6 +124,13 @@ export const renderSubjectRods = (
     addSubject4Ring(subject4RodA, subject4RodB)
   }
 
+  const subject5RodA = rodConfig?.subject5[0]
+  const subject5RodB = rodConfig?.subject5[1]
+  if (isFiniteRodPoint(subject5RodA) && isFiniteRodPoint(subject5RodB)) {
+    addVerticalRod(subject5RodA.x, subject5RodA.y)
+    addVerticalRod(subject5RodB.x, subject5RodB.y)
+  }
+
   disposers.push(() => {
     rodGeometry.dispose()
     subject3RingGeometry.dispose()
