@@ -1,5 +1,5 @@
 import { Button, Segmented, Tooltip, Typography } from 'antd'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
@@ -8,6 +8,7 @@ import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 import { loadRodConfigFromDirectory, saveRodConfigToDirectory } from './trajectory/rodConfigStorage'
+import { buildTrajectoryIssueWarnings } from './trajectory/trajectoryIssues'
 
 type XYZ = {
   x: string
@@ -296,6 +297,11 @@ function FloatingTrajectoryPanel({
     }
   }, [])
 
+  const issueWarnings = useMemo(
+    () => buildTrajectoryIssueWarnings(startPos, blocks, rodConfig),
+    [blocks, rodConfig, startPos],
+  )
+
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (dockedRight) {
       return
@@ -416,22 +422,38 @@ function FloatingTrajectoryPanel({
         </Tooltip>
       </div>
       <div className="floating-trajectory-body">
-        {viewMode === 'rod' ? (
-          <RodConfigPanel config={rodConfig} onChange={setRodConfig} />
-        ) : (
-          <TrajectoryPlane
-            startPos={startPos}
-            blocks={blocks}
-            pathDrawingMode={pathDrawingMode && viewMode === '2d'}
-            onDrawPathPoint={onDrawPathPoint}
-            onLocateBlock={onLocateBlock}
-            onMovePoint={onMovePoint}
-            viewMode={viewMode}
-            rodConfig={rodConfig}
-            backgroundTrajectories={backgroundTrajectories}
-            activeTrajectoryColor={activeTrajectoryColor}
-          />
-        )}
+        <div className="floating-trajectory-main">
+          {viewMode === 'rod' ? (
+            <RodConfigPanel config={rodConfig} onChange={setRodConfig} />
+          ) : (
+            <TrajectoryPlane
+              startPos={startPos}
+              blocks={blocks}
+              pathDrawingMode={pathDrawingMode && viewMode === '2d'}
+              onDrawPathPoint={onDrawPathPoint}
+              onLocateBlock={onLocateBlock}
+              onMovePoint={onMovePoint}
+              viewMode={viewMode}
+              rodConfig={rodConfig}
+              backgroundTrajectories={backgroundTrajectories}
+              activeTrajectoryColor={activeTrajectoryColor}
+            />
+          )}
+        </div>
+        <section className="trajectory-issue-panel" aria-label="问题面板">
+          <div className="trajectory-issue-title">问题</div>
+          {issueWarnings.length ? (
+            <ul className="trajectory-issue-list">
+              {issueWarnings.map((warning, index) => (
+                <li key={`${warning}-${index}`} className="trajectory-issue-item trajectory-issue-item-warn">
+                  [{String(index + 1).padStart(2, '0')}] {warning}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <div className="trajectory-issue-empty">[00] 暂无问题</div>
+          )}
+        </section>
       </div>
       {!dockedRight && (
         <div

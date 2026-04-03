@@ -460,6 +460,7 @@
 
 .floating-trajectory-panel-docked-right .floating-trajectory-body {
   padding: 4px;
+  gap: 4px;
 }
 
 .floating-trajectory-panel-docked-right .trajectory-card {
@@ -516,8 +517,54 @@
 .floating-trajectory-body {
   flex: 1;
   min-height: 0;
-  overflow: auto;
+  overflow: hidden;
   padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.floating-trajectory-main {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.trajectory-issue-panel {
+  border: 1px solid #243749;
+  border-radius: 10px;
+  background: #0f1720;
+  color: #c2d7eb;
+  padding: 8px 10px;
+  font-family: 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', monospace;
+}
+
+.trajectory-issue-title {
+  color: #93b5d8;
+  font-size: 12px;
+  margin-bottom: 6px;
+}
+
+.trajectory-issue-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 4px;
+}
+
+.trajectory-issue-item {
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.trajectory-issue-item-warn {
+  color: #ffd280;
+}
+
+.trajectory-issue-empty {
+  color: #7fa1c5;
+  font-size: 12px;
 }
 
 .floating-trajectory-resize {
