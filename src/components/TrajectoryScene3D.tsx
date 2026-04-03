@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import type { RodConfig } from './trajectory/rodConfig'
-import { renderSubjectRods } from './trajectory/trajectoryScene3dRods'
+import { renderSubjectRods, renderTakeoffZoneOnGround } from './trajectory/trajectoryScene3dRods'
 import { SNAP_STEP, snapToStep } from './trajectory/trajectoryPlaneUtils'
 import {
   buildDragCandidates,
@@ -111,6 +111,7 @@ function TrajectoryScene3D({
       disposers.push(dispose)
     }
     scene.add(gridGroup)
+    renderTakeoffZoneOnGround(scene, rodConfig, disposers)
     renderSubjectRods(scene, rodConfig, disposers)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)

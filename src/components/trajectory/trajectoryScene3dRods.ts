@@ -1,9 +1,11 @@
 import * as THREE from 'three'
 import type { RodConfig } from './rodConfig'
+import { buildTakeoffZone } from './trajectoryPlaneDecorations'
 
 const SUBJECT_ROD_HEIGHT = 170
 const SUBJECT2_CROSSBAR_HEIGHT = 150
 const ROD_RADIUS = 1.8
+const TAKEOFF_ZONE_Z = 0.12
 
 const isFiniteRodPoint = (point?: { x?: number; y?: number }): point is { x: number; y: number } =>
   Boolean(point && Number.isFinite(point.x) && Number.isFinite(point.y))
@@ -64,5 +66,38 @@ export const renderSubjectRods = (
     rodGeometry.dispose()
     rodMaterial.dispose()
     crossbarMaterial.dispose()
+  })
+}
+
+export const renderTakeoffZoneOnGround = (
+  scene: THREE.Scene,
+  rodConfig: RodConfig | undefined,
+  disposers: Array<() => void>,
+) => {
+  const takeoffZone = buildTakeoffZone(rodConfig)
+  if (takeoffZone.length !== 4) {
+    return
+  }
+
+  const shape = new THREE.Shape()
+  shape.moveTo(takeoffZone[0].x, takeoffZone[0].y)
+  takeoffZone.slice(1).forEach((point) => shape.lineTo(point.x, point.y))
+  shape.lineTo(takeoffZone[0].x, takeoffZone[0].y)
+
+  const geometry = new THREE.ShapeGeometry(shape)
+  const material = new THREE.MeshBasicMaterial({
+    color: '#73d13d',
+    transparent: true,
+    opacity: 0.24,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  })
+  const mesh = new THREE.Mesh(geometry, material)
+  mesh.position.z = TAKEOFF_ZONE_Z
+  scene.add(mesh)
+
+  disposers.push(() => {
+    geometry.dispose()
+    material.dispose()
   })
 }
