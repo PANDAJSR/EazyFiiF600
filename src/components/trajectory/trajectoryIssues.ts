@@ -5,6 +5,7 @@ import { checkSubject1ClosedLoopUnder150 } from './subject1Issues'
 import { checkSubject2ClosedLoopAroundRod } from './subject2Issues'
 import { checkSubject3PassThroughVerticalRing, checkSubject4PassThroughHorizontalRing } from './subject34Issues'
 import { checkSubject5FigureEightAroundVerticalRods } from './subject5Issues'
+import { checkSubject6VerticalFigureEightAroundCrossbars } from './subject6Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -217,6 +218,7 @@ export const buildTrajectoryIssues = (
   const [subject3RodA, subject3RodB] = rodConfig.subject3
   const [subject4RodA, subject4RodB] = rodConfig.subject4
   const [subject5RodA, subject5RodB] = rodConfig.subject5
+  const [subject6RodA, subject6RodB, subject6RodC, subject6RodD] = rodConfig.subject6
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -301,6 +303,37 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject5-no-eight',
         message: '科目⑤绕横8字未完成：未检测到绕两根竖杆形成8字',
+      })
+    }
+  }
+
+  if (
+    subject6RodA &&
+    subject6RodB &&
+    subject6RodC &&
+    subject6RodD &&
+    hasFiniteXY(subject6RodA) &&
+    hasFiniteXY(subject6RodB) &&
+    hasFiniteXY(subject6RodC) &&
+    hasFiniteXY(subject6RodD)
+  ) {
+    const subject6Result = checkSubject6VerticalFigureEightAroundCrossbars(
+      subject6RodA,
+      subject6RodB,
+      subject6RodC,
+      subject6RodD,
+      startPos,
+      blocks,
+    )
+    if (subject6Result === 'entry-exit-invalid') {
+      issues.push({
+        key: 'subject6-entry-exit-invalid',
+        message: '科目⑥绕竖8字未完成：需从两侧进入并在同侧改出',
+      })
+    } else if (subject6Result === 'no-eight') {
+      issues.push({
+        key: 'subject6-no-eight',
+        message: '科目⑥绕竖8字未完成：未检测到绕两根同高横杆形成上下8字',
       })
     }
   }

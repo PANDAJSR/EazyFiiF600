@@ -4,6 +4,7 @@ import { buildTakeoffZone } from './trajectoryPlaneDecorations'
 
 const SUBJECT_ROD_HEIGHT = 170
 const SUBJECT2_CROSSBAR_HEIGHT = 150
+const SUBJECT6_CROSSBAR_HEIGHT = 150
 const SUBJECT3_RING_DIAMETER = 65
 const SUBJECT4_RING_DIAMETER = 65
 const SUBJECT4_RING_CENTER_HEIGHT = 120
@@ -47,7 +48,7 @@ export const renderSubjectRods = (
     scene.add(rod)
   }
 
-  const addCrossbar = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+  const addCrossbar = (start: { x: number; y: number }, end: { x: number; y: number }, height: number) => {
     const direction = new THREE.Vector3(end.x - start.x, end.y - start.y, 0)
     const length = direction.length()
     if (length <= 0.001) {
@@ -57,7 +58,7 @@ export const renderSubjectRods = (
     const geometry = new THREE.CylinderGeometry(ROD_RADIUS * 0.72, ROD_RADIUS * 0.72, length, 16)
     const crossbar = new THREE.Mesh(geometry, crossbarMaterial)
     crossbar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction)
-    crossbar.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, SUBJECT2_CROSSBAR_HEIGHT)
+    crossbar.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, height)
     scene.add(crossbar)
     disposers.push(() => geometry.dispose())
   }
@@ -102,7 +103,7 @@ export const renderSubjectRods = (
   if (isFiniteRodPoint(subject2RodA) && isFiniteRodPoint(subject2RodB)) {
     addVerticalRod(subject2RodA.x, subject2RodA.y)
     addVerticalRod(subject2RodB.x, subject2RodB.y)
-    addCrossbar(subject2RodA, subject2RodB)
+    addCrossbar(subject2RodA, subject2RodB, SUBJECT2_CROSSBAR_HEIGHT)
   }
 
   const subject3RodA = rodConfig?.subject3[0]
@@ -129,6 +130,24 @@ export const renderSubjectRods = (
   if (isFiniteRodPoint(subject5RodA) && isFiniteRodPoint(subject5RodB)) {
     addVerticalRod(subject5RodA.x, subject5RodA.y)
     addVerticalRod(subject5RodB.x, subject5RodB.y)
+  }
+
+  const subject6RodA = rodConfig?.subject6[0]
+  const subject6RodB = rodConfig?.subject6[1]
+  const subject6RodC = rodConfig?.subject6[2]
+  const subject6RodD = rodConfig?.subject6[3]
+  if (
+    isFiniteRodPoint(subject6RodA) &&
+    isFiniteRodPoint(subject6RodB) &&
+    isFiniteRodPoint(subject6RodC) &&
+    isFiniteRodPoint(subject6RodD)
+  ) {
+    addVerticalRod(subject6RodA.x, subject6RodA.y)
+    addVerticalRod(subject6RodB.x, subject6RodB.y)
+    addVerticalRod(subject6RodC.x, subject6RodC.y)
+    addVerticalRod(subject6RodD.x, subject6RodD.y)
+    addCrossbar(subject6RodA, subject6RodB, SUBJECT6_CROSSBAR_HEIGHT)
+    addCrossbar(subject6RodC, subject6RodD, SUBJECT6_CROSSBAR_HEIGHT)
   }
 
   disposers.push(() => {
