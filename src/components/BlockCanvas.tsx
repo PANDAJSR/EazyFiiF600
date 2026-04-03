@@ -125,12 +125,29 @@ function BlockCanvas({
     if (!highlightedBlockId) {
       return
     }
-    const target = blockRefs.current[highlightedBlockId]
-    if (!target) {
-      return
+    let rafId = 0
+    let retryCount = 0
+    const maxRetry = 12
+    const locate = () => {
+      const fallbackSelector = `[data-block-id="${highlightedBlockId}"]`
+      const target = blockRefs.current[highlightedBlockId] ?? document.querySelector<HTMLElement>(fallbackSelector)
+      if (!target) {
+        if (retryCount < maxRetry) {
+          retryCount += 1
+          rafId = window.requestAnimationFrame(locate)
+        }
+        return
+      }
+      target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+      rafId = window.requestAnimationFrame(() => {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
+      })
     }
-    target.scrollIntoView({ behavior: 'smooth', block: 'center', inline: 'nearest' })
-  }, [highlightedBlockId, highlightPulse])
+    rafId = window.requestAnimationFrame(locate)
+    return () => {
+      window.cancelAnimationFrame(rafId)
+    }
+  }, [highlightedBlockId, highlightPulse, rows])
 
   useEffect(() => {
     if (!highlightedBlockId) {
