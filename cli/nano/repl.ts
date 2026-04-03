@@ -2,9 +2,8 @@ import process from 'node:process'
 import readline from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import { cwd } from 'node:process'
-import OpenAI from 'openai'
 import { createAgentState, runAgentTurn } from './agent.ts'
-import { ensureConfig, loadConfig, type CliConfig } from './config.ts'
+import { createClientBundle, ensureConfig, loadConfig, type CliConfig } from './config.ts'
 
 const SYSTEM_PROMPT = `你是一个命令行编码助手，运行在 Node.js 里。
 你只允许使用 Bash 工具，不要假装执行命令。
@@ -79,10 +78,9 @@ export const startRepl = async (): Promise<void> => {
   const config = loadConfig()
   ensureConfig(config)
 
-  const client = new OpenAI({
-    apiKey: config.openaiApiKey,
-    baseURL: config.openaiBaseUrl,
-  })
+  const clientBundle = createClientBundle(config)
+  const client = clientBundle.client
+  config.model = clientBundle.model
 
   const state = createAgentState()
   state.messages.push({ role: 'system', content: SYSTEM_PROMPT })
@@ -91,6 +89,7 @@ export const startRepl = async (): Promise<void> => {
 
   console.log('Nano Bash CLI (TS)')
   console.log(`cwd: ${cwd()}`)
+  console.log(`provider: ${clientBundle.provider}`)
   console.log(`model: ${config.model}`)
   console.log(`permissions: ${config.permissionMode}`)
   console.log('输入 /help 查看命令。\n')
