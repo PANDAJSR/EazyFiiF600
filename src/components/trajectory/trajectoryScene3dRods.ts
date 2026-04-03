@@ -5,6 +5,8 @@ import { buildTakeoffZone } from './trajectoryPlaneDecorations'
 const SUBJECT_ROD_HEIGHT = 170
 const SUBJECT2_CROSSBAR_HEIGHT = 150
 const SUBJECT3_RING_DIAMETER = 65
+const SUBJECT4_RING_DIAMETER = 65
+const SUBJECT4_RING_CENTER_HEIGHT = 120
 const ROD_RADIUS = 1.8
 const RING_TUBE_RADIUS = 1.35
 const TAKEOFF_ZONE_Z = 0.12
@@ -36,6 +38,7 @@ export const renderSubjectRods = (
   })
   const rodGeometry = new THREE.CylinderGeometry(ROD_RADIUS, ROD_RADIUS, SUBJECT_ROD_HEIGHT, 20)
   const subject3RingGeometry = new THREE.TorusGeometry(SUBJECT3_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
+  const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
 
   const addVerticalRod = (x: number, y: number) => {
     const rod = new THREE.Mesh(rodGeometry, rodMaterial)
@@ -70,13 +73,22 @@ export const renderSubjectRods = (
     }
     direction.normalize()
     const ring = new THREE.Mesh(subject3RingGeometry, ringMaterial)
-    ring.rotation.x = Math.PI / 2
     const planeNormal = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 0, 1))
     if (planeNormal.lengthSq() > 0.001) {
       planeNormal.normalize()
-      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), planeNormal)
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), planeNormal)
     }
     ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, centerHeight)
+    scene.add(ring)
+  }
+
+  const addSubject4Ring = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+    const direction = new THREE.Vector3(end.x - start.x, end.y - start.y, 0)
+    if (direction.lengthSq() < 0.001) {
+      return
+    }
+    const ring = new THREE.Mesh(subject4RingGeometry, ringMaterial)
+    ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, SUBJECT4_RING_CENTER_HEIGHT)
     scene.add(ring)
   }
 
@@ -104,9 +116,18 @@ export const renderSubjectRods = (
     }
   }
 
+  const subject4RodA = rodConfig?.subject4[0]
+  const subject4RodB = rodConfig?.subject4[1]
+  if (isFiniteRodPoint(subject4RodA) && isFiniteRodPoint(subject4RodB)) {
+    addVerticalRod(subject4RodA.x, subject4RodA.y)
+    addVerticalRod(subject4RodB.x, subject4RodB.y)
+    addSubject4Ring(subject4RodA, subject4RodB)
+  }
+
   disposers.push(() => {
     rodGeometry.dispose()
     subject3RingGeometry.dispose()
+    subject4RingGeometry.dispose()
     rodMaterial.dispose()
     crossbarMaterial.dispose()
     ringMaterial.dispose()
