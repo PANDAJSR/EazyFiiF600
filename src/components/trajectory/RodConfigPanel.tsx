@@ -36,6 +36,7 @@ const SUBJECT_NUMBER_TO_ID: Record<number, RodSubjectId> = {
 const cloneConfig = (source: RodConfig): RodConfig => {
   const nextConfig: RodConfig = {
     ...source,
+    subject3Ring: { ...source.subject3Ring },
     takeoffZone: source.takeoffZone.map((point) => ({ ...point })),
   }
 
@@ -101,6 +102,15 @@ function RodConfigPanel({ config, onChange }: Props) {
   ]
 
   const clearGroup = (group: GroupId) => {
+    if (group === 'subject3') {
+      onChange({
+        ...config,
+        [group]: config[group].map(() => ({})),
+        subject3Ring: {},
+      })
+      return
+    }
+
     onChange({
       ...config,
       [group]: config[group].map(() => ({})),
@@ -124,6 +134,16 @@ function RodConfigPanel({ config, onChange }: Props) {
           [axis]: value ?? undefined,
         }
       }),
+    })
+  }
+
+  const updateSubject3RingHeight = (value: number | null) => {
+    onChange({
+      ...config,
+      subject3Ring: {
+        ...config.subject3Ring,
+        centerHeight: value ?? undefined,
+      },
     })
   }
 
@@ -254,6 +274,17 @@ function RodConfigPanel({ config, onChange }: Props) {
                   />
                 </div>
               ))}
+              {subject.id === 'subject3' ? (
+                <div className="rod-config-point-row">
+                  <span className="rod-config-point-label">圈高</span>
+                  <InputNumber
+                    className="rod-config-input"
+                    value={config.subject3Ring.centerHeight}
+                    placeholder="圈中心离地高度(cm)"
+                    onChange={updateSubject3RingHeight}
+                  />
+                </div>
+              ) : null}
             </div>
           </section>
         ))}
