@@ -133,7 +133,6 @@ const extractResponseText = (response) => {
   if (typeof response?.output_text === 'string' && response.output_text.trim()) {
     return response.output_text
   }
-
   const chunks = []
   for (const item of response?.output ?? []) {
     if (item?.type !== 'message') {
@@ -162,7 +161,7 @@ const runResponsesTurn = async ({
   let input = userInput
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const response = await client.responses.create({
+    const stream = await client.responses.create({
       model,
       previous_response_id: state.previousResponseId,
       input,
@@ -170,15 +169,30 @@ const runResponsesTurn = async ({
       tools: [BASH_TOOL_RESPONSES],
       tool_choice: 'auto',
       max_output_tokens: 4096,
+      stream: true,
     })
-
-    state.previousResponseId = response.id
-
-    const answer = extractResponseText(response)
-    if (answer) {
-      lastAnswer = answer
+    let response = null
+    for await (const event of stream) {
+      if (event.type === 'response.output_text.delta' && event.delta) {
+        lastAnswer += event.delta
+        if (onEvent) {
+          onEvent({ type: 'text-delta', delta: event.delta })
+        }
+      }
+      if (event.type === 'response.completed') {
+        response = event.response
+      }
     }
-
+    if (!response) {
+      throw new Error('Responses 流式返回异常：缺少 completed 事件')
+    }
+    state.previousResponseId = response.id
+    if (!lastAnswer) {
+      const answer = extractResponseText(response)
+      if (answer) {
+        lastAnswer = answer
+      }
+    }
     const calls = []
     for (const item of response.output ?? []) {
       if (item?.type === 'function_call' && typeof item.call_id === 'string' && item.name) {
@@ -189,15 +203,10 @@ const runResponsesTurn = async ({
         })
       }
     }
-
     if (calls.length === 0) {
-      if (lastAnswer && onEvent) {
-        onEvent({ type: 'text-delta', delta: lastAnswer })
-      }
       state.messages.push({ role: 'assistant', content: lastAnswer || '' })
       return lastAnswer
     }
-
     const outputs = []
     for (const call of calls) {
       if (call.name !== 'Bash') {
@@ -208,7 +217,6 @@ const runResponsesTurn = async ({
         })
         continue
       }
-
       const args = parseToolArgs(call.arguments)
       const result = await executeBashWithPolicy({
         command: args.command,
@@ -217,17 +225,14 @@ const runResponsesTurn = async ({
         permissionMode,
         onPhase: updateAgentPhase,
       })
-
       outputs.push({
         type: 'function_call_output',
         call_id: call.callId,
         output: result,
       })
     }
-
     input = outputs
   }
-
   throw new Error('工具调用轮次过多，已中断')
 }
 
