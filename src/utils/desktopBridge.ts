@@ -1,6 +1,8 @@
 import type {
   DesktopAgentChatPayload,
   DesktopAgentChatResult,
+  DesktopAgentEnvResult,
+  DesktopAgentSetEnvPayload,
   DesktopAgentStatusResult,
   DesktopOpenResult,
   DesktopReadTextFilePayload,
@@ -69,4 +71,20 @@ export const getAgentStatus = async (): Promise<DesktopAgentStatusResult | null>
     return null
   }
   return window.eazyFiiDesktop.getAgentStatus()
+}
+
+export const getAgentEnv = async (): Promise<DesktopAgentEnvResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.getAgentEnv()
+}
+
+export const setAgentEnv = async (
+  payload: DesktopAgentSetEnvPayload,
+): Promise<DesktopAgentEnvResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.setAgentEnv(payload)
 }

@@ -49,3 +49,23 @@ export type AgentStatusFailure = {
 }
 
 export type AgentStatusResult = AgentStatusSuccess | AgentStatusFailure
+
+export type AgentEnvValues = Record<string, string>
+
+export type AgentEnvSuccess = {
+  ok: true
+  values: AgentEnvValues
+  allowedKeys: string[]
+  storagePath: string
+}
+
+export type AgentEnvFailure = {
+  ok: false
+  error: string
+}
+
+export type AgentEnvResult = AgentEnvSuccess | AgentEnvFailure
+
+export type AgentSetEnvPayload = {
+  values: AgentEnvValues
+}

@@ -4,9 +4,12 @@ import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { chatWithAgent, getAgentStatus, resetAgentSession } from './agentService.mjs'
+import { createAgentEnvStore } from './agentEnvStore.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+const agentEnvFile = path.resolve(__dirname, '../.agent-env.json')
+const agentEnvStore = createAgentEnvStore(agentEnvFile)
 
 const collectTextFiles = async (rootDir, currentDir = rootDir, acc = []) => {
   const entries = await fs.readdir(currentDir, { withFileTypes: true })
@@ -135,6 +138,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
       chatWithAgent({
         message,
         reset: Boolean(reset),
+        envOverrides: agentEnvStore.get(),
       }),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`请求超时（>${Math.floor(timeoutMs / 1000)}s）`)), timeoutMs)
@@ -156,7 +160,40 @@ ipcMain.handle('agent:get-status', () => {
   }
 })
 
-app.whenReady().then(createWindow)
+ipcMain.handle('agent:get-env', () => {
+  try {
+    return {
+      ok: true,
+      values: agentEnvStore.get(),
+      allowedKeys: agentEnvStore.allowedKeys,
+      storagePath: agentEnvFile,
+    }
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error)
+    return { ok: false, error: errMessage }
+  }
+})
+
+ipcMain.handle('agent:set-env', async (_event, payload) => {
+  const { values } = payload ?? {}
+  try {
+    const next = await agentEnvStore.setMany(values)
+    return {
+      ok: true,
+      values: next,
+      allowedKeys: agentEnvStore.allowedKeys,
+      storagePath: agentEnvFile,
+    }
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error)
+    return { ok: false, error: errMessage }
+  }
+})
+
+app.whenReady().then(async () => {
+  await agentEnvStore.load()
+  await createWindow()
+})
 
 app.on('window-all-closed', () => {
   resetAgentSession()

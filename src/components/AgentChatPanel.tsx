@@ -3,6 +3,7 @@ import {
   Alert,
   Badge,
   Button,
+  Collapse,
   Drawer,
   Empty,
   Input,
@@ -13,11 +14,19 @@ import {
 } from 'antd'
 import type {
   AgentChatResult,
+  AgentEnvResult,
+  AgentEnvValues,
   AgentRuntimeStatus,
   AgentStatusResult,
   AgentToolTrace,
 } from '../types/agent'
-import { chatWithAgent, getAgentStatus, isDesktopRuntime } from '../utils/desktopBridge'
+import {
+  chatWithAgent,
+  getAgentEnv,
+  getAgentStatus,
+  isDesktopRuntime,
+  setAgentEnv,
+} from '../utils/desktopBridge'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -64,6 +73,21 @@ const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
   return typed.status
 }
 
+const ENV_FIELDS: Array<{ key: string; label: string; secret?: boolean; placeholder?: string }> = [
+  { key: 'NANO_PROVIDER', label: 'Provider', placeholder: 'openai 或 azure' },
+  { key: 'NANO_MODEL', label: 'Model/Deployment' },
+  { key: 'NANO_PERMISSION_MODE', label: 'Permission Mode', placeholder: 'manual 或 accept-all' },
+  { key: 'OPENAI_API_KEY', label: 'OpenAI API Key', secret: true },
+  { key: 'OPENAI_BASE_URL', label: 'OpenAI Base URL' },
+  { key: 'AZURE_OPENAI_ENDPOINT', label: 'Azure Endpoint' },
+  { key: 'AZURE_OPENAI_API_KEY', label: 'Azure API Key', secret: true },
+  { key: 'AZURE_OPENAI_API_VERSION', label: 'Azure API Version' },
+  { key: 'AZURE_OPENAI_DEPLOYMENT', label: 'Azure Deployment' },
+  { key: 'NANO_OPENAI_TIMEOUT_MS', label: 'OpenAI Timeout(ms)' },
+  { key: 'NANO_AGENT_REQUEST_TIMEOUT_MS', label: 'Request Timeout(ms)' },
+  { key: 'NANO_BASH_TIMEOUT_SEC', label: 'Bash Timeout(s)' },
+]
+
 function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -75,6 +99,10 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const [runtimeStatus, setRuntimeStatus] = useState<AgentRuntimeStatus | null>(null)
+  const [envValues, setEnvValues] = useState<AgentEnvValues>({})
+  const [envStoragePath, setEnvStoragePath] = useState<string>('')
+  const [savingEnv, setSavingEnv] = useState(false)
+  const [envFeedback, setEnvFeedback] = useState<string>('')
 
   const runtimeHint = useMemo(() => {
     if (isDesktopRuntime()) {
@@ -93,6 +121,25 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     }, 800)
     return () => clearInterval(timer)
   }, [open, sending])
+
+  useEffect(() => {
+    if (!open || !isDesktopRuntime()) {
+      return
+    }
+    void (async () => {
+      const envResult = await getAgentEnv()
+      if (!envResult) {
+        return
+      }
+      const typed = envResult as AgentEnvResult
+      if (!typed.ok) {
+        setEnvFeedback(`读取环境变量失败: ${typed.error}`)
+        return
+      }
+      setEnvValues(typed.values)
+      setEnvStoragePath(typed.storagePath)
+    })()
+  }, [open])
 
   const appendMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message])
@@ -167,6 +214,31 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     }
   }
 
+  const saveEnvVariables = async () => {
+    if (!isDesktopRuntime()) {
+      return
+    }
+    setSavingEnv(true)
+    setEnvFeedback('')
+    try {
+      const result = await setAgentEnv({ values: envValues })
+      if (!result) {
+        setEnvFeedback('保存失败：未收到响应')
+        return
+      }
+      const typed = result as AgentEnvResult
+      if (!typed.ok) {
+        setEnvFeedback(`保存失败: ${typed.error}`)
+        return
+      }
+      setEnvValues(typed.values)
+      setEnvStoragePath(typed.storagePath)
+      setEnvFeedback('已保存，后续请求将自动使用这些变量。')
+    } finally {
+      setSavingEnv(false)
+    }
+  }
+
   const elapsed = formatElapsed(runtimeStatus?.startedAt ?? null)
   const stuckWarning =
     sending && runtimeStatus?.startedAt && Date.now() - runtimeStatus.startedAt > 25000
@@ -205,6 +277,55 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
             description={runtimeStatus?.lastError ?? stuckWarning ?? undefined}
           />
         )}
+
+        <Collapse
+          items={[
+            {
+              key: 'agent-env',
+              label: 'Agent 环境变量',
+              children: (
+                <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                  <Typography.Text type="secondary">
+                    仅影响 Agent 调用，不影响系统全局环境变量。
+                  </Typography.Text>
+                  {envStoragePath && (
+                    <Typography.Text type="secondary">
+                      保存位置: {envStoragePath}
+                    </Typography.Text>
+                  )}
+                  {ENV_FIELDS.map((field) => (
+                    <div key={field.key}>
+                      <Typography.Text>{field.label}</Typography.Text>
+                      {field.secret ? (
+                        <Input.Password
+                          value={envValues[field.key] ?? ''}
+                          placeholder={field.placeholder}
+                          onChange={(event) => {
+                            const next = event.target.value
+                            setEnvValues((prev) => ({ ...prev, [field.key]: next }))
+                          }}
+                        />
+                      ) : (
+                        <Input
+                          value={envValues[field.key] ?? ''}
+                          placeholder={field.placeholder}
+                          onChange={(event) => {
+                            const next = event.target.value
+                            setEnvValues((prev) => ({ ...prev, [field.key]: next }))
+                          }}
+                        />
+                      )}
+                    </div>
+                  ))}
+                  {!!envFeedback && <Alert type="info" showIcon message={envFeedback} />}
+                  <Button onClick={() => void saveEnvVariables()} loading={savingEnv}>
+                    保存环境变量
+                  </Button>
+                </Space>
+              ),
+            },
+          ]}
+        />
 
         <div style={{ maxHeight: '55vh', overflow: 'auto', paddingRight: 4 }}>
           {messages.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无消息" />}

@@ -1,5 +1,11 @@
 import type { SerializedProjectFile } from '../utils/fiiSerializer'
-import type { AgentChatPayload, AgentChatResult, AgentStatusResult } from './agent'
+import type {
+  AgentChatPayload,
+  AgentChatResult,
+  AgentEnvResult,
+  AgentSetEnvPayload,
+  AgentStatusResult,
+} from './agent'
 
 export type DesktopTextFile = {
   name: string
@@ -43,3 +49,5 @@ export type DesktopWriteTextFileResult = {
 export type DesktopAgentChatPayload = AgentChatPayload
 export type DesktopAgentChatResult = AgentChatResult
 export type DesktopAgentStatusResult = AgentStatusResult
+export type DesktopAgentSetEnvPayload = AgentSetEnvPayload
+export type DesktopAgentEnvResult = AgentEnvResult

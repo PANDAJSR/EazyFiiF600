@@ -1,5 +1,3 @@
-import { exec } from 'node:child_process'
-import { promisify } from 'node:util'
 import OpenAI, { AzureOpenAI } from 'openai'
 import {
   getAgentStatus,
@@ -9,35 +7,16 @@ import {
   setAgentError,
   updateAgentPhase,
 } from './agentStatus.mjs'
-
-const execAsync = promisify(exec)
+import { executeBashWithPolicy, parseToolArgs } from './agentBashTool.mjs'
 const MAX_TOOL_ROUNDS = 8
 
-const SAFE_PREFIXES = [
-  'ls',
-  'cat',
-  'head',
-  'tail',
-  'wc',
-  'pwd',
-  'echo',
-  'printf',
-  'date',
-  'which',
-  'type',
-  'env',
-  'printenv',
-  'uname',
-  'whoami',
-  'id',
-  'git status',
-  'git log',
-  'git diff',
-  'git show',
-  'find ',
-  'grep ',
-  'rg ',
-]
+const readEnv = (key, overrides) => {
+  const override = overrides?.[key]
+  if (typeof override === 'string') {
+    return override
+  }
+  return process.env[key]
+}
 
 const SYSTEM_PROMPT = `你是一个命令行编码助手，运行在 Electron 主进程里。
 你只允许使用 Bash 工具，不要假装执行命令。
@@ -80,56 +59,21 @@ const BASH_TOOL_RESPONSES = {
   },
 }
 
-const parseToolArgs = (raw) => {
-  try {
-    const parsed = JSON.parse(raw)
-    if (typeof parsed?.command !== 'string' || parsed.command.trim().length === 0) {
-      throw new Error('参数 command 缺失')
-    }
-    const timeout = typeof parsed.timeout === 'number' ? parsed.timeout : undefined
-    return { command: parsed.command, timeout }
-  } catch {
-    throw new Error(`工具参数不是合法 JSON: ${raw}`)
-  }
-}
-
-const isSafeBashCommand = (command) => {
-  const normalized = String(command ?? '').trim()
-  return SAFE_PREFIXES.some((prefix) => normalized.startsWith(prefix))
-}
-
-const runBash = async (command, timeoutSec) => {
-  updateAgentPhase('tool-running', `Bash: ${command.slice(0, 80)}`)
-  try {
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: timeoutSec * 1000,
-      maxBuffer: 1024 * 1024,
-      windowsHide: true,
-    })
-    const output = [stdout, stderr ? `[stderr]\n${stderr}` : ''].filter(Boolean).join('\n').trim()
-    return output || '(no output)'
-  } catch (error) {
-    if (error instanceof Error && 'stdout' in error && 'stderr' in error) {
-      const output = [error.stdout, error.stderr ? `[stderr]\n${error.stderr}` : ''].filter(Boolean).join('\n').trim()
-      return output || `Error: ${error.message}`
-    }
-    return `Error: ${String(error)}`
-  }
-}
-
-const createClientBundle = () => {
+const createClientBundle = (envOverrides) => {
   updateAgentPhase('init', '初始化模型客户端')
-  const providerEnv = process.env.NANO_PROVIDER
+  const providerEnv = readEnv('NANO_PROVIDER', envOverrides)
   const provider = providerEnv === 'azure' || providerEnv === 'openai'
     ? providerEnv
-    : (process.env.AZURE_OPENAI_ENDPOINT ? 'azure' : 'openai')
+    : (readEnv('AZURE_OPENAI_ENDPOINT', envOverrides) ? 'azure' : 'openai')
 
   if (provider === 'azure') {
-    const endpoint = process.env.AZURE_OPENAI_ENDPOINT ?? ''
-    const apiKey = process.env.AZURE_OPENAI_API_KEY ?? ''
-    const apiVersion = process.env.AZURE_OPENAI_API_VERSION ?? process.env.OPENAI_API_VERSION ?? '2024-10-21'
-    const deployment = process.env.AZURE_OPENAI_DEPLOYMENT || process.env.NANO_AZURE_DEPLOYMENT
-    const model = deployment || process.env.NANO_MODEL || 'gpt-4o-mini'
+    const endpoint = readEnv('AZURE_OPENAI_ENDPOINT', envOverrides) ?? ''
+    const apiKey = readEnv('AZURE_OPENAI_API_KEY', envOverrides) ?? ''
+    const apiVersion = readEnv('AZURE_OPENAI_API_VERSION', envOverrides)
+      ?? readEnv('OPENAI_API_VERSION', envOverrides)
+      ?? '2024-10-21'
+    const deployment = readEnv('AZURE_OPENAI_DEPLOYMENT', envOverrides)
+    const model = deployment || readEnv('NANO_MODEL', envOverrides) || 'gpt-4o-mini'
 
     if (!endpoint || !apiKey) {
       throw new Error('缺少 AZURE_OPENAI_ENDPOINT 或 AZURE_OPENAI_API_KEY')
@@ -140,15 +84,15 @@ const createClientBundle = () => {
       apiKey,
       apiVersion,
       deployment,
-      timeout: Number(process.env.NANO_OPENAI_TIMEOUT_MS ?? 60000),
+      timeout: Number(readEnv('NANO_OPENAI_TIMEOUT_MS', envOverrides) ?? 60000),
     })
 
     return { client, model, provider }
   }
 
-  const apiKey = process.env.OPENAI_API_KEY ?? ''
-  const baseURL = process.env.OPENAI_BASE_URL
-  const model = process.env.NANO_MODEL || 'gpt-4o-mini'
+  const apiKey = readEnv('OPENAI_API_KEY', envOverrides) ?? ''
+  const baseURL = readEnv('OPENAI_BASE_URL', envOverrides)
+  const model = readEnv('NANO_MODEL', envOverrides) || 'gpt-4o-mini'
 
   if (!apiKey) {
     throw new Error('缺少 OPENAI_API_KEY')
@@ -157,7 +101,7 @@ const createClientBundle = () => {
   const client = new OpenAI({
     apiKey,
     baseURL,
-    timeout: Number(process.env.NANO_OPENAI_TIMEOUT_MS ?? 60000),
+    timeout: Number(readEnv('NANO_OPENAI_TIMEOUT_MS', envOverrides) ?? 60000),
   })
   return { client, model, provider }
 }
@@ -168,28 +112,6 @@ const unsupportedOperationError = (error) => {
   }
   const message = error.message.toLowerCase()
   return message.includes('unsupported') || message.includes('requested operation is unsupported')
-}
-
-const executeBashWithPolicy = async ({ command, timeoutSec, traces }) => {
-  updateAgentPhase('tool-check', `校验命令权限: ${command.slice(0, 80)}`)
-  traces.push({ phase: 'start', tool: 'Bash', command, timeoutSec })
-
-  const acceptAll = process.env.NANO_PERMISSION_MODE === 'accept-all'
-  const granted = acceptAll || isSafeBashCommand(command)
-  const output = granted
-    ? await runBash(command, timeoutSec)
-    : 'Denied: 当前前端面板只允许安全命令。可设置 NANO_PERMISSION_MODE=accept-all 关闭限制。'
-
-  traces.push({
-    phase: 'end',
-    tool: 'Bash',
-    command,
-    timeoutSec,
-    granted,
-    resultPreview: output.slice(0, 180),
-  })
-
-  return output
 }
 
 const extractResponseText = (response) => {
@@ -211,7 +133,14 @@ const extractResponseText = (response) => {
   return chunks.join('\n').trim()
 }
 
-const runResponsesTurn = async ({ client, model, userInput, timeoutSec, traces }) => {
+const runResponsesTurn = async ({
+  client,
+  model,
+  userInput,
+  timeoutSec,
+  traces,
+  permissionMode,
+}) => {
   updateAgentPhase('llm-responses', '使用 Responses API 推理')
   let lastAnswer = ''
   let input = userInput
@@ -266,6 +195,8 @@ const runResponsesTurn = async ({ client, model, userInput, timeoutSec, traces }
         command: args.command,
         timeoutSec: args.timeout ?? timeoutSec,
         traces,
+        permissionMode,
+        onPhase: updateAgentPhase,
       })
 
       outputs.push({
@@ -281,7 +212,14 @@ const runResponsesTurn = async ({ client, model, userInput, timeoutSec, traces }
   throw new Error('工具调用轮次过多，已中断')
 }
 
-const runChatTurn = async ({ client, model, userInput, timeoutSec, traces }) => {
+const runChatTurn = async ({
+  client,
+  model,
+  userInput,
+  timeoutSec,
+  traces,
+  permissionMode,
+}) => {
   updateAgentPhase('llm-chat', '使用 Chat Completions 推理')
   state.messages.push({ role: 'user', content: userInput })
 
@@ -331,6 +269,8 @@ const runChatTurn = async ({ client, model, userInput, timeoutSec, traces }) => 
         command: args.command,
         timeoutSec: args.timeout ?? timeoutSec,
         traces,
+        permissionMode,
+        onPhase: updateAgentPhase,
       })
 
       state.messages.push({
@@ -351,7 +291,7 @@ export const resetAgentSession = () => {
   resetAgentStatus()
 }
 
-export const chatWithAgent = async ({ message, reset = false }) => {
+export const chatWithAgent = async ({ message, reset = false, envOverrides }) => {
   if (reset) {
     resetAgentSession()
   }
@@ -363,19 +303,34 @@ export const chatWithAgent = async ({ message, reset = false }) => {
 
   setAgentBusy('请求已接收，准备调用模型')
   try {
-    const { client, model, provider } = createClientBundle()
+    const { client, model, provider } = createClientBundle(envOverrides)
     const traces = []
-    const timeoutSec = Number(process.env.NANO_BASH_TIMEOUT_SEC ?? 30)
+    const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
+    const permissionMode = readEnv('NANO_PERMISSION_MODE', envOverrides) ?? 'manual'
 
     if (state.transportMode === 'responses') {
       state.messages.push({ role: 'user', content: prompt })
-      const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      const reply = await runResponsesTurn({
+        client,
+        model,
+        userInput: prompt,
+        timeoutSec,
+        traces,
+        permissionMode,
+      })
       setAgentDone('已完成（Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }
     }
 
     try {
-      const reply = await runChatTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      const reply = await runChatTurn({
+        client,
+        model,
+        userInput: prompt,
+        timeoutSec,
+        traces,
+        permissionMode,
+      })
       setAgentDone('已完成（Chat）')
       return { reply, traces, provider, model, transportMode: 'chat' }
     } catch (error) {
@@ -386,7 +341,14 @@ export const chatWithAgent = async ({ message, reset = false }) => {
       updateAgentPhase('fallback', '当前模型不支持 Chat，回退 Responses')
       state.transportMode = 'responses'
       state.messages.push({ role: 'user', content: prompt })
-      const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      const reply = await runResponsesTurn({
+        client,
+        model,
+        userInput: prompt,
+        timeoutSec,
+        traces,
+        permissionMode,
+      })
       setAgentDone('已完成（Fallback 到 Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }
     }
