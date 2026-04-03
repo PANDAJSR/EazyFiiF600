@@ -8,10 +8,11 @@ type Props = {
   block: ParsedBlock
   editable: boolean
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
+  onFieldBlur?: (blockId: string, fieldKey: string, value: string) => void
   onInputKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, blockId: string) => void
 }
 
-function BlockLine({ block, editable, onFieldChange, onInputKeyDown }: Props) {
+function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown }: Props) {
   const text = blockText(block)
   const getTextInputSlotIndex = (valueIndex: number) =>
     text.values
@@ -80,6 +81,9 @@ function BlockLine({ block, editable, onFieldChange, onInputKeyDown }: Props) {
                       return
                     }
                     onInputKeyDown?.(event, block.id)
+                  }}
+                  onBlur={(event) => {
+                    onFieldBlur?.(block.id, value.fieldKey!, event.target.value)
                   }}
                   className="block-chip block-chip-value"
                   style={{ width: 64 }}

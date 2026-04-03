@@ -1,6 +1,6 @@
 import type { ParseResult, ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE, normalizeAutoDelayBlocks } from './autoDelayBlocks'
-import { clampAsyncMoveFieldValue, clampAsyncMoveX, clampAsyncMoveY } from './moveBlockConstraints'
+import { clampAsyncMoveFieldValue, clampAsyncMoveX, clampAsyncMoveY, MIN_ABSOLUTE_MOVE_Z } from './moveBlockConstraints'
 
 type MovePointPayload = {
   blockId: string
@@ -40,6 +40,19 @@ const createRuntimeBlockId = () => {
   return `custom_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
+const toNumber = (value?: string): number | null => {
+  if (!value) {
+    return null
+  }
+  const n = Number(value)
+  return Number.isFinite(n) ? n : null
+}
+
+const toFieldNumber = (value: string | undefined, fallback: number) => {
+  const parsed = toNumber(value)
+  return parsed ?? fallback
+}
+
 export const updateBlockField = (
   result: ParseResult,
   selectedDroneId: string | undefined,
@@ -52,15 +65,37 @@ export const updateBlockField = (
       if (block.id !== blockId) {
         return block
       }
-      const safeValue =
-        block.type === 'Goertek_MoveToCoord2'
-          ? clampAsyncMoveFieldValue(fieldKey, value)
-          : value
       return {
         ...block,
         fields: {
           ...block.fields,
-          [fieldKey]: safeValue,
+          [fieldKey]: value,
+        },
+      }
+    }),
+  )
+}
+
+export const normalizeBlockFieldOnBlur = (
+  result: ParseResult,
+  selectedDroneId: string | undefined,
+  blockId: string,
+  fieldKey: string,
+  value: string,
+): ParseResult => {
+  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) =>
+    blocks.map((block) => {
+      if (block.id !== blockId) {
+        return block
+      }
+      if (block.type !== 'Goertek_MoveToCoord2') {
+        return block
+      }
+      return {
+        ...block,
+        fields: {
+          ...block.fields,
+          [fieldKey]: clampAsyncMoveFieldValue(fieldKey, value),
         },
       }
     }),
@@ -148,34 +183,92 @@ export const splitAutoDelayBlockById = (
   selectedDroneId: string | undefined,
   blockId: string,
 ): ParseResult => {
-  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) => {
-    const targetIndex = blocks.findIndex((block) => block.id === blockId && block.type === AUTO_DELAY_BLOCK_TYPE)
-    if (targetIndex < 0) {
-      return blocks
-    }
-    const sourceBlock = blocks[targetIndex]
-    const moveBlock: ParsedBlock = {
-      id: createRuntimeBlockId(),
-      type: 'Goertek_MoveToCoord2',
-      fields: {
-        X: sourceBlock.fields.X ?? '0',
-        Y: sourceBlock.fields.Y ?? '0',
-        Z: sourceBlock.fields.Z ?? '100',
-      },
-      comment: sourceBlock.comment,
-    }
-    const delayBlock: ParsedBlock = {
-      id: createRuntimeBlockId(),
-      type: 'block_delay',
-      fields: {
-        time: sourceBlock.fields.time ?? '800',
-      },
-      comment: sourceBlock.comment,
-    }
-    const nextBlocks = [...blocks]
-    nextBlocks.splice(targetIndex, 1, moveBlock, delayBlock)
-    return nextBlocks
-  })
+  if (!selectedDroneId) {
+    return result
+  }
+  return {
+    ...result,
+    programs: result.programs.map((program) => {
+      if (program.drone.id !== selectedDroneId) {
+        return program
+      }
+      const blocks = program.blocks
+      const targetIndex = blocks.findIndex((block) => block.id === blockId && block.type === AUTO_DELAY_BLOCK_TYPE)
+      if (targetIndex < 0) {
+        return program
+      }
+      const sourceBlock = blocks[targetIndex]
+      let currentX = toFieldNumber(program.drone.startPos.x, 0)
+      let currentY = toFieldNumber(program.drone.startPos.y, 0)
+      let currentZ = toFieldNumber(program.drone.startPos.z, 0)
+
+      for (let i = 0; i < targetIndex; i += 1) {
+        const block = blocks[i]
+        if (block.type === 'Goertek_TakeOff2') {
+          const nextZ = toNumber(block.fields.alt)
+          if (nextZ !== null) {
+            currentZ = nextZ
+          }
+          continue
+        }
+        if (block.type === 'Goertek_MoveToCoord2' || block.type === AUTO_DELAY_BLOCK_TYPE) {
+          currentX = toFieldNumber(block.fields.X, currentX)
+          currentY = toFieldNumber(block.fields.Y, currentY)
+          currentZ = toFieldNumber(block.fields.Z, currentZ)
+          continue
+        }
+        if (block.type === 'Goertek_Move') {
+          currentX += toFieldNumber(block.fields.X, 0)
+          currentY += toFieldNumber(block.fields.Y, 0)
+          currentZ += toFieldNumber(block.fields.Z, 0)
+          continue
+        }
+        if (block.type === 'Goertek_Land') {
+          currentZ = 0
+        }
+      }
+
+      const nextX = toFieldNumber(sourceBlock.fields.X, currentX)
+      const nextY = toFieldNumber(sourceBlock.fields.Y, currentY)
+      const nextZ = toFieldNumber(sourceBlock.fields.Z, currentZ)
+      const moveBlock: ParsedBlock =
+        nextZ < MIN_ABSOLUTE_MOVE_Z
+          ? {
+            id: createRuntimeBlockId(),
+            type: 'Goertek_Move',
+            fields: {
+              X: String(nextX - currentX),
+              Y: String(nextY - currentY),
+              Z: String(nextZ - currentZ),
+            },
+            comment: sourceBlock.comment,
+          }
+          : {
+            id: createRuntimeBlockId(),
+            type: 'Goertek_MoveToCoord2',
+            fields: {
+              X: sourceBlock.fields.X ?? '0',
+              Y: sourceBlock.fields.Y ?? '0',
+              Z: sourceBlock.fields.Z ?? '100',
+            },
+            comment: sourceBlock.comment,
+          }
+      const delayBlock: ParsedBlock = {
+        id: createRuntimeBlockId(),
+        type: 'block_delay',
+        fields: {
+          time: sourceBlock.fields.time ?? '800',
+        },
+        comment: sourceBlock.comment,
+      }
+      const nextBlocks = [...blocks]
+      nextBlocks.splice(targetIndex, 1, moveBlock, delayBlock)
+      return {
+        ...program,
+        blocks: normalizeAutoDelayBlocks(nextBlocks, program.drone.startPos),
+      }
+    }),
+  }
 }
 
 export const replaceSelectedProgramBlocks = (

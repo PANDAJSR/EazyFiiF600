@@ -17,7 +17,7 @@ import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
 import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
-import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { openDesktopProject, saveDesktopProject } from './utils/desktopProjectIO'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 
@@ -157,6 +157,9 @@ function App() {
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
+  }, [selectedDroneId])
+  const handleFieldBlur = useCallback((blockId: string, fieldKey: string, value: string) => {
+    setResult((prev) => normalizeBlockFieldOnBlur(prev, selectedDroneId, blockId, fieldKey, value))
   }, [selectedDroneId])
   const handleSaveEdits = useCallback(async () => {
     if (isDesktopRuntime()) {
@@ -391,6 +394,7 @@ function App() {
                 selectedBlockId={selectedBlockId}
                 highlightPulse={highlightPulse}
                 onFieldChange={handleFieldChange}
+                onFieldBlur={handleFieldBlur}
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
                 onDuplicateBlock={handleDuplicateBlock}
                 onSplitAutoDelayBlock={handleSplitAutoDelayBlock}

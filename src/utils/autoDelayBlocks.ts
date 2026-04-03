@@ -241,23 +241,9 @@ export const normalizeAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): 
         }
       }
 
-      if (block.type === 'Goertek_MoveToCoord2') {
-        const safeX = clampAsyncMoveX(nextX)
-        const safeY = clampAsyncMoveY(nextY)
-        const safeZ = clampAsyncMoveZ(nextZ)
-        currentX = safeX
-        currentY = safeY
-        currentZ = safeZ
-        return {
-          ...block,
-          fields: {
-            ...block.fields,
-            X: String(safeX),
-            Y: String(safeY),
-            Z: String(safeZ),
-          },
-        }
-      }
+      currentX = nextX
+      currentY = nextY
+      currentZ = nextZ
       return block
     }
 

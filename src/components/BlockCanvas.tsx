@@ -18,6 +18,7 @@ type Props = {
   selectedBlockId?: string
   highlightPulse?: number
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
+  onFieldBlur?: (blockId: string, fieldKey: string, value: string) => void
   onSelectBlock?: (blockId?: string) => void
   onDeleteBlock?: (blockId: string) => void
   onDuplicateBlock?: (blockId: string) => void
@@ -36,6 +37,7 @@ function BlockCanvas({
   selectedBlockId,
   highlightPulse,
   onFieldChange,
+  onFieldBlur,
   onSelectBlock,
   onDeleteBlock,
   onDuplicateBlock,
@@ -149,6 +151,15 @@ function BlockCanvas({
     }
   }, [highlightedBlockId, highlightPulse, rowKeyByBlockId])
 
+  const shouldIgnoreCardDrag = (target: EventTarget | null) => {
+    if (!(target instanceof HTMLElement)) {
+      return false
+    }
+    return !!target.closest(
+      'input,textarea,select,[contenteditable="true"],.ant-input,.ant-select,.ant-color-picker,.ant-picker',
+    )
+  }
+
   const renderBlockCard = (block: ParsedBlock, classNames: string[]) => {
     const theme = blockTheme[block.type] ?? {
       color: '#17324d',
@@ -197,6 +208,10 @@ function BlockCanvas({
           onSelectBlock?.(block.id)
         }}
         onDragStart={(event) => {
+          if (shouldIgnoreCardDrag(event.target)) {
+            event.preventDefault()
+            return
+          }
           event.dataTransfer.effectAllowed = 'move'
           event.dataTransfer.clearData()
           event.dataTransfer.setData('application/x-eazyfii-block-id', block.id)
@@ -249,7 +264,13 @@ function BlockCanvas({
           borderColor: theme.border,
         }}
       >
-        <BlockLine block={block} editable onFieldChange={onFieldChange} onInputKeyDown={handleInputKeyDown} />
+        <BlockLine
+          block={block}
+          editable
+          onFieldChange={onFieldChange}
+          onFieldBlur={onFieldBlur}
+          onInputKeyDown={handleInputKeyDown}
+        />
       </section>
     )
 
