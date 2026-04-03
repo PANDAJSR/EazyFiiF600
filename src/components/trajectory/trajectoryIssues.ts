@@ -1,13 +1,16 @@
 import type { ParsedBlock } from '../../types/fii'
 import type { RodConfig } from './rodConfig'
 import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
-import { buildPathVisits, type XYZ } from './trajectoryUtils'
+import type { XYZ } from './trajectoryUtils'
 
 const SUBJECT1_MAX_HEIGHT = 150
+const SUBJECT1_HEADING_TOLERANCE_DEG = 1
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
 const RELATIVE_MOVE_BLOCK_TYPE = 'Goertek_Move'
+const TURN_BLOCK_TYPE = 'Goertek_Turn'
 const LAND_BLOCK_TYPE = 'Goertek_Land'
 const DELAY_BLOCK_TYPE = 'block_delay'
+const DEFAULT_HEADING_DEG = 0
 
 type XYPoint = {
   x: number
@@ -24,6 +27,16 @@ type DelayAnchor = {
   distance: number
   minDelayMs: number
 }
+
+type Subject1Visit = {
+  x: number
+  y: number
+  z: number
+  moveDirectionDeg?: number
+  headingDeg?: number
+}
+
+type Subject1LoopCheckResult = 'ok' | 'no-loop' | 'heading-not-forward'
 
 export type TrajectoryIssue = {
   key: string
@@ -135,9 +148,133 @@ const pointInPolygon = (point: XYPoint, polygon: XYPoint[]): boolean => {
   return inside
 }
 
-const hasSubject1ClosedLoopUnder150 = (subjectPoint: XYPoint, startPos: XYZ, blocks: ParsedBlock[]): boolean => {
-  const visits = buildPathVisits(startPos, blocks)
+const normalizeHeadingDeg = (headingDeg: number): number => {
+  const normalized = headingDeg % 360
+  return normalized >= 0 ? normalized : normalized + 360
+}
+
+const calcMoveDirectionDeg = (deltaX: number, deltaY: number): number | null => {
+  if (Math.abs(deltaX) < 1e-6 && Math.abs(deltaY) < 1e-6) {
+    return null
+  }
+  return normalizeHeadingDeg((Math.atan2(deltaX, deltaY) * 180) / Math.PI)
+}
+
+const shortestAngleDiffDeg = (a: number, b: number): number => {
+  const diff = Math.abs(normalizeHeadingDeg(a) - normalizeHeadingDeg(b))
+  return Math.min(diff, 360 - diff)
+}
+
+const isHeadingFacingMoveDirection = (moveDirectionDeg: number, headingDeg: number): boolean =>
+  shortestAngleDiffDeg(moveDirectionDeg, headingDeg) <= SUBJECT1_HEADING_TOLERANCE_DEG
+
+const buildSubject1Visits = (startPos: XYZ, blocks: ParsedBlock[]): Subject1Visit[] => {
+  const startX = toNumber(startPos.x) ?? 0
+  const startY = toNumber(startPos.y) ?? 0
+  const startZ = toNumber(startPos.z) ?? 0
+  const visits: Subject1Visit[] = [{ x: startX, y: startY, z: startZ }]
+  let currentX = startX
+  let currentY = startY
+  let currentZ = startZ
+  let headingDeg = DEFAULT_HEADING_DEG
+
+  for (const block of blocks) {
+    if (block.type === TURN_BLOCK_TYPE) {
+      const angle = toNumber(block.fields.angle)
+      if (angle === null) {
+        continue
+      }
+      const direction = block.fields.turnDirection?.trim().toLowerCase()
+      if (direction === 'r') {
+        headingDeg = normalizeHeadingDeg(headingDeg + angle)
+      } else if (direction === 'l') {
+        headingDeg = normalizeHeadingDeg(headingDeg - angle)
+      }
+      continue
+    }
+
+    if (block.type === 'Goertek_TakeOff2') {
+      const nextZ = toNumber(block.fields.alt)
+      if (nextZ === null) {
+        continue
+      }
+      currentZ = nextZ
+      visits.push({ x: currentX, y: currentY, z: currentZ })
+      continue
+    }
+
+    if (block.type === ASYNC_MOVE_BLOCK_TYPE || block.type === AUTO_DELAY_BLOCK_TYPE) {
+      const nextX = toNumber(block.fields.X)
+      const nextY = toNumber(block.fields.Y)
+      if (nextX === null || nextY === null) {
+        continue
+      }
+      const nextZ = toNumber(block.fields.Z) ?? currentZ
+      const moveDirectionDeg = calcMoveDirectionDeg(nextX - currentX, nextY - currentY)
+      currentX = nextX
+      currentY = nextY
+      currentZ = nextZ
+      visits.push({
+        x: currentX,
+        y: currentY,
+        z: currentZ,
+        moveDirectionDeg: moveDirectionDeg ?? undefined,
+        headingDeg: moveDirectionDeg === null ? undefined : headingDeg,
+      })
+      continue
+    }
+
+    if (block.type === RELATIVE_MOVE_BLOCK_TYPE) {
+      const deltaX = toNumber(block.fields.X)
+      const deltaY = toNumber(block.fields.Y)
+      if (deltaX === null || deltaY === null) {
+        continue
+      }
+      const deltaZ = toNumber(block.fields.Z) ?? 0
+      const moveDirectionDeg = calcMoveDirectionDeg(deltaX, deltaY)
+      currentX += deltaX
+      currentY += deltaY
+      currentZ += deltaZ
+      visits.push({
+        x: currentX,
+        y: currentY,
+        z: currentZ,
+        moveDirectionDeg: moveDirectionDeg ?? undefined,
+        headingDeg: moveDirectionDeg === null ? undefined : headingDeg,
+      })
+      continue
+    }
+
+    if (block.type === LAND_BLOCK_TYPE) {
+      currentZ = 0
+      visits.push({ x: currentX, y: currentY, z: currentZ })
+    }
+  }
+
+  return visits
+}
+
+const isLoopFacingMoveDirection = (loopVisits: Subject1Visit[]): boolean => {
+  for (let index = 1; index < loopVisits.length; index += 1) {
+    const visit = loopVisits[index]
+    if (visit.moveDirectionDeg === undefined || visit.headingDeg === undefined) {
+      continue
+    }
+    if (!isHeadingFacingMoveDirection(visit.moveDirectionDeg, visit.headingDeg)) {
+      return false
+    }
+  }
+  return true
+}
+
+const checkSubject1ClosedLoopUnder150 = (
+  subjectPoint: XYPoint,
+  startPos: XYZ,
+  blocks: ParsedBlock[],
+): Subject1LoopCheckResult => {
+  const visits = buildSubject1Visits(startPos, blocks)
   const indexByXY = new Map<string, number[]>()
+  let hasClosedLoopIncludingSubject = false
 
   for (let endIndex = 0; endIndex < visits.length; endIndex += 1) {
     const endVisit = visits[endIndex]
@@ -160,7 +297,10 @@ const hasSubject1ClosedLoopUnder150 = (subjectPoint: XYPoint, startPos: XYZ, blo
       }
 
       if (pointInPolygon(subjectPoint, polygon)) {
-        return true
+        hasClosedLoopIncludingSubject = true
+        if (isLoopFacingMoveDirection(loopVisits)) {
+          return 'ok'
+        }
       }
     }
 
@@ -168,7 +308,7 @@ const hasSubject1ClosedLoopUnder150 = (subjectPoint: XYPoint, startPos: XYZ, blo
     indexByXY.set(key, seen)
   }
 
-  return false
+  return hasClosedLoopIncludingSubject ? 'heading-not-forward' : 'no-loop'
 }
 
 const findMinDelayByDistance = (distanceCm: number): number => {
@@ -286,11 +426,19 @@ export const buildTrajectoryIssues = (
   const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
 
-  if (subject1 && hasFiniteXY(subject1) && !hasSubject1ClosedLoopUnder150(subject1, startPos, blocks)) {
-    issues.push({
-      key: 'subject1-not-completed',
-      message: '科目一未完成',
-    })
+  if (subject1 && hasFiniteXY(subject1)) {
+    const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
+    if (subject1Result === 'no-loop') {
+      issues.push({
+        key: 'subject1-not-completed',
+        message: '科目一未完成',
+      })
+    } else if (subject1Result === 'heading-not-forward') {
+      issues.push({
+        key: 'subject1-heading-not-forward',
+        message: '科目一未完成：机头没有朝向飞行方向',
+      })
+    }
   }
 
   issues.push(...findAsyncMoveDelayIssues(startPos, blocks))
