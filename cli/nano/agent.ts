@@ -66,6 +66,15 @@ export interface RunTurnResult {
 }
 
 export type PermissionChecker = (description: string) => Promise<boolean>
+export type ToolTraceEvent = {
+  phase: 'start' | 'end'
+  tool: 'Bash'
+  command: string
+  timeoutSec: number
+  granted?: boolean
+  resultPreview?: string
+}
+export type ToolTracer = (event: ToolTraceEvent) => void
 
 export const createAgentState = (): AgentState => ({ messages: [] })
 
@@ -103,7 +112,16 @@ const executeBashToolWithPermission = async (
   state: AgentState,
   config: CliConfig,
   askPermission: PermissionChecker,
+  trace?: ToolTracer,
 ): Promise<string> => {
+  const timeoutSec = timeout ?? config.timeoutSec
+  trace?.({
+    phase: 'start',
+    tool: 'Bash',
+    command,
+    timeoutSec,
+  })
+
   const safe = isSafeBashCommand(command)
   let granted = config.permissionMode === 'accept-all'
 
@@ -116,8 +134,17 @@ const executeBashToolWithPermission = async (
   }
 
   const result = granted
-    ? await runBash(command, timeout ?? config.timeoutSec)
+    ? await runBash(command, timeoutSec)
     : 'Denied: 用户拒绝执行该命令'
+
+  trace?.({
+    phase: 'end',
+    tool: 'Bash',
+    command,
+    timeoutSec,
+    granted,
+    resultPreview: result.slice(0, 180),
+  })
 
   state.messages.push({
     role: 'tool',
@@ -210,6 +237,7 @@ const runResponsesTurn = async (
   userInput: string,
   config: CliConfig,
   askPermission: PermissionChecker,
+  trace?: ToolTracer,
 ): Promise<RunTurnResult> => {
   let lastAnswer = ''
   let totalToolCalls = 0
@@ -275,6 +303,7 @@ const runResponsesTurn = async (
         state,
         config,
         askPermission,
+        trace,
       )
       outputs.push({
         type: 'function_call_output',
@@ -295,6 +324,7 @@ const runChatTurn = async (
   userInput: string,
   config: CliConfig,
   askPermission: PermissionChecker,
+  trace?: ToolTracer,
 ): Promise<RunTurnResult> => {
   state.messages.push({ role: 'user', content: userInput })
 
@@ -350,6 +380,7 @@ const runChatTurn = async (
         state,
         config,
         askPermission,
+        trace,
       )
     }
   }
@@ -363,20 +394,21 @@ export const runAgentTurn = async (
   userInput: string,
   config: CliConfig,
   askPermission: PermissionChecker,
+  trace?: ToolTracer,
 ): Promise<RunTurnResult> => {
   if (state.transportMode === 'responses') {
     state.messages.push({ role: 'user', content: userInput })
-    return runResponsesTurn(client, state, userInput, config, askPermission)
+    return runResponsesTurn(client, state, userInput, config, askPermission, trace)
   }
 
   try {
-    return await runChatTurn(client, state, userInput, config, askPermission)
+    return await runChatTurn(client, state, userInput, config, askPermission, trace)
   } catch (error) {
     if (!isUnsupportedOperationError(error)) {
       throw error
     }
 
     state.transportMode = 'responses'
-    return runResponsesTurn(client, state, userInput, config, askPermission)
+    return runResponsesTurn(client, state, userInput, config, askPermission, trace)
   }
 }

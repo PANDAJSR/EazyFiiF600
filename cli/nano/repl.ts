@@ -2,7 +2,7 @@ import process from 'node:process'
 import readline from 'node:readline/promises'
 import { stdin as input, stdout as output } from 'node:process'
 import { cwd } from 'node:process'
-import { createAgentState, runAgentTurn } from './agent.ts'
+import { createAgentState, runAgentTurn, type ToolTraceEvent } from './agent.ts'
 import { createClientBundle, ensureConfig, loadConfig, type CliConfig } from './config.ts'
 
 const SYSTEM_PROMPT = `你是一个命令行编码助手，运行在 Node.js 里。
@@ -21,6 +21,21 @@ const printHelp = (): void => {
 const askPermission = async (rl: readline.Interface, description: string): Promise<boolean> => {
   const answer = await rl.question(`\n[权限请求] ${description}\n允许执行? (y/N): `)
   return ['y', 'yes'].includes(answer.trim().toLowerCase())
+}
+
+const printToolTrace = (event: ToolTraceEvent): void => {
+  if (event.phase === 'start') {
+    console.log(`\n[工具] Bash 开始`)
+    console.log(`[工具] command: ${event.command}`)
+    console.log(`[工具] timeout: ${event.timeoutSec}s`)
+    return
+  }
+
+  const status = event.granted ? '已执行' : '已拒绝'
+  console.log(`[工具] Bash 结束 (${status})`)
+  if (event.resultPreview) {
+    console.log(`[工具] 结果预览: ${event.resultPreview}\n`)
+  }
 }
 
 const handleSlash = (line: string, config: CliConfig, clearMessages: () => void): boolean => {
@@ -110,7 +125,7 @@ export const startRepl = async (): Promise<void> => {
       try {
         const result = await runAgentTurn(client, state, line, config, async (description) => {
           return askPermission(rl, description)
-        })
+        }, printToolTrace)
         if (result.answer) {
           console.log(`\n${result.answer}\n`)
         } else {
