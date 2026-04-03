@@ -3,6 +3,7 @@ import path from 'node:path'
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
+import { chatWithAgent, resetAgentSession } from './agentService.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -126,9 +127,24 @@ ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
   return { written: true }
 })
 
+ipcMain.handle('agent:chat', async (_event, payload) => {
+  const { message, reset } = payload ?? {}
+  try {
+    const result = await chatWithAgent({
+      message,
+      reset: Boolean(reset),
+    })
+    return { ok: true, ...result }
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error)
+    return { ok: false, error: errMessage }
+  }
+})
+
 app.whenReady().then(createWindow)
 
 app.on('window-all-closed', () => {
+  resetAgentSession()
   if (process.platform !== 'darwin') {
     app.quit()
   }

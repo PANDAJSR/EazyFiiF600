@@ -1,4 +1,5 @@
 import type { SerializedProjectFile } from '../utils/fiiSerializer'
+import type { AgentChatPayload, AgentChatResult } from './agent'
 
 export type DesktopTextFile = {
   name: string
@@ -38,3 +39,6 @@ export type DesktopWriteTextFilePayload = {
 export type DesktopWriteTextFileResult = {
   written: boolean
 }
+
+export type DesktopAgentChatPayload = AgentChatPayload
+export type DesktopAgentChatResult = AgentChatResult

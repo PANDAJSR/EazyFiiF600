@@ -2,6 +2,8 @@ import type {
   DesktopOpenResult,
   DesktopReadTextFilePayload,
   DesktopReadTextFileResult,
+  DesktopAgentChatPayload,
+  DesktopAgentChatResult,
   DesktopWritePayload,
   DesktopWriteResult,
   DesktopWriteTextFilePayload,
@@ -14,6 +16,7 @@ type DesktopApi = {
   writeProjectFiles: (payload: DesktopWritePayload) => Promise<DesktopWriteResult>
   readTextFile: (payload: DesktopReadTextFilePayload) => Promise<DesktopReadTextFileResult>
   writeTextFile: (payload: DesktopWriteTextFilePayload) => Promise<DesktopWriteTextFileResult>
+  agentChat: (payload: DesktopAgentChatPayload) => Promise<DesktopAgentChatResult>
 }
 
 declare global {

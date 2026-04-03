@@ -1,13 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
+import AgentChatPanel from './components/AgentChatPanel'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
 import type { ParseResult } from './types/fii'
-import { parseFiiFromFiles } from './utils/fiiParser'
-import { isDesktopRuntime, isElectronShell } from './utils/desktopBridge'
-import { openDomDirectoryPicker } from './utils/domFilePicker'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
@@ -15,12 +13,11 @@ import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
 import usePathDrawingHotkey from './components/usePathDrawingHotkey'
 import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
-import { applySavedEdits, saveResultEdits } from './utils/blockEditsStorage'
-import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms } from './utils/localDraftStorage'
+import { readLocalDraftResult } from './utils/localDraftStorage'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
-import { openDesktopProject, saveDesktopProject } from './utils/desktopProjectIO'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
+import { useProjectFileIO } from './hooks/useProjectFileIO'
 
 type PendingFocusTarget = {
   blockId: string
@@ -42,6 +39,7 @@ function App() {
   const [desktopProjectDirectory, setDesktopProjectDirectory] = useState<string>()
   const [pathDrawingMode, setPathDrawingMode] = useState(false)
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
+  const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -70,6 +68,19 @@ function App() {
     setHighlightPulse,
     setHasUnsavedChanges,
   })
+  const { handleParseFiles, handleOpenDirectory, handleSaveEdits } = useProjectFileIO({
+    result,
+    desktopProjectDirectory,
+    directoryPickerRef,
+    setResult,
+    setLoading,
+    setDesktopProjectDirectory,
+    setSelectedDroneId,
+    setHighlightedBlockId,
+    setSelectedBlockId,
+    setHighlightPulse,
+    setHasUnsavedChanges,
+  })
   useSelectedBlockEnterHotkey({
     enabled: !!selectedDroneId && !insertPickerOpen,
     selectedBlockId,
@@ -89,80 +100,6 @@ function App() {
     setSelectedBlockId(blockId)
     setHighlightPulse((prev) => prev + 1)
   }, [])
-  const handleParseFiles = async (list: FileList | null) => {
-    if (!list?.length) {
-      return
-    }
-    setLoading(true)
-    try {
-      const parsed = await parseFiiFromFiles(Array.from(list))
-      if (!parsed.sourceName) {
-        console.warn('[fii] parse skipped: no .fii source found in selected files', {
-          selectedCount: list.length,
-          warnings: parsed.warnings,
-        })
-        message.error('所选路径未找到 .fii 文件，未更新当前程序。请重新选择包含 .fii 的目录。')
-        return
-      }
-      const merged = applySavedEdits(parsed)
-      setResult(merged)
-      setDesktopProjectDirectory(undefined)
-      setSelectedDroneId(merged.programs[0]?.drone.id)
-      setHighlightedBlockId(undefined)
-      setSelectedBlockId(undefined)
-      setHighlightPulse(0)
-      setHasUnsavedChanges(false)
-      if (merged.warnings.length) {
-        message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
-      } else {
-        message.success('文件读取成功')
-      }
-    } catch {
-      message.error('文件解析失败，请确认 XML 格式是否正确')
-    } finally {
-      setLoading(false)
-    }
-  }
-  const handleOpenDirectory = useCallback(async () => {
-    if (isDesktopRuntime()) {
-      setLoading(true)
-      try {
-        const openResult = await openDesktopProject()
-        if (!openResult) {
-          return
-        }
-
-        const merged = applySavedEdits(openResult.parseResult)
-        if (!merged.sourceName) {
-          console.warn('[fii] parse skipped: no .fii source found in selected files', {
-            warnings: merged.warnings,
-          })
-          message.error('所选路径未找到 .fii 文件，未更新当前程序。请重新选择包含 .fii 的目录。')
-          return
-        }
-
-        setResult(merged)
-        setDesktopProjectDirectory(openResult.directoryPath)
-        setSelectedDroneId(merged.programs[0]?.drone.id)
-        setHighlightedBlockId(undefined)
-        setSelectedBlockId(undefined)
-        setHighlightPulse(0)
-        setHasUnsavedChanges(false)
-        if (merged.warnings.length) {
-          message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
-        } else {
-          message.success('文件读取成功')
-        }
-      } catch {
-        message.error('文件解析失败，请确认目录内容和 XML 格式是否正确')
-      } finally {
-        setLoading(false)
-      }
-      return
-    }
-
-    openDomDirectoryPicker(directoryPickerRef)
-  }, [])
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)
@@ -170,38 +107,6 @@ function App() {
   const handleFieldBlur = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => normalizeBlockFieldOnBlur(prev, selectedDroneId, blockId, fieldKey, value))
   }, [selectedDroneId])
-  const handleSaveEdits = useCallback(async () => {
-    if (isDesktopRuntime()) {
-      try {
-        const saveResult = await saveDesktopProject(result, desktopProjectDirectory)
-        if (!saveResult) {
-          return
-        }
-        setDesktopProjectDirectory(saveResult.directoryPath)
-        setHasUnsavedChanges(false)
-        message.success(`已写入 ${saveResult.writtenCount} 个文件`)
-      } catch {
-        message.error('保存失败，请检查目录权限')
-      }
-      return
-    }
-    if (isElectronShell()) {
-      message.error('桌面桥接未初始化，请重启 Electron 进程后重试保存。')
-      return
-    }
-    if (!result.sourceName || result.sourceName === LOCAL_DRAFT_SOURCE_NAME) {
-      console.info('[fii] save blocked: source path is not bound', { sourceName: result.sourceName })
-      message.warning('当前仅保存到浏览器本地草稿。请先通过“选择文件夹/文件”加载含 .fii 的工程后再保存。')
-      return
-    }
-
-    if (result.sourceName && result.sourceName !== LOCAL_DRAFT_SOURCE_NAME) {
-      saveResultEdits(result.sourceName, result.programs)
-    }
-    saveLocalDraftPrograms(result.programs)
-    setHasUnsavedChanges(false)
-    message.success('已保存到本地')
-  }, [desktopProjectDirectory, result])
   const handleMovePoint = useCallback((payload: {
     blockId: string
     blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
@@ -282,21 +187,23 @@ function App() {
   }, [selectedDroneId])
   useEffect(() => {
     if (!selectedDroneId) {
-      setSelectedDroneId(result.programs[0]?.drone.id)
+      queueMicrotask(() => setSelectedDroneId(result.programs[0]?.drone.id))
       return
     }
     if (result.programs.some((program) => program.drone.id === selectedDroneId)) {
       return
     }
-    setSelectedDroneId(result.programs[0]?.drone.id)
+    queueMicrotask(() => setSelectedDroneId(result.programs[0]?.drone.id))
   }, [result.programs, selectedDroneId])
   useEffect(() => {
     if (!pathDrawingMode) {
       return
     }
     if (!selectedBlockId) {
-      setPathDrawingMode(false)
-      setPathInsertAfterBlockId(undefined)
+      queueMicrotask(() => {
+        setPathDrawingMode(false)
+        setPathInsertAfterBlockId(undefined)
+      })
     }
   }, [pathDrawingMode, selectedBlockId])
   useBlockKeyboardNavigation({
@@ -399,6 +306,9 @@ function App() {
               <Button type="primary" onClick={() => void handleSaveEdits()} disabled={loading}>
                 保存修改
               </Button>
+              <Button onClick={() => setAgentPanelOpen(true)}>
+                Agent 对话
+              </Button>
             </Space>
           </div>
           <div className="content-grid">
@@ -458,6 +368,10 @@ function App() {
         onChange={setDroneStartPosDraft}
         onCancel={() => setDroneDialogOpen(false)}
         onConfirm={handleConfirmDroneDialog}
+      />
+      <AgentChatPanel
+        open={agentPanelOpen}
+        onClose={() => setAgentPanelOpen(false)}
       />
     </ConfigProvider>
   )

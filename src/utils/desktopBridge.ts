@@ -1,4 +1,6 @@
 import type {
+  DesktopAgentChatPayload,
+  DesktopAgentChatResult,
   DesktopOpenResult,
   DesktopReadTextFilePayload,
   DesktopWritePayload,
@@ -50,4 +52,13 @@ export const writeDesktopTextFile = async (
   }
   const result = await window.eazyFiiDesktop.writeTextFile(payload)
   return result.written
+}
+
+export const chatWithAgent = async (
+  payload: DesktopAgentChatPayload,
+): Promise<DesktopAgentChatResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.agentChat(payload)
 }
