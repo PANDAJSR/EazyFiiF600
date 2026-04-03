@@ -3,6 +3,7 @@ import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 import type { RodConfig } from './rodConfig'
 import { checkSubject1ClosedLoopUnder150 } from './subject1Issues'
 import { checkSubject2ClosedLoopAroundRod } from './subject2Issues'
+import { checkSubject3PassThroughVerticalRing, checkSubject4PassThroughHorizontalRing } from './subject34Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -38,6 +39,8 @@ const ASYNC_MOVE_DELAY_ANCHORS: DelayAnchor[] = [
 
 const hasFiniteXY = (point: { x?: number; y?: number }): point is { x: number; y: number } =>
   Number.isFinite(point.x) && Number.isFinite(point.y)
+
+const hasFiniteNumber = (value: number | undefined): value is number => Number.isFinite(value)
 
 const toNumber = (value?: string): number | null => {
   if (!value) {
@@ -210,6 +213,8 @@ export const buildTrajectoryIssues = (
   const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
   const [subject2RodA, subject2RodB] = rodConfig.subject2
+  const [subject3RodA, subject3RodB] = rodConfig.subject3
+  const [subject4RodA, subject4RodB] = rodConfig.subject4
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -242,6 +247,38 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject2-outside-rod-span',
         message: '科目二未完成：闭合轨迹未在横杆长度范围（0.8m）附近形成有效绕行',
+      })
+    }
+  }
+
+  if (
+    subject3RodA &&
+    subject3RodB &&
+    hasFiniteXY(subject3RodA) &&
+    hasFiniteXY(subject3RodB) &&
+    hasFiniteNumber(rodConfig.subject3Ring.centerHeight)
+  ) {
+    const blockId = checkSubject3PassThroughVerticalRing(
+      subject3RodA,
+      subject3RodB,
+      rodConfig.subject3Ring.centerHeight,
+      startPos,
+      blocks,
+    )
+    if (!blockId) {
+      issues.push({
+        key: 'subject3-not-completed',
+        message: '科目③穿越竖圈未完成：未穿过圆圈',
+      })
+    }
+  }
+
+  if (subject4RodA && subject4RodB && hasFiniteXY(subject4RodA) && hasFiniteXY(subject4RodB)) {
+    const blockId = checkSubject4PassThroughHorizontalRing(subject4RodA, subject4RodB, startPos, blocks)
+    if (!blockId) {
+      issues.push({
+        key: 'subject4-not-completed',
+        message: '科目④穿越横圈未完成：未穿过圆圈',
       })
     }
   }
