@@ -68,8 +68,13 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                   size="small"
                   value={block.fields[value.fieldKey] ?? ''}
                   inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
+                  draggable={false}
                   data-block-id={block.id}
                   data-slot-index={getTextInputSlotIndex(idx)}
+                  onDragStart={(event) => {
+                    event.preventDefault()
+                    event.stopPropagation()
+                  }}
                   onChange={(event) => {
                     const nextValue = sanitizeBlockTextFieldInput(block.type, value.fieldKey!, event.target.value)
                     onFieldChange(block.id, value.fieldKey!, nextValue)
