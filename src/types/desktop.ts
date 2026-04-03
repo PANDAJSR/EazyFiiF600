@@ -4,6 +4,7 @@ import type {
   AgentChatResult,
   AgentEnvResult,
   AgentSetEnvPayload,
+  AgentStreamEvent,
   AgentStatusResult,
 } from './agent'
 
@@ -51,3 +52,4 @@ export type DesktopAgentChatResult = AgentChatResult
 export type DesktopAgentStatusResult = AgentStatusResult
 export type DesktopAgentSetEnvPayload = AgentSetEnvPayload
 export type DesktopAgentEnvResult = AgentEnvResult
+export type DesktopAgentStreamEvent = AgentStreamEvent

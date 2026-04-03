@@ -39,5 +39,6 @@ lerna-debug.log*
 
 # Local overrides
 *.local
+.agent-env.json
 
 tests/*

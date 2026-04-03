@@ -5,6 +5,7 @@ import type {
   DesktopAgentChatPayload,
   DesktopAgentChatResult,
   DesktopAgentEnvResult,
+  DesktopAgentStreamEvent,
   DesktopAgentSetEnvPayload,
   DesktopAgentStatusResult,
   DesktopWritePayload,
@@ -23,6 +24,7 @@ type DesktopApi = {
   getAgentStatus: () => Promise<DesktopAgentStatusResult>
   getAgentEnv: () => Promise<DesktopAgentEnvResult>
   setAgentEnv: (payload: DesktopAgentSetEnvPayload) => Promise<DesktopAgentEnvResult>
+  onAgentStream: (handler: (event: DesktopAgentStreamEvent) => void) => () => void
 }
 
 declare global {

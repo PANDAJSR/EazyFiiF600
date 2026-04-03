@@ -8,6 +8,7 @@ import {
   updateAgentPhase,
 } from './agentStatus.mjs'
 import { executeBashWithPolicy, parseToolArgs } from './agentBashTool.mjs'
+import { streamChatCompletion } from './openaiChatStream.mjs'
 const MAX_TOOL_ROUNDS = 8
 
 const normalizeEnvValue = (value) => {
@@ -154,6 +155,7 @@ const runResponsesTurn = async ({
   timeoutSec,
   traces,
   permissionMode,
+  onEvent,
 }) => {
   updateAgentPhase('llm-responses', '使用 Responses API 推理')
   let lastAnswer = ''
@@ -189,6 +191,9 @@ const runResponsesTurn = async ({
     }
 
     if (calls.length === 0) {
+      if (lastAnswer && onEvent) {
+        onEvent({ type: 'text-delta', delta: lastAnswer })
+      }
       state.messages.push({ role: 'assistant', content: lastAnswer || '' })
       return lastAnswer
     }
@@ -233,6 +238,7 @@ const runChatTurn = async ({
   timeoutSec,
   traces,
   permissionMode,
+  onEvent,
 }) => {
   updateAgentPhase('llm-chat', '使用 Chat Completions 推理')
   state.messages.push({ role: 'user', content: userInput })
@@ -240,30 +246,30 @@ const runChatTurn = async ({
   let lastAnswer = ''
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const completion = await client.chat.completions.create({
+    const completion = await streamChatCompletion({
+      client,
       model,
       messages: state.messages,
       tools: [BASH_TOOL_CHAT],
-      tool_choice: 'auto',
-      max_tokens: 4096,
+      maxTokens: 4096,
+      onTextDelta: (delta) => {
+        if (onEvent) {
+          onEvent({ type: 'text-delta', delta })
+        }
+      },
     })
-
-    const message = completion.choices[0]?.message
-    if (!message) {
-      throw new Error('模型没有返回有效消息')
-    }
 
     state.messages.push({
       role: 'assistant',
-      content: typeof message.content === 'string' ? message.content : null,
-      tool_calls: message.tool_calls,
+      content: completion.content || null,
+      tool_calls: completion.toolCalls,
     })
 
-    if (typeof message.content === 'string' && message.content.trim()) {
-      lastAnswer = message.content
+    if (completion.content && completion.content.trim()) {
+      lastAnswer = completion.content
     }
 
-    const toolCalls = message.tool_calls ?? []
+    const toolCalls = completion.toolCalls ?? []
     if (toolCalls.length === 0) {
       return lastAnswer
     }
@@ -305,7 +311,12 @@ export const resetAgentSession = () => {
   resetAgentStatus()
 }
 
-export const chatWithAgent = async ({ message, reset = false, envOverrides }) => {
+export const chatWithAgent = async ({
+  message,
+  reset = false,
+  envOverrides,
+  onEvent,
+}) => {
   if (reset) {
     resetAgentSession()
   }
@@ -331,6 +342,7 @@ export const chatWithAgent = async ({ message, reset = false, envOverrides }) =>
         timeoutSec,
         traces,
         permissionMode,
+        onEvent,
       })
       setAgentDone('已完成（Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }
@@ -344,6 +356,7 @@ export const chatWithAgent = async ({ message, reset = false, envOverrides }) =>
         timeoutSec,
         traces,
         permissionMode,
+        onEvent,
       })
       setAgentDone('已完成（Chat）')
       return { reply, traces, provider, model, transportMode: 'chat' }
@@ -362,6 +375,7 @@ export const chatWithAgent = async ({ message, reset = false, envOverrides }) =>
         timeoutSec,
         traces,
         permissionMode,
+        onEvent,
       })
       setAgentDone('已完成（Fallback 到 Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }

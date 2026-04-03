@@ -10,6 +10,7 @@ export type AgentToolTrace = {
 export type AgentChatPayload = {
   message: string
   reset?: boolean
+  requestId?: string
 }
 
 export type AgentChatSuccess = {
@@ -69,3 +70,9 @@ export type AgentEnvResult = AgentEnvSuccess | AgentEnvFailure
 export type AgentSetEnvPayload = {
   values: AgentEnvValues
 }
+
+export type AgentStreamEvent =
+  | { requestId?: string; type: 'start' }
+  | { requestId?: string; type: 'text-delta'; delta: string }
+  | { requestId?: string; type: 'end' }
+  | { requestId?: string; type: 'error'; error: string }

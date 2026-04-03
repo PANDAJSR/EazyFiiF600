@@ -131,22 +131,41 @@ ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
 })
 
 ipcMain.handle('agent:chat', async (_event, payload) => {
-  const { message, reset } = payload ?? {}
+  const { message, reset, requestId } = payload ?? {}
   try {
     const timeoutMs = Number(process.env.NANO_AGENT_REQUEST_TIMEOUT_MS ?? 120000)
+    _event.sender.send('agent:stream', {
+      requestId,
+      type: 'start',
+    })
     const result = await Promise.race([
       chatWithAgent({
         message,
         reset: Boolean(reset),
         envOverrides: agentEnvStore.get(),
+        onEvent: (event) => {
+          _event.sender.send('agent:stream', {
+            requestId,
+            ...event,
+          })
+        },
       }),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error(`请求超时（>${Math.floor(timeoutMs / 1000)}s）`)), timeoutMs)
       }),
     ])
+    _event.sender.send('agent:stream', {
+      requestId,
+      type: 'end',
+    })
     return { ok: true, ...result }
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error)
+    _event.sender.send('agent:stream', {
+      requestId,
+      type: 'error',
+      error: errMessage,
+    })
     return { ok: false, error: errMessage }
   }
 })

@@ -2,6 +2,7 @@ import type {
   DesktopAgentChatPayload,
   DesktopAgentChatResult,
   DesktopAgentEnvResult,
+  DesktopAgentStreamEvent,
   DesktopAgentSetEnvPayload,
   DesktopAgentStatusResult,
   DesktopOpenResult,
@@ -87,4 +88,13 @@ export const setAgentEnv = async (
     return null
   }
   return window.eazyFiiDesktop.setAgentEnv(payload)
+}
+
+export const onAgentStream = (
+  handler: (event: DesktopAgentStreamEvent) => void,
+): (() => void) | null => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.onAgentStream(handler)
 }

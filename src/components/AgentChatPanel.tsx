@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert,
   Badge,
@@ -17,6 +17,7 @@ import type {
   AgentEnvResult,
   AgentEnvValues,
   AgentRuntimeStatus,
+  AgentStreamEvent,
   AgentStatusResult,
   AgentToolTrace,
 } from '../types/agent'
@@ -25,6 +26,7 @@ import {
   getAgentEnv,
   getAgentStatus,
   isDesktopRuntime,
+  onAgentStream,
   setAgentEnv,
 } from '../utils/desktopBridge'
 
@@ -128,6 +130,8 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   const [envStoragePath, setEnvStoragePath] = useState<string>('')
   const [savingEnv, setSavingEnv] = useState(false)
   const [envFeedback, setEnvFeedback] = useState<string>('')
+  const activeRequestIdRef = useRef<string | null>(null)
+  const activeAssistantMessageIdRef = useRef<string | null>(null)
 
   const runtimeHint = useMemo(() => {
     if (isDesktopRuntime()) {
@@ -170,6 +174,47 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     setMessages((prev) => [...prev, message])
   }
 
+  const patchMessageById = (id: string, patch: Partial<ChatMessage>) => {
+    setMessages((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  }
+
+  useEffect(() => {
+    if (!open || !isDesktopRuntime()) {
+      return
+    }
+    const unsubscribe = onAgentStream((event: AgentStreamEvent) => {
+      const activeRequestId = activeRequestIdRef.current
+      const assistantMessageId = activeAssistantMessageIdRef.current
+      if (!activeRequestId || !assistantMessageId) {
+        return
+      }
+      if (event.requestId !== activeRequestId) {
+        return
+      }
+      if (event.type === 'text-delta') {
+        setMessages((prev) => prev.map((item) => {
+          if (item.id !== assistantMessageId) {
+            return item
+          }
+          return {
+            ...item,
+            text: `${item.text}${event.delta}`,
+          }
+        }))
+      }
+      if (event.type === 'error') {
+        patchMessageById(assistantMessageId, {
+          text: `Agent 错误: ${event.error}`,
+        })
+      }
+    })
+    return () => {
+      if (unsubscribe) {
+        unsubscribe()
+      }
+    }
+  }, [open])
+
   const clearConversation = async () => {
     setMessages([
       {
@@ -204,12 +249,15 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     }
 
     setSending(true)
+    const requestId = newMessageId()
+    const assistantMessageId = newMessageId()
+    activeRequestIdRef.current = requestId
+    activeAssistantMessageIdRef.current = assistantMessageId
+    appendMessage({ id: assistantMessageId, role: 'assistant', text: '' })
     try {
-      const result = await chatWithAgent({ message })
+      const result = await chatWithAgent({ message, requestId })
       if (!result) {
-        appendMessage({
-          id: newMessageId(),
-          role: 'assistant',
+        patchMessageById(assistantMessageId, {
           text: '未收到 Agent 返回结果。',
         })
         return
@@ -217,23 +265,21 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
 
       const typedResult = result as AgentChatResult
       if (!typedResult.ok) {
-        appendMessage({
-          id: newMessageId(),
-          role: 'assistant',
+        patchMessageById(assistantMessageId, {
           text: `Agent 错误: ${typedResult.error}`,
         })
         return
       }
 
-      appendMessage({
-        id: newMessageId(),
-        role: 'assistant',
+      patchMessageById(assistantMessageId, {
         text: typedResult.reply || '(空回复)',
         traces: typedResult.traces,
         meta: `${typedResult.provider} · ${typedResult.model} · ${typedResult.transportMode}`,
       })
     } finally {
       setSending(false)
+      activeRequestIdRef.current = null
+      activeAssistantMessageIdRef.current = null
       const status = await readStatus()
       setRuntimeStatus(status)
     }
