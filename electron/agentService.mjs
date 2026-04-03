@@ -1,6 +1,14 @@
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import OpenAI, { AzureOpenAI } from 'openai'
+import {
+  getAgentStatus,
+  resetAgentStatus,
+  setAgentBusy,
+  setAgentDone,
+  setAgentError,
+  updateAgentPhase,
+} from './agentStatus.mjs'
 
 const execAsync = promisify(exec)
 const MAX_TOOL_ROUNDS = 8
@@ -91,6 +99,7 @@ const isSafeBashCommand = (command) => {
 }
 
 const runBash = async (command, timeoutSec) => {
+  updateAgentPhase('tool-running', `Bash: ${command.slice(0, 80)}`)
   try {
     const { stdout, stderr } = await execAsync(command, {
       timeout: timeoutSec * 1000,
@@ -109,6 +118,7 @@ const runBash = async (command, timeoutSec) => {
 }
 
 const createClientBundle = () => {
+  updateAgentPhase('init', '初始化模型客户端')
   const providerEnv = process.env.NANO_PROVIDER
   const provider = providerEnv === 'azure' || providerEnv === 'openai'
     ? providerEnv
@@ -130,6 +140,7 @@ const createClientBundle = () => {
       apiKey,
       apiVersion,
       deployment,
+      timeout: Number(process.env.NANO_OPENAI_TIMEOUT_MS ?? 60000),
     })
 
     return { client, model, provider }
@@ -143,7 +154,11 @@ const createClientBundle = () => {
     throw new Error('缺少 OPENAI_API_KEY')
   }
 
-  const client = new OpenAI({ apiKey, baseURL })
+  const client = new OpenAI({
+    apiKey,
+    baseURL,
+    timeout: Number(process.env.NANO_OPENAI_TIMEOUT_MS ?? 60000),
+  })
   return { client, model, provider }
 }
 
@@ -156,6 +171,7 @@ const unsupportedOperationError = (error) => {
 }
 
 const executeBashWithPolicy = async ({ command, timeoutSec, traces }) => {
+  updateAgentPhase('tool-check', `校验命令权限: ${command.slice(0, 80)}`)
   traces.push({ phase: 'start', tool: 'Bash', command, timeoutSec })
 
   const acceptAll = process.env.NANO_PERMISSION_MODE === 'accept-all'
@@ -196,6 +212,7 @@ const extractResponseText = (response) => {
 }
 
 const runResponsesTurn = async ({ client, model, userInput, timeoutSec, traces }) => {
+  updateAgentPhase('llm-responses', '使用 Responses API 推理')
   let lastAnswer = ''
   let input = userInput
 
@@ -265,6 +282,7 @@ const runResponsesTurn = async ({ client, model, userInput, timeoutSec, traces }
 }
 
 const runChatTurn = async ({ client, model, userInput, timeoutSec, traces }) => {
+  updateAgentPhase('llm-chat', '使用 Chat Completions 推理')
   state.messages.push({ role: 'user', content: userInput })
 
   let lastAnswer = ''
@@ -330,6 +348,7 @@ export const resetAgentSession = () => {
   state.messages = [{ role: 'system', content: SYSTEM_PROMPT }]
   state.transportMode = undefined
   state.previousResponseId = undefined
+  resetAgentStatus()
 }
 
 export const chatWithAgent = async ({ message, reset = false }) => {
@@ -342,27 +361,40 @@ export const chatWithAgent = async ({ message, reset = false }) => {
     throw new Error('消息不能为空')
   }
 
-  const { client, model, provider } = createClientBundle()
-  const traces = []
-  const timeoutSec = Number(process.env.NANO_BASH_TIMEOUT_SEC ?? 30)
-
-  if (state.transportMode === 'responses') {
-    state.messages.push({ role: 'user', content: prompt })
-    const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
-    return { reply, traces, provider, model, transportMode: 'responses' }
-  }
-
+  setAgentBusy('请求已接收，准备调用模型')
   try {
-    const reply = await runChatTurn({ client, model, userInput: prompt, timeoutSec, traces })
-    return { reply, traces, provider, model, transportMode: 'chat' }
-  } catch (error) {
-    if (!unsupportedOperationError(error)) {
-      throw error
+    const { client, model, provider } = createClientBundle()
+    const traces = []
+    const timeoutSec = Number(process.env.NANO_BASH_TIMEOUT_SEC ?? 30)
+
+    if (state.transportMode === 'responses') {
+      state.messages.push({ role: 'user', content: prompt })
+      const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      setAgentDone('已完成（Responses）')
+      return { reply, traces, provider, model, transportMode: 'responses' }
     }
 
-    state.transportMode = 'responses'
-    state.messages.push({ role: 'user', content: prompt })
-    const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
-    return { reply, traces, provider, model, transportMode: 'responses' }
+    try {
+      const reply = await runChatTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      setAgentDone('已完成（Chat）')
+      return { reply, traces, provider, model, transportMode: 'chat' }
+    } catch (error) {
+      if (!unsupportedOperationError(error)) {
+        throw error
+      }
+
+      updateAgentPhase('fallback', '当前模型不支持 Chat，回退 Responses')
+      state.transportMode = 'responses'
+      state.messages.push({ role: 'user', content: prompt })
+      const reply = await runResponsesTurn({ client, model, userInput: prompt, timeoutSec, traces })
+      setAgentDone('已完成（Fallback 到 Responses）')
+      return { reply, traces, provider, model, transportMode: 'responses' }
+    }
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error)
+    setAgentError(errMessage)
+    throw error
   }
 }
+
+export { getAgentStatus }

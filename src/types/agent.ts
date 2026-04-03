@@ -27,3 +27,25 @@ export type AgentChatFailure = {
 }
 
 export type AgentChatResult = AgentChatSuccess | AgentChatFailure
+
+export type AgentRuntimeStatus = {
+  busy: boolean
+  phase: string
+  detail: string
+  startedAt: number | null
+  updatedAt: number
+  requestCount: number
+  lastError: string | null
+}
+
+export type AgentStatusSuccess = {
+  ok: true
+  status: AgentRuntimeStatus
+}
+
+export type AgentStatusFailure = {
+  ok: false
+  error: string
+}
+
+export type AgentStatusResult = AgentStatusSuccess | AgentStatusFailure

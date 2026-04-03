@@ -1,7 +1,23 @@
-import { useMemo, useState } from 'react'
-import { Button, Drawer, Empty, Input, Space, Tag, Typography } from 'antd'
-import type { AgentChatResult, AgentToolTrace } from '../types/agent'
-import { chatWithAgent, isDesktopRuntime } from '../utils/desktopBridge'
+import { useEffect, useMemo, useState } from 'react'
+import {
+  Alert,
+  Badge,
+  Button,
+  Drawer,
+  Empty,
+  Input,
+  Space,
+  Spin,
+  Tag,
+  Typography,
+} from 'antd'
+import type {
+  AgentChatResult,
+  AgentRuntimeStatus,
+  AgentStatusResult,
+  AgentToolTrace,
+} from '../types/agent'
+import { chatWithAgent, getAgentStatus, isDesktopRuntime } from '../utils/desktopBridge'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -28,6 +44,26 @@ const traceSummary = (trace: AgentToolTrace) => {
   return `结束(${status}): ${trace.resultPreview ?? ''}`
 }
 
+const formatElapsed = (startedAt: number | null) => {
+  if (!startedAt) {
+    return '0s'
+  }
+  const sec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
+  return `${sec}s`
+}
+
+const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
+  const result = await getAgentStatus()
+  if (!result) {
+    return null
+  }
+  const typed = result as AgentStatusResult
+  if (!typed.ok) {
+    return null
+  }
+  return typed.status
+}
+
 function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -38,6 +74,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [runtimeStatus, setRuntimeStatus] = useState<AgentRuntimeStatus | null>(null)
 
   const runtimeHint = useMemo(() => {
     if (isDesktopRuntime()) {
@@ -45,6 +82,17 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     }
     return '当前不是 Electron 桌面环境，Agent 面板不可用。'
   }, [])
+
+  useEffect(() => {
+    if (!open || !isDesktopRuntime()) {
+      return
+    }
+    void readStatus().then((status) => setRuntimeStatus(status))
+    const timer = setInterval(() => {
+      void readStatus().then((status) => setRuntimeStatus(status))
+    }, 800)
+    return () => clearInterval(timer)
+  }, [open, sending])
 
   const appendMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message])
@@ -60,6 +108,8 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     ])
     if (isDesktopRuntime()) {
       await chatWithAgent({ message: '请重置会话', reset: true })
+      const status = await readStatus()
+      setRuntimeStatus(status)
     }
   }
 
@@ -112,14 +162,22 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
       })
     } finally {
       setSending(false)
+      const status = await readStatus()
+      setRuntimeStatus(status)
     }
   }
+
+  const elapsed = formatElapsed(runtimeStatus?.startedAt ?? null)
+  const stuckWarning =
+    sending && runtimeStatus?.startedAt && Date.now() - runtimeStatus.startedAt > 25000
+      ? '请求耗时较长，通常是模型端排队或网络延迟，可继续等待。'
+      : null
 
   return (
     <Drawer
       title="Agent 对话"
       placement="right"
-      width={460}
+      width={500}
       open={open}
       onClose={onClose}
       extra={(
@@ -129,8 +187,26 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
       )}
     >
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        {runtimeHint && <Typography.Text type="warning">{runtimeHint}</Typography.Text>}
-        <div style={{ maxHeight: '56vh', overflow: 'auto', paddingRight: 4 }}>
+        {runtimeHint && <Alert type="warning" showIcon message={runtimeHint} />}
+        {!runtimeHint && (
+          <Alert
+            type={runtimeStatus?.phase === 'error' ? 'error' : sending ? 'info' : 'success'}
+            showIcon
+            message={(
+              <Space size={10} align="center">
+                <Badge status={sending ? 'processing' : runtimeStatus?.phase === 'error' ? 'error' : 'success'} />
+                <Typography.Text>
+                  {runtimeStatus?.detail ?? (sending ? '处理中' : '空闲')}
+                </Typography.Text>
+                <Tag color="default">耗时 {elapsed}</Tag>
+                <Tag color="blue">#{runtimeStatus?.requestCount ?? 0}</Tag>
+              </Space>
+            )}
+            description={runtimeStatus?.lastError ?? stuckWarning ?? undefined}
+          />
+        )}
+
+        <div style={{ maxHeight: '55vh', overflow: 'auto', paddingRight: 4 }}>
           {messages.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无消息" />}
           <Space direction="vertical" size={10} style={{ width: '100%' }}>
             {messages.map((message) => (
@@ -139,8 +215,8 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
                 style={{
                   background: message.role === 'user' ? '#e6f4ff' : '#f7f7f7',
                   border: '1px solid #e5e5e5',
-                  borderRadius: 10,
-                  padding: 10,
+                  borderRadius: 12,
+                  padding: 12,
                 }}
               >
                 <Space size={8} wrap>
@@ -166,8 +242,17 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
                 )}
               </div>
             ))}
+            {sending && (
+              <div style={{ border: '1px dashed #91caff', borderRadius: 10, padding: 10, background: '#f0f8ff' }}>
+                <Space>
+                  <Spin size="small" />
+                  <Typography.Text type="secondary">Agent 正在处理中...</Typography.Text>
+                </Space>
+              </div>
+            )}
           </Space>
         </div>
+
         <Input.TextArea
           value={input}
           onChange={(event) => setInput(event.target.value)}

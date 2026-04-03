@@ -1,6 +1,7 @@
 import type {
   DesktopAgentChatPayload,
   DesktopAgentChatResult,
+  DesktopAgentStatusResult,
   DesktopOpenResult,
   DesktopReadTextFilePayload,
   DesktopWritePayload,
@@ -61,4 +62,11 @@ export const chatWithAgent = async (
     return null
   }
   return window.eazyFiiDesktop.agentChat(payload)
+}
+
+export const getAgentStatus = async (): Promise<DesktopAgentStatusResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.getAgentStatus()
 }

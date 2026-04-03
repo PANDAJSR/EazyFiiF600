@@ -7,4 +7,5 @@ contextBridge.exposeInMainWorld('eazyFiiDesktop', {
   readTextFile: (payload) => ipcRenderer.invoke('desktop:read-text-file', payload),
   writeTextFile: (payload) => ipcRenderer.invoke('desktop:write-text-file', payload),
   agentChat: (payload) => ipcRenderer.invoke('agent:chat', payload),
+  getAgentStatus: () => ipcRenderer.invoke('agent:get-status'),
 })
