@@ -2,6 +2,7 @@ import type { ParsedBlock } from '../../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 import type { RodConfig } from './rodConfig'
 import { checkSubject1ClosedLoopUnder150 } from './subject1Issues'
+import { checkSubject2ClosedLoopAroundRod } from './subject2Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -208,6 +209,7 @@ export const buildTrajectoryIssues = (
 ): TrajectoryIssue[] => {
   const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
+  const [subject2RodA, subject2RodB] = rodConfig.subject2
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -225,6 +227,21 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject1-motor-light-not-green',
         message: '科目一未完成：封闭图形飞行过程中，1、2号电机灯光未全程近似绿色',
+      })
+    }
+  }
+
+  if (subject2RodA && subject2RodB && hasFiniteXY(subject2RodA) && hasFiniteXY(subject2RodB)) {
+    const subject2Result = checkSubject2ClosedLoopAroundRod(subject2RodA, subject2RodB, startPos, blocks)
+    if (subject2Result === 'no-loop') {
+      issues.push({
+        key: 'subject2-not-completed',
+        message: '科目二未完成：未检测到绕横杆一圈并闭合',
+      })
+    } else if (subject2Result === 'outside-rod-span') {
+      issues.push({
+        key: 'subject2-outside-rod-span',
+        message: '科目二未完成：闭合轨迹未在横杆长度范围（0.8m）附近形成有效绕行',
       })
     }
   }
