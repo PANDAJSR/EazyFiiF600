@@ -10,12 +10,26 @@ import {
 import { executeBashWithPolicy, parseToolArgs } from './agentBashTool.mjs'
 const MAX_TOOL_ROUNDS = 8
 
+const normalizeEnvValue = (value) => {
+  if (typeof value !== 'string') {
+    return value
+  }
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
 const readEnv = (key, overrides) => {
   const override = overrides?.[key]
   if (typeof override === 'string') {
-    return override
+    return normalizeEnvValue(override)
   }
-  return process.env[key]
+  return normalizeEnvValue(process.env[key])
 }
 
 const SYSTEM_PROMPT = `你是一个命令行编码助手，运行在 Electron 主进程里。

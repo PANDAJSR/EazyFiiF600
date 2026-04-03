@@ -80,6 +80,17 @@ const serializeEnvValues = (values: AgentEnvValues) => {
     .join('\n')
 }
 
+const normalizeEnvValue = (value: string) => {
+  const trimmed = value.trim()
+  if (
+    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
+    (trimmed.startsWith("'") && trimmed.endsWith("'"))
+  ) {
+    return trimmed.slice(1, -1).trim()
+  }
+  return trimmed
+}
+
 const parseEnvText = (text: string): AgentEnvValues => {
   const next: AgentEnvValues = {}
   for (const rawLine of text.split('\n')) {
@@ -87,12 +98,13 @@ const parseEnvText = (text: string): AgentEnvValues => {
     if (!line || line.startsWith('#')) {
       continue
     }
-    const eqIndex = line.indexOf('=')
+    const normalizedLine = line.replace(/^export\s+/i, '')
+    const eqIndex = normalizedLine.indexOf('=')
     if (eqIndex <= 0) {
       continue
     }
-    const key = line.slice(0, eqIndex).trim()
-    const value = line.slice(eqIndex + 1)
+    const key = normalizedLine.slice(0, eqIndex).trim()
+    const value = normalizeEnvValue(normalizedLine.slice(eqIndex + 1))
     if (!key) {
       continue
     }
