@@ -1,14 +1,23 @@
 import type { ParsedBlock } from '../../types/fii'
 import type { RodConfig } from './rodConfig'
+import { AUTO_DELAY_BLOCK_TYPE } from '../../utils/autoDelayBlocks'
 import { buildPathVisits, type XYZ } from './trajectoryUtils'
 
 const SUBJECT1_MAX_HEIGHT = 150
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
+const RELATIVE_MOVE_BLOCK_TYPE = 'Goertek_Move'
+const LAND_BLOCK_TYPE = 'Goertek_Land'
 const DELAY_BLOCK_TYPE = 'block_delay'
 
 type XYPoint = {
   x: number
   y: number
+}
+
+type Position3D = {
+  x: number
+  y: number
+  z: number
 }
 
 type DelayAnchor = {
@@ -36,6 +45,54 @@ const toNumber = (value?: string): number | null => {
   }
   const parsed = Number(value)
   return Number.isFinite(parsed) ? parsed : null
+}
+
+const readPosition = (block: ParsedBlock, current: Position3D): Position3D | null => {
+  if (block.type === ASYNC_MOVE_BLOCK_TYPE || block.type === AUTO_DELAY_BLOCK_TYPE) {
+    const x = toNumber(block.fields.X)
+    const y = toNumber(block.fields.Y)
+    const z = toNumber(block.fields.Z)
+    if (x === null || y === null || z === null) {
+      return null
+    }
+    return { x, y, z }
+  }
+
+  if (block.type === RELATIVE_MOVE_BLOCK_TYPE) {
+    const deltaX = toNumber(block.fields.X)
+    const deltaY = toNumber(block.fields.Y)
+    const deltaZ = toNumber(block.fields.Z)
+    if (deltaX === null || deltaY === null || deltaZ === null) {
+      return null
+    }
+    return {
+      x: current.x + deltaX,
+      y: current.y + deltaY,
+      z: current.z + deltaZ,
+    }
+  }
+
+  if (block.type === LAND_BLOCK_TYPE) {
+    return {
+      x: current.x,
+      y: current.y,
+      z: 0,
+    }
+  }
+
+  if (block.type === 'Goertek_TakeOff2') {
+    const alt = toNumber(block.fields.alt)
+    if (alt === null) {
+      return null
+    }
+    return {
+      x: current.x,
+      y: current.y,
+      z: alt,
+    }
+  }
+
+  return current
 }
 
 const normalizePolygon = (points: XYPoint[]): XYPoint[] => {
@@ -143,8 +200,21 @@ const findMinDelayByDistance = (distanceCm: number): number => {
   return last.minDelayMs
 }
 
-const findAsyncMoveDelayWarnings = (blocks: ParsedBlock[]): string[] => {
+const findAsyncMoveDelayWarnings = (startPos: XYZ, blocks: ParsedBlock[]): string[] => {
   const warnings: string[] = []
+  let runtimePosition: Position3D = {
+    x: toNumber(startPos.x) ?? 0,
+    y: toNumber(startPos.y) ?? 0,
+    z: toNumber(startPos.z) ?? 0,
+  }
+
+  const positionsAfterEachBlock = blocks.map((block) => {
+    const next = readPosition(block, runtimePosition)
+    if (next) {
+      runtimePosition = next
+    }
+    return runtimePosition
+  })
 
   for (let startIndex = 0; startIndex < blocks.length; startIndex += 1) {
     const current = blocks[startIndex]
@@ -161,7 +231,12 @@ const findAsyncMoveDelayWarnings = (blocks: ParsedBlock[]): string[] => {
         accumulatedDelayMs += Math.max(0, toNumber(candidate.fields.time) ?? 0)
         continue
       }
-      if (candidate.type === ASYNC_MOVE_BLOCK_TYPE) {
+      if (
+        candidate.type === ASYNC_MOVE_BLOCK_TYPE ||
+        candidate.type === AUTO_DELAY_BLOCK_TYPE ||
+        candidate.type === RELATIVE_MOVE_BLOCK_TYPE ||
+        candidate.type === LAND_BLOCK_TYPE
+      ) {
         nextMoveIndex = cursor
         break
       }
@@ -171,18 +246,17 @@ const findAsyncMoveDelayWarnings = (blocks: ParsedBlock[]): string[] => {
       continue
     }
 
-    const next = blocks[nextMoveIndex]
-    const x1 = toNumber(current.fields.X)
-    const y1 = toNumber(current.fields.Y)
-    const z1 = toNumber(current.fields.Z)
-    const x2 = toNumber(next.fields.X)
-    const y2 = toNumber(next.fields.Y)
-    const z2 = toNumber(next.fields.Z)
-    if (x1 === null || y1 === null || z1 === null || x2 === null || y2 === null || z2 === null) {
+    const startPosition = positionsAfterEachBlock[startIndex]
+    const nextPosition = positionsAfterEachBlock[nextMoveIndex]
+    if (!startPosition || !nextPosition) {
       continue
     }
 
-    const distance = Math.hypot(x2 - x1, y2 - y1, z2 - z1)
+    const distance = Math.hypot(
+      nextPosition.x - startPosition.x,
+      nextPosition.y - startPosition.y,
+      nextPosition.z - startPosition.z,
+    )
     const requiredDelayMs = findMinDelayByDistance(distance)
     if (accumulatedDelayMs >= requiredDelayMs) {
       continue
@@ -208,6 +282,6 @@ export const buildTrajectoryIssueWarnings = (
     warnings.push('科目一未完成')
   }
 
-  warnings.push(...findAsyncMoveDelayWarnings(blocks))
+  warnings.push(...findAsyncMoveDelayWarnings(startPos, blocks))
   return warnings
 }
