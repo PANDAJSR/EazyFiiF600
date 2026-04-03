@@ -63,6 +63,7 @@ function BlockCanvas({
   const transparentDragImageRef = useRef<HTMLImageElement | null>(null)
   const dropMarkerRef = useRef<HTMLDivElement | null>(null)
   const dragFollowRef = useRef<HTMLDivElement | null>(null)
+  const suppressCardDragRef = useRef(false)
   const [flashRowId, setFlashRowId] = useState<string>()
   const [draggingBlockId, setDraggingBlockId] = useState<string>()
   const draggingBlock = useMemo(
@@ -92,6 +93,7 @@ function BlockCanvas({
   }
 
   const resetDragState = () => {
+    suppressCardDragRef.current = false
     setDraggingBlockId(undefined)
     if (dropMarkerRef.current) {
       dropMarkerRef.current.style.display = 'none'
@@ -156,7 +158,7 @@ function BlockCanvas({
       return false
     }
     return !!target.closest(
-      'input,textarea,select,[contenteditable="true"],.ant-input,.ant-select,.ant-color-picker,.ant-picker',
+      'input,textarea,select,[contenteditable="true"],.ant-input,.ant-input-affix-wrapper,.ant-input-number,.ant-select,.ant-color-picker,.ant-picker',
     )
   }
 
@@ -202,13 +204,16 @@ function BlockCanvas({
         }}
         data-block-id={block.id}
         draggable
+        onMouseDownCapture={(event) => {
+          suppressCardDragRef.current = shouldIgnoreCardDrag(event.target)
+        }}
         onClick={() => onSelectBlock?.(block.id)}
         onContextMenu={(event) => {
           event.preventDefault()
           onSelectBlock?.(block.id)
         }}
         onDragStart={(event) => {
-          if (shouldIgnoreCardDrag(event.target)) {
+          if (suppressCardDragRef.current || shouldIgnoreCardDrag(event.target) || shouldIgnoreCardDrag(document.activeElement)) {
             event.preventDefault()
             return
           }
@@ -256,6 +261,7 @@ function BlockCanvas({
           resetDragState()
         }}
         onDragEnd={() => {
+          suppressCardDragRef.current = false
           resetDragState()
         }}
         style={{
