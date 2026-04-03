@@ -2,6 +2,8 @@ import { Empty } from 'antd'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import type { RodConfig } from './trajectory/rodConfig'
+import { renderSubjectRods } from './trajectory/trajectoryScene3dRods'
 import { SNAP_STEP, snapToStep } from './trajectory/trajectoryPlaneUtils'
 import {
   buildDragCandidates,
@@ -18,12 +20,21 @@ import { GRID_STEP } from './trajectory/trajectoryUtils'
 type Props = {
   visits: Visit[]
   bounds: TrajectoryBounds
+  rodConfig?: RodConfig
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
   backgroundTrajectories?: Array<{ droneId: string; color: string; visits: Visit[] }>
   activeTrajectoryColor?: string
 }
-function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint, backgroundTrajectories = [], activeTrajectoryColor = '#1b6ed6' }: Props) {
+function TrajectoryScene3D({
+  visits,
+  bounds,
+  rodConfig,
+  onLocateBlock,
+  onMovePoint,
+  backgroundTrajectories = [],
+  activeTrajectoryColor = '#1b6ed6',
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const center = useMemo(
     () => ({
@@ -100,6 +111,7 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint, backgro
       disposers.push(dispose)
     }
     scene.add(gridGroup)
+    renderSubjectRods(scene, rodConfig, disposers)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
     const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
     const pathMaterial = new THREE.LineBasicMaterial({ color: activeTrajectoryColor })
@@ -346,6 +358,7 @@ function TrajectoryScene3D({ visits, bounds, onLocateBlock, onMovePoint, backgro
     onMovePoint,
     backgroundTrajectories,
     activeTrajectoryColor,
+    rodConfig,
     visits,
   ])
   if (!visits.length) {

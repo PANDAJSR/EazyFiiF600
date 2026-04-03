@@ -43,8 +43,7 @@ function TrajectoryPlane({
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
   const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
   const plotSize = Math.min(innerWidth, innerHeight)
-  const plotLeft = margin.left + (innerWidth - plotSize) / 2
-  const plotTop = margin.top + (innerHeight - plotSize) / 2
+  const plotLeft = margin.left + (innerWidth - plotSize) / 2, plotTop = margin.top + (innerHeight - plotSize) / 2
   const toSvgX = (x: number) => plotLeft + ((x - displayBounds.minX) / displayBounds.span) * plotSize
   const toSvgY = (y: number) => plotTop + (1 - (y - displayBounds.minY) / displayBounds.span) * plotSize
   const [activePointKey, setActivePointKey] = useState<string>()
@@ -172,6 +171,7 @@ function TrajectoryPlane({
         <TrajectoryScene3D
           visits={visits}
           bounds={bounds}
+          rodConfig={rodConfig}
           onLocateBlock={onLocateBlock}
           onMovePoint={onMovePoint}
           backgroundTrajectories={backgroundVisits}
