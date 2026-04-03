@@ -70,6 +70,7 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                   inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
                   draggable={false}
                   data-block-id={block.id}
+                  data-field-key={value.fieldKey}
                   data-slot-index={getTextInputSlotIndex(idx)}
                   onDragStart={(event) => {
                     event.preventDefault()

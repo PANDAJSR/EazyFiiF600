@@ -20,6 +20,13 @@ import { LOCAL_DRAFT_SOURCE_NAME, readLocalDraftResult, saveLocalDraftPrograms }
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { openDesktopProject, saveDesktopProject } from './utils/desktopProjectIO'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
+import { getPathDrawingInheritedZ } from './utils/pathDrawing'
+
+type PendingFocusTarget = {
+  blockId: string
+  fieldKey?: string
+  selectAll?: boolean
+}
 
 function App() {
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
@@ -31,7 +38,7 @@ function App() {
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
   const [insertPickerOpen, setInsertPickerOpen] = useState(false)
   const [insertAfterBlockId, setInsertAfterBlockId] = useState<string>()
-  const [pendingFocusBlockId, setPendingFocusBlockId] = useState<string>()
+  const [pendingFocusTarget, setPendingFocusTarget] = useState<PendingFocusTarget>()
   const [desktopProjectDirectory, setDesktopProjectDirectory] = useState<string>()
   const [pathDrawingMode, setPathDrawingMode] = useState(false)
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
@@ -72,8 +79,10 @@ function App() {
     },
   })
   useFocusBlockFirstInput({
-    blockId: pendingFocusBlockId,
-    onFocused: () => setPendingFocusBlockId(undefined),
+    blockId: pendingFocusTarget?.blockId,
+    fieldKey: pendingFocusTarget?.fieldKey,
+    selectAll: pendingFocusTarget?.selectAll,
+    onFocused: () => setPendingFocusTarget(undefined),
   })
   const handleLocateBlock = useCallback((blockId: string) => {
     setHighlightedBlockId(blockId)
@@ -230,13 +239,20 @@ function App() {
     const nextBlock = createInsertedBlock(moveToAutoDelayBlockDefinition)
     nextBlock.fields.X = String(x)
     nextBlock.fields.Y = String(y)
+    const inheritedZ = selectedProgram
+      ? getPathDrawingInheritedZ(selectedProgram.drone.startPos, selectedProgram.blocks, targetBlockId)
+      : null
+    if (inheritedZ !== null) {
+      nextBlock.fields.Z = String(inheritedZ)
+    }
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
     setSelectedBlockId(nextBlock.id)
     setHighlightedBlockId(nextBlock.id)
     setHighlightPulse((prev) => prev + 1)
     setPathInsertAfterBlockId(nextBlock.id)
+    setPendingFocusTarget({ blockId: nextBlock.id, fieldKey: 'Z', selectAll: true })
     setHasUnsavedChanges(true)
-  }, [moveToAutoDelayBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId])
+  }, [moveToAutoDelayBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId, selectedProgram])
   const handleDeleteBlock = useCallback((blockId: string) => {
     Modal.confirm({
       title: '删除积木',
@@ -307,7 +323,7 @@ function App() {
     setSelectedBlockId(nextBlock.id)
     setHighlightedBlockId(nextBlock.id)
     setHighlightPulse((prev) => prev + 1)
-    setPendingFocusBlockId(nextBlock.id)
+    setPendingFocusTarget({ blockId: nextBlock.id })
     setInsertPickerOpen(false)
     setInsertAfterBlockId(undefined)
     setHasUnsavedChanges(true)
@@ -322,7 +338,7 @@ function App() {
     setSelectedBlockId(defaultBlock.id)
     setHighlightedBlockId(defaultBlock.id)
     setHighlightPulse((prev) => prev + 1)
-    setPendingFocusBlockId(defaultBlock.id)
+    setPendingFocusTarget({ blockId: defaultBlock.id })
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${INSERTABLE_BLOCKS[0].label}`)
   }, [selectedDroneId])

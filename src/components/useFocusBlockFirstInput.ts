@@ -2,10 +2,12 @@ import { useEffect } from 'react'
 
 type Params = {
   blockId?: string
+  fieldKey?: string
+  selectAll?: boolean
   onFocused?: () => void
 }
 
-function useFocusBlockFirstInput({ blockId, onFocused }: Params) {
+function useFocusBlockFirstInput({ blockId, fieldKey, selectAll = false, onFocused }: Params) {
   useEffect(() => {
     if (!blockId) {
       return
@@ -17,11 +19,18 @@ function useFocusBlockFirstInput({ blockId, onFocused }: Params) {
 
     const tryFocus = () => {
       attempts += 1
-      const input = document.querySelector<HTMLInputElement>(`input[data-block-id="${blockId}"][data-slot-index="0"]`)
+      const selector = fieldKey
+        ? `input[data-block-id="${blockId}"][data-field-key="${fieldKey}"]`
+        : `input[data-block-id="${blockId}"][data-slot-index="0"]`
+      const input = document.querySelector<HTMLInputElement>(selector)
       if (input) {
         input.focus()
-        const cursorPos = input.value.length
-        input.setSelectionRange(cursorPos, cursorPos)
+        if (selectAll) {
+          input.select()
+        } else {
+          const cursorPos = input.value.length
+          input.setSelectionRange(cursorPos, cursorPos)
+        }
         onFocused?.()
         return
       }
@@ -40,7 +49,7 @@ function useFocusBlockFirstInput({ blockId, onFocused }: Params) {
       window.cancelAnimationFrame(frameId)
       window.clearTimeout(retryTimer)
     }
-  }, [blockId, onFocused])
+  }, [blockId, fieldKey, onFocused, selectAll])
 }
 
 export default useFocusBlockFirstInput
