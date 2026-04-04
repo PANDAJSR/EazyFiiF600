@@ -132,6 +132,13 @@ ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
 
 ipcMain.handle('agent:chat', async (_event, payload) => {
   const { message, reset, requestId, projectContext } = payload ?? {}
+  const projectProgramCount = Array.isArray(projectContext?.programs) ? projectContext.programs.length : 0
+  console.info('[agent][main] request received', {
+    requestId,
+    reset: Boolean(reset),
+    messageLength: typeof message === 'string' ? message.length : 0,
+    projectProgramCount,
+  })
   try {
     const timeoutMs = Number(process.env.NANO_AGENT_REQUEST_TIMEOUT_MS ?? 120000)
     _event.sender.send('agent:stream', {
@@ -142,6 +149,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
       chatWithAgent({
         message,
         reset: Boolean(reset),
+        requestId,
         envOverrides: agentEnvStore.get(),
         projectContext,
         onEvent: (event) => {
@@ -159,12 +167,22 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
       requestId,
       type: 'end',
     })
+    console.info('[agent][main] request finished', {
+      requestId,
+      ok: true,
+      transportMode: result?.transportMode,
+      traces: Array.isArray(result?.traces) ? result.traces.length : 0,
+    })
     return { ok: true, ...result }
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error)
     _event.sender.send('agent:stream', {
       requestId,
       type: 'error',
+      error: errMessage,
+    })
+    console.error('[agent][main] request failed', {
+      requestId,
       error: errMessage,
     })
     return { ok: false, error: errMessage }

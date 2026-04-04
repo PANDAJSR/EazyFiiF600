@@ -10,6 +10,7 @@ export const runResponsesTurn = async ({
   client,
   model,
   userInput,
+  requestId,
   timeoutSec,
   traces,
   permissionMode,
@@ -25,6 +26,7 @@ export const runResponsesTurn = async ({
   let input = userInput
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    console.info('[agent][turns][responses] round start', { requestId, round: round + 1 })
     const stream = await client.responses.create({
       model,
       previous_response_id: state.previousResponseId,
@@ -77,14 +79,28 @@ export const runResponsesTurn = async ({
         })
       }
     }
+    console.info('[agent][turns][responses] round completed', {
+      requestId,
+      round: round + 1,
+      responseId: response.id,
+      toolCalls: calls.length,
+      answerChars: lastAnswer.length,
+    })
 
     if (calls.length === 0) {
+      console.info('[agent][turns][responses] end with no tool calls', { requestId, round: round + 1 })
       state.messages.push({ role: 'assistant', content: lastAnswer || '' })
       return lastAnswer
     }
 
     const outputs = []
     for (const call of calls) {
+      console.info('[agent][turns][responses] tool dispatch', {
+        requestId,
+        round: round + 1,
+        tool: call.name,
+        callId: call.callId,
+      })
       if (call.name === 'Bash') {
         const args = parseToolArgs(call.arguments)
         onEvent?.({
@@ -156,6 +172,13 @@ export const runResponsesTurn = async ({
           call_id: call.callId,
           output,
         })
+        console.info('[agent][turns][responses] project tool done', {
+          requestId,
+          round: round + 1,
+          tool: call.name,
+          callId: call.callId,
+          outputPreview: output.slice(0, 120),
+        })
         continue
       }
 
@@ -176,6 +199,7 @@ export const runChatTurn = async ({
   client,
   model,
   userInput,
+  requestId,
   timeoutSec,
   traces,
   permissionMode,
@@ -191,6 +215,7 @@ export const runChatTurn = async ({
   let lastAnswer = ''
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    console.info('[agent][turns][chat] round start', { requestId, round: round + 1 })
     const completion = await streamChatCompletion({
       client,
       model,
@@ -222,7 +247,14 @@ export const runChatTurn = async ({
     }
 
     const toolCalls = completion.toolCalls ?? []
+    console.info('[agent][turns][chat] round completed', {
+      requestId,
+      round: round + 1,
+      toolCalls: toolCalls.length,
+      answerChars: lastAnswer.length,
+    })
     if (toolCalls.length === 0) {
+      console.info('[agent][turns][chat] end with no tool calls', { requestId, round: round + 1 })
       return lastAnswer
     }
 
@@ -237,6 +269,11 @@ export const runChatTurn = async ({
       }
 
       if (toolCall.function.name === 'Bash') {
+        console.info('[agent][turns][chat] bash tool dispatch', {
+          requestId,
+          round: round + 1,
+          callId: toolCall.id,
+        })
         const args = parseToolArgs(toolCall.function.arguments)
         onEvent?.({
           type: 'tool-call',
@@ -275,6 +312,12 @@ export const runChatTurn = async ({
       }
 
       if (PROJECT_TOOL_NAMES.has(toolCall.function.name)) {
+        console.info('[agent][turns][chat] project tool dispatch', {
+          requestId,
+          round: round + 1,
+          tool: toolCall.function.name,
+          callId: toolCall.id,
+        })
         onEvent?.({
           type: 'tool-call',
           phase: 'exec-start',
@@ -306,6 +349,13 @@ export const runChatTurn = async ({
           role: 'tool',
           tool_call_id: toolCall.id,
           content: output,
+        })
+        console.info('[agent][turns][chat] project tool done', {
+          requestId,
+          round: round + 1,
+          tool: toolCall.function.name,
+          callId: toolCall.id,
+          outputPreview: output.slice(0, 120),
         })
         continue
       }

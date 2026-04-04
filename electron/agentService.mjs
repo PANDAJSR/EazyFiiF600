@@ -141,6 +141,7 @@ export const resetAgentSession = () => {
 export const chatWithAgent = async ({
   message,
   reset = false,
+  requestId,
   envOverrides,
   projectContext,
   onEvent,
@@ -156,11 +157,18 @@ export const chatWithAgent = async ({
 
   setAgentBusy('请求已接收，准备调用模型')
   try {
+    console.info('[agent][service] start', {
+      requestId,
+      transportMode: state.transportMode ?? 'auto',
+      reset: Boolean(reset),
+      hasProjectContext: Boolean(projectContext),
+    })
     if (projectContext && typeof projectContext === 'object') {
       state.projectContext = projectContext
     }
 
     const { client, model, provider } = createClientBundle(envOverrides)
+    console.info('[agent][service] client ready', { requestId, provider, model })
     const traces = []
     const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
     const permissionMode = readEnv('NANO_PERMISSION_MODE', envOverrides) ?? 'manual'
@@ -171,6 +179,7 @@ export const chatWithAgent = async ({
         client,
         model,
         userInput: prompt,
+        requestId,
         timeoutSec,
         traces,
         permissionMode,
@@ -182,6 +191,11 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Responses）')
+      console.info('[agent][service] done responses', {
+        requestId,
+        replyLength: reply.length,
+        traces: traces.length,
+      })
       return {
         reply,
         traces,
@@ -197,6 +211,7 @@ export const chatWithAgent = async ({
         client,
         model,
         userInput: prompt,
+        requestId,
         timeoutSec,
         traces,
         permissionMode,
@@ -207,6 +222,11 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Chat）')
+      console.info('[agent][service] done chat', {
+        requestId,
+        replyLength: reply.length,
+        traces: traces.length,
+      })
       return {
         reply,
         traces,
@@ -221,12 +241,17 @@ export const chatWithAgent = async ({
       }
 
       updateAgentPhase('fallback', '当前模型不支持 Chat，回退 Responses')
+      console.warn('[agent][service] fallback to responses', {
+        requestId,
+        reason: error instanceof Error ? error.message : String(error),
+      })
       state.transportMode = 'responses'
       state.messages.push({ role: 'user', content: prompt })
       const reply = await runResponsesTurn({
         client,
         model,
         userInput: prompt,
+        requestId,
         timeoutSec,
         traces,
         permissionMode,
@@ -238,6 +263,11 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Fallback 到 Responses）')
+      console.info('[agent][service] done fallback responses', {
+        requestId,
+        replyLength: reply.length,
+        traces: traces.length,
+      })
       return {
         reply,
         traces,
@@ -249,6 +279,7 @@ export const chatWithAgent = async ({
     }
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error)
+    console.error('[agent][service] failed', { requestId, error: errMessage })
     setAgentError(errMessage)
     throw error
   }

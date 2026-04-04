@@ -114,7 +114,7 @@ function AgentChatPanel({
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks）。',
+      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / PatchDroneProgram）。',
     },
   ])
   const [input, setInput] = useState('')
@@ -199,6 +199,13 @@ function AgentChatPanel({
       }
 
       if (event.type === 'tool-call') {
+        console.info('[agent][renderer] tool event', {
+          requestId: event.requestId,
+          phase: event.phase,
+          tool: event.tool,
+          toolCallId: event.toolCallId,
+          preview: event.commandPreview,
+        })
         patchMessageById(assistantMessageId, (message) => ({
           ...message,
           toolBadges: upsertToolBadge(message.toolBadges, event),
@@ -253,6 +260,11 @@ function AgentChatPanel({
     appendMessage({ id: assistantMessageId, role: 'assistant', text: '' })
 
     try {
+      console.info('[agent][renderer] send', {
+        requestId,
+        messageLength: message.length,
+        projectProgramCount: projectContext.programs.length,
+      })
       const result = await chatWithAgent({ message, requestId, projectContext })
       if (!result) {
         patchMessageById(assistantMessageId, { text: '未收到 Agent 返回结果。' })
@@ -264,6 +276,11 @@ function AgentChatPanel({
         patchMessageById(assistantMessageId, { text: `Agent 错误: ${typedResult.error}` })
         return
       }
+      console.info('[agent][renderer] done', {
+        requestId,
+        transportMode: typedResult.transportMode,
+        traceCount: typedResult.traces.length,
+      })
 
       patchMessageById(assistantMessageId, (messageItem) => ({
         ...messageItem,
