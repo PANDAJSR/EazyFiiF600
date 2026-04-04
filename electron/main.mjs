@@ -172,7 +172,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
     projectProgramCount,
   })
   try {
-    const timeoutMs = Number(process.env.NANO_AGENT_REQUEST_TIMEOUT_MS ?? 120000)
+    const timeoutMs = Number(process.env.NANO_AGENT_REQUEST_TIMEOUT_MS ?? 1000000)
     _event.sender.send('agent:stream', {
       requestId,
       type: 'start',
