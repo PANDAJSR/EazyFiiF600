@@ -7,6 +7,47 @@ import {
 const LIST_PROJECT_DRONES_TOOL_NAME = 'ListProjectDrones'
 const GET_DRONE_BLOCKS_TOOL_NAME = 'GetDroneBlocks'
 const GET_ROD_CONFIG_TOOL_NAME = 'GetRodConfig'
+const GET_BLOCK_CATALOG_TOOL_NAME = 'GetBlockCatalog'
+
+const BLOCK_CATALOG_SNAPSHOT = {
+  schema: 'eazyfii.project.blockCatalog.v1',
+  blocks: [
+    { type: 'block_inittime', label: '在时间开始', fields: { time: '00:00' }, keywords: ['时间', '开始', 'init', 'time'] },
+    { type: 'Goertek_HorizontalSpeed', label: '水平速度', fields: { VH: '60', AH: '100' }, keywords: ['水平', '速度', 'vh', 'ah'] },
+    { type: 'Goertek_VerticalSpeed', label: '垂直速度', fields: { VV: '60', AV: '100' }, keywords: ['垂直', '速度', 'vv', 'av'] },
+    { type: 'Goertek_UnLock', label: '解锁', fields: {}, keywords: ['解锁', 'unlock'] },
+    { type: 'block_delay', label: '延时', fields: { time: '500' }, keywords: ['延时', '等待', 'delay', 'time'] },
+    { type: 'Goertek_TakeOff2', label: '起飞', fields: { alt: '100' }, keywords: ['起飞', 'takeoff', 'alt'] },
+    {
+      type: 'EazyFii_MoveToCoordAutoDelay',
+      label: '智能平移',
+      fields: { X: '0', Y: '0', Z: '100', time: '800' },
+      keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
+    },
+    { type: 'Goertek_MoveToCoord2', label: '平移到（异步）', fields: { X: '0', Y: '0', Z: '100' }, keywords: ['平移', '坐标', 'move to', 'x', 'y', 'z'] },
+    { type: 'Goertek_Move', label: '相对平移（异步）', fields: { X: '0', Y: '0', Z: '0' }, keywords: ['相对', '平移', 'move', 'x', 'y', 'z'] },
+    { type: 'Goertek_Turn', label: '转动（异步）', fields: { turnDirection: 'r', angle: '90' }, keywords: ['转向', '转动', 'turn', 'angle'] },
+    {
+      type: 'Goertek_LEDTurnOnAllSingleColor4',
+      label: '设置电机灯光',
+      fields: { motor: '1', color1: '#ffffff' },
+      keywords: ['灯光', 'led', '颜色', '电机'],
+    },
+    {
+      type: 'Goertek_LEDTurnOnAllSingleColor2',
+      label: '设置全部灯光颜色',
+      fields: { color1: '#ffffff' },
+      keywords: ['灯光', 'led', '颜色', '全部'],
+    },
+    { type: 'Goertek_Land', label: '降落', fields: {}, keywords: ['降落', 'land'] },
+  ],
+  constraints: [
+    '默认优先使用 EazyFii_MoveToCoordAutoDelay，不要默认使用 Goertek_MoveToCoord2。',
+    '禁止使用 Goertek_MoveToCoord（当前工程不识别）。',
+    'Goertek_MoveToCoord2 与 EazyFii_MoveToCoordAutoDelay 的 X/Y/Z 建议范围: X[0,400], Y[0,400], Z[100,300]。',
+    '仅使用工具返回的 fields 键名，不要自行改写键名大小写。',
+  ],
+}
 
 const compactDrone = (program) => ({
   droneId: program.drone.id,
@@ -248,6 +289,15 @@ const getRodConfig = (projectContext) => {
   }
 }
 
+const getBlockCatalog = () => {
+  return {
+    output: stringify({
+      ok: true,
+      ...BLOCK_CATALOG_SNAPSHOT,
+    }),
+  }
+}
+
 const projectTool = (name, description, properties = {}) => ({
   type: 'function',
   function: { name, description, parameters: { type: 'object', properties } },
@@ -268,6 +318,7 @@ export const PROJECT_TOOLS_CHAT = [
     droneName: { type: 'string', description: '无人机名称（可能重复）。' },
   }),
   projectTool(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
+  projectTool(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
   projectTool(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -278,6 +329,7 @@ export const PROJECT_TOOLS_RESPONSES = [
     droneName: { type: 'string', description: '无人机名称（可能重复）。' },
   }),
   projectToolForResponses(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
+  projectToolForResponses(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
   projectToolForResponses(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -290,6 +342,9 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
   }
   if (name === GET_ROD_CONFIG_TOOL_NAME) {
     return getRodConfig(projectContext)
+  }
+  if (name === GET_BLOCK_CATALOG_TOOL_NAME) {
+    return getBlockCatalog()
   }
   if (name === PATCH_DRONE_PROGRAM_TOOL_NAME) {
     const project = normalizeProjectContext(projectContext)

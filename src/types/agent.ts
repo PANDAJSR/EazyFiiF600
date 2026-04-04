@@ -1,6 +1,12 @@
 import type { ParseResult } from './fii'
 
-export type AgentToolName = 'Bash' | 'ListProjectDrones' | 'GetDroneBlocks' | 'PatchDroneProgram' | 'GetRodConfig'
+export type AgentToolName =
+  | 'Bash'
+  | 'ListProjectDrones'
+  | 'GetDroneBlocks'
+  | 'PatchDroneProgram'
+  | 'GetRodConfig'
+  | 'GetBlockCatalog'
 
 export type AgentToolTrace = {
   phase: 'start' | 'end'

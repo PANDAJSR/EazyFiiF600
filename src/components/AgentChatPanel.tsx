@@ -116,7 +116,7 @@ function AgentChatPanel({
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / PatchDroneProgram）。',
+      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / GetBlockCatalog / PatchDroneProgram）。',
     },
   ])
   const [input, setInput] = useState('')
