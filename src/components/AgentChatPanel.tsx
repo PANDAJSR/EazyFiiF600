@@ -167,7 +167,7 @@ function AgentChatPanel({
       setEnvText(serializeEnvValues(typed.values))
       setEnvStoragePath(typed.storagePath)
     })()
-  }, [open])
+  }, [open, onProjectContextPatched])
 
   const appendMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message])
@@ -203,6 +203,10 @@ function AgentChatPanel({
         }))
       }
 
+      if (event.type === 'project-context-patched') {
+        onProjectContextPatched?.(event.projectContext)
+      }
+
       if (event.type === 'tool-call') {
         console.info('[agent][renderer] tool event', {
           requestId: event.requestId,
@@ -228,7 +232,7 @@ function AgentChatPanel({
         unsubscribe()
       }
     }
-  }, [open])
+  }, [open, onProjectContextPatched])
 
   const clearConversation = async () => {
     setMessages([{ id: newMessageId(), role: 'system', text: '会话已重置。你可以继续提问。' }])

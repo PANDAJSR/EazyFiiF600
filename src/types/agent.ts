@@ -89,6 +89,7 @@ export type AgentSetEnvPayload = {
 export type AgentStreamEvent =
   | { requestId?: string; type: 'start' }
   | { requestId?: string; type: 'text-delta'; delta: string }
+  | { requestId?: string; type: 'project-context-patched'; projectContext: ParseResult }
   | {
     requestId?: string
     type: 'tool-call'

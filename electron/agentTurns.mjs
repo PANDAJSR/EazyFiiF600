@@ -21,6 +21,16 @@ const parsePatchOk = (output) => {
   }
 }
 
+const emitProjectContextPatched = ({ onEvent, nextProjectContext }) => {
+  if (!onEvent || !nextProjectContext) {
+    return
+  }
+  onEvent({
+    type: 'project-context-patched',
+    projectContext: nextProjectContext,
+  })
+}
+
 export const runResponsesTurn = async ({
   client,
   model,
@@ -191,6 +201,9 @@ export const runResponsesTurn = async ({
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
+          if (call.name === 'PatchDroneProgram') {
+            emitProjectContextPatched({ onEvent, nextProjectContext })
+          }
         }
         onEvent?.({
           type: 'tool-call',
@@ -392,6 +405,9 @@ export const runChatTurn = async ({
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
+          if (toolCall.function.name === 'PatchDroneProgram') {
+            emitProjectContextPatched({ onEvent, nextProjectContext })
+          }
         }
         onEvent?.({
           type: 'tool-call',
