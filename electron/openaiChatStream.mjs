@@ -5,6 +5,7 @@ export const streamChatCompletion = async ({
   tools,
   maxTokens,
   onTextDelta,
+  onToolCallDelta,
 }) => {
   const stream = await client.chat.completions.create({
     model,
@@ -42,6 +43,7 @@ export const streamChatCompletion = async ({
         if (typeof index !== 'number') {
           continue
         }
+        const isFirstSeen = !toolBuf[index]
         if (!toolBuf[index]) {
           toolBuf[index] = { id: '', name: '', arguments: '' }
         }
@@ -53,6 +55,16 @@ export const streamChatCompletion = async ({
         }
         if (toolCall.function?.arguments) {
           toolBuf[index].arguments += toolCall.function.arguments
+        }
+        if (onToolCallDelta) {
+          onToolCallDelta({
+            toolIndex: index,
+            firstSeen: isFirstSeen,
+            callId: toolBuf[index].id || `call_${index}`,
+            name: toolBuf[index].name,
+            arguments: toolBuf[index].arguments,
+            textOffset: content.length,
+          })
         }
       }
     }

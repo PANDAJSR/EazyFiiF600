@@ -8,6 +8,8 @@ const SUBJECT6_CROSSBAR_HEIGHT = 150
 const SUBJECT3_RING_DIAMETER = 65
 const SUBJECT4_RING_DIAMETER = 65
 const SUBJECT4_RING_CENTER_HEIGHT = 120
+const SUBJECT7_RING_DIAMETER = 65
+const SUBJECT7_RING_HEIGHTS = [100, 125, 150] as const
 const ROD_RADIUS = 1.8
 const RING_TUBE_RADIUS = 1.35
 const TAKEOFF_ZONE_Z = 0.12
@@ -40,6 +42,7 @@ export const renderSubjectRods = (
   const rodGeometry = new THREE.CylinderGeometry(ROD_RADIUS, ROD_RADIUS, SUBJECT_ROD_HEIGHT, 20)
   const subject3RingGeometry = new THREE.TorusGeometry(SUBJECT3_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
+  const subject7RingGeometry = new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
 
   const addVerticalRod = (x: number, y: number) => {
     const rod = new THREE.Mesh(rodGeometry, rodMaterial)
@@ -91,6 +94,20 @@ export const renderSubjectRods = (
     const ring = new THREE.Mesh(subject4RingGeometry, ringMaterial)
     ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, SUBJECT4_RING_CENTER_HEIGHT)
     scene.add(ring)
+  }
+
+  const addSubject7Rings = (start: { x: number; y: number }, end: { x: number; y: number }) => {
+    const direction = new THREE.Vector3(end.x - start.x, end.y - start.y, 0)
+    if (direction.lengthSq() < 0.001) {
+      return
+    }
+    const centerX = (start.x + end.x) / 2
+    const centerY = (start.y + end.y) / 2
+    for (const height of SUBJECT7_RING_HEIGHTS) {
+      const ring = new THREE.Mesh(subject7RingGeometry, ringMaterial)
+      ring.position.set(centerX, centerY, height)
+      scene.add(ring)
+    }
   }
 
   const subject1Rod = rodConfig?.subject1[0]
@@ -150,10 +167,19 @@ export const renderSubjectRods = (
     addCrossbar(subject6RodC, subject6RodD, SUBJECT6_CROSSBAR_HEIGHT)
   }
 
+  const subject7RodA = rodConfig?.subject7[0]
+  const subject7RodB = rodConfig?.subject7[1]
+  if (isFiniteRodPoint(subject7RodA) && isFiniteRodPoint(subject7RodB)) {
+    addVerticalRod(subject7RodA.x, subject7RodA.y)
+    addVerticalRod(subject7RodB.x, subject7RodB.y)
+    addSubject7Rings(subject7RodA, subject7RodB)
+  }
+
   disposers.push(() => {
     rodGeometry.dispose()
     subject3RingGeometry.dispose()
     subject4RingGeometry.dispose()
+    subject7RingGeometry.dispose()
     rodMaterial.dispose()
     crossbarMaterial.dispose()
     ringMaterial.dispose()

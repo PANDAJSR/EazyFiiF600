@@ -5,20 +5,17 @@ import {
   Button,
   Collapse,
   Drawer,
-  Empty,
   Input,
   Space,
-  Spin,
   Tag,
   Typography,
 } from 'antd'
 import type {
   AgentChatResult,
   AgentEnvResult,
-  AgentEnvValues,
   AgentRuntimeStatus,
-  AgentStreamEvent,
   AgentStatusResult,
+  AgentStreamEvent,
   AgentToolTrace,
 } from '../types/agent'
 import {
@@ -29,6 +26,14 @@ import {
   onAgentStream,
   setAgentEnv,
 } from '../utils/desktopBridge'
+import type { ToolCallBadge } from './agentChat/ToolCallTimeline'
+import {
+  formatElapsed,
+  newMessageId,
+  parseEnvText,
+  serializeEnvValues,
+} from './agentChat/panelUtils'
+import ChatMessageList from './agentChat/ChatMessageList'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -37,30 +42,13 @@ type ChatMessage = {
   role: ChatRole
   text: string
   traces?: AgentToolTrace[]
+  toolBadges?: ToolCallBadge[]
   meta?: string
 }
 
 type AgentChatPanelProps = {
   open: boolean
   onClose: () => void
-}
-
-const newMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
-
-const traceSummary = (trace: AgentToolTrace) => {
-  if (trace.phase === 'start') {
-    return `开始: ${trace.command}`
-  }
-  const status = trace.granted ? '已执行' : '已拒绝'
-  return `结束(${status}): ${trace.resultPreview ?? ''}`
-}
-
-const formatElapsed = (startedAt: number | null) => {
-  if (!startedAt) {
-    return '0s'
-  }
-  const sec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000))
-  return `${sec}s`
 }
 
 const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
@@ -75,44 +63,41 @@ const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
   return typed.status
 }
 
-const serializeEnvValues = (values: AgentEnvValues) => {
-  return Object.entries(values)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([key, value]) => `${key}=${value}`)
-    .join('\n')
-}
+const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<AgentStreamEvent, { type: 'tool-call' }>) => {
+  const list = badges ? [...badges] : []
+  const matchIndex = list.findIndex((badge) => {
+    if (typeof event.toolIndex === 'number' && typeof badge.toolIndex === 'number') {
+      return badge.toolIndex === event.toolIndex
+    }
+    return badge.toolCallId === event.toolCallId
+  })
 
-const normalizeEnvValue = (value: string) => {
-  const trimmed = value.trim()
-  if (
-    (trimmed.startsWith('"') && trimmed.endsWith('"')) ||
-    (trimmed.startsWith("'") && trimmed.endsWith("'"))
-  ) {
-    return trimmed.slice(1, -1).trim()
+  if (matchIndex < 0) {
+    list.push({
+      toolCallId: event.toolCallId,
+      toolIndex: event.toolIndex,
+      tool: event.tool,
+      phase: event.phase,
+      textOffset: event.textOffset,
+      commandPreview: event.commandPreview,
+      granted: event.granted,
+      resultPreview: event.resultPreview,
+    })
+    return list
   }
-  return trimmed
-}
 
-const parseEnvText = (text: string): AgentEnvValues => {
-  const next: AgentEnvValues = {}
-  for (const rawLine of text.split('\n')) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) {
-      continue
-    }
-    const normalizedLine = line.replace(/^export\s+/i, '')
-    const eqIndex = normalizedLine.indexOf('=')
-    if (eqIndex <= 0) {
-      continue
-    }
-    const key = normalizedLine.slice(0, eqIndex).trim()
-    const value = normalizeEnvValue(normalizedLine.slice(eqIndex + 1))
-    if (!key) {
-      continue
-    }
-    next[key] = value
+  const prev = list[matchIndex]
+  list[matchIndex] = {
+    ...prev,
+    toolCallId: event.toolCallId || prev.toolCallId,
+    toolIndex: event.toolIndex ?? prev.toolIndex,
+    phase: event.phase,
+    textOffset: Math.min(prev.textOffset, event.textOffset),
+    commandPreview: event.commandPreview || prev.commandPreview,
+    granted: typeof event.granted === 'boolean' ? event.granted : prev.granted,
+    resultPreview: event.resultPreview || prev.resultPreview,
   }
-  return next
+  return list
 }
 
 function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
@@ -174,8 +159,16 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     setMessages((prev) => [...prev, message])
   }
 
-  const patchMessageById = (id: string, patch: Partial<ChatMessage>) => {
-    setMessages((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)))
+  const patchMessageById = (id: string, patcher: Partial<ChatMessage> | ((message: ChatMessage) => ChatMessage)) => {
+    setMessages((prev) => prev.map((item) => {
+      if (item.id !== id) {
+        return item
+      }
+      if (typeof patcher === 'function') {
+        return patcher(item)
+      }
+      return { ...item, ...patcher }
+    }))
   }
 
   useEffect(() => {
@@ -185,27 +178,24 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     const unsubscribe = onAgentStream((event: AgentStreamEvent) => {
       const activeRequestId = activeRequestIdRef.current
       const assistantMessageId = activeAssistantMessageIdRef.current
-      if (!activeRequestId || !assistantMessageId) {
+      if (!activeRequestId || !assistantMessageId || event.requestId !== activeRequestId) {
         return
       }
-      if (event.requestId !== activeRequestId) {
-        return
-      }
+
       if (event.type === 'text-delta') {
-        console.debug('[AgentChatPanel] token', {
-          requestId: event.requestId,
-          delta: event.delta,
-        })
-        setMessages((prev) => prev.map((item) => {
-          if (item.id !== assistantMessageId) {
-            return item
-          }
-          return {
-            ...item,
-            text: `${item.text}${event.delta}`,
-          }
+        patchMessageById(assistantMessageId, (message) => ({
+          ...message,
+          text: `${message.text}${event.delta}`,
         }))
       }
+
+      if (event.type === 'tool-call') {
+        patchMessageById(assistantMessageId, (message) => ({
+          ...message,
+          toolBadges: upsertToolBadge(message.toolBadges, event),
+        }))
+      }
+
       if (event.type === 'error') {
         patchMessageById(assistantMessageId, {
           text: `Agent 错误: ${event.error}`,
@@ -220,13 +210,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
   }, [open])
 
   const clearConversation = async () => {
-    setMessages([
-      {
-        id: newMessageId(),
-        role: 'system',
-        text: '会话已重置。你可以继续提问。',
-      },
-    ])
+    setMessages([{ id: newMessageId(), role: 'system', text: '会话已重置。你可以继续提问。' }])
     if (isDesktopRuntime()) {
       await chatWithAgent({ message: '请重置会话', reset: true })
       const status = await readStatus()
@@ -258,28 +242,26 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     activeRequestIdRef.current = requestId
     activeAssistantMessageIdRef.current = assistantMessageId
     appendMessage({ id: assistantMessageId, role: 'assistant', text: '' })
+
     try {
       const result = await chatWithAgent({ message, requestId })
       if (!result) {
-        patchMessageById(assistantMessageId, {
-          text: '未收到 Agent 返回结果。',
-        })
+        patchMessageById(assistantMessageId, { text: '未收到 Agent 返回结果。' })
         return
       }
 
       const typedResult = result as AgentChatResult
       if (!typedResult.ok) {
-        patchMessageById(assistantMessageId, {
-          text: `Agent 错误: ${typedResult.error}`,
-        })
+        patchMessageById(assistantMessageId, { text: `Agent 错误: ${typedResult.error}` })
         return
       }
 
-      patchMessageById(assistantMessageId, {
-        text: typedResult.reply || '(空回复)',
+      patchMessageById(assistantMessageId, (messageItem) => ({
+        ...messageItem,
+        text: typedResult.reply || messageItem.text || '(空回复)',
         traces: typedResult.traces,
         meta: `${typedResult.provider} · ${typedResult.model} · ${typedResult.transportMode}`,
-      })
+      }))
     } finally {
       setSending(false)
       activeRequestIdRef.current = null
@@ -327,11 +309,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
       width={500}
       open={open}
       onClose={onClose}
-      extra={(
-        <Space>
-          <Button onClick={() => void clearConversation()} disabled={sending}>重置会话</Button>
-        </Space>
-      )}
+      extra={<Button onClick={() => void clearConversation()} disabled={sending}>重置会话</Button>}
     >
       <Space direction="vertical" size={12} style={{ width: '100%' }}>
         {runtimeHint && <Alert type="warning" showIcon message={runtimeHint} />}
@@ -342,9 +320,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
             message={(
               <Space size={10} align="center">
                 <Badge status={sending ? 'processing' : runtimeStatus?.phase === 'error' ? 'error' : 'success'} />
-                <Typography.Text>
-                  {runtimeStatus?.detail ?? (sending ? '处理中' : '空闲')}
-                </Typography.Text>
+                <Typography.Text>{runtimeStatus?.detail ?? (sending ? '处理中' : '空闲')}</Typography.Text>
                 <Tag color="default">耗时 {elapsed}</Tag>
                 <Tag color="blue">#{runtimeStatus?.requestCount ?? 0}</Tag>
               </Space>
@@ -354,82 +330,29 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
         )}
 
         <Collapse
-          items={[
-            {
-              key: 'agent-env',
-              label: 'Agent 环境变量',
-              children: (
-                <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                  <Typography.Text type="secondary">
-                    仅影响 Agent 调用，不影响系统全局环境变量。按 `KEY=VALUE` 多行编辑。
-                  </Typography.Text>
-                  {envStoragePath && (
-                    <Typography.Text type="secondary">
-                      保存位置: {envStoragePath}
-                    </Typography.Text>
-                  )}
-                  <Input.TextArea
-                    value={envText}
-                    placeholder={'NANO_PROVIDER=azure\nAZURE_OPENAI_ENDPOINT=https://xxx.openai.azure.com/\nAZURE_OPENAI_API_KEY=...'}
-                    autoSize={{ minRows: 8, maxRows: 16 }}
-                    onChange={(event) => setEnvText(event.target.value)}
-                  />
-                  {!!envFeedback && <Alert type="info" showIcon message={envFeedback} />}
-                  <Button onClick={() => void saveEnvVariables()} loading={savingEnv}>
-                    保存环境变量
-                  </Button>
-                </Space>
-              ),
-            },
-          ]}
+          items={[{
+            key: 'agent-env',
+            label: 'Agent 环境变量',
+            children: (
+              <Space direction="vertical" size={10} style={{ width: '100%' }}>
+                <Typography.Text type="secondary">
+                  仅影响 Agent 调用，不影响系统全局环境变量。按 `KEY=VALUE` 多行编辑。
+                </Typography.Text>
+                {envStoragePath && <Typography.Text type="secondary">保存位置: {envStoragePath}</Typography.Text>}
+                <Input.TextArea
+                  value={envText}
+                  placeholder={'NANO_PROVIDER=azure\nAZURE_OPENAI_ENDPOINT=https://xxx.openai.azure.com/\nAZURE_OPENAI_API_KEY=...'}
+                  autoSize={{ minRows: 8, maxRows: 16 }}
+                  onChange={(event) => setEnvText(event.target.value)}
+                />
+                {!!envFeedback && <Alert type="info" showIcon message={envFeedback} />}
+                <Button onClick={() => void saveEnvVariables()} loading={savingEnv}>保存环境变量</Button>
+              </Space>
+            ),
+          }]}
         />
 
-        <div style={{ maxHeight: '55vh', overflow: 'auto', paddingRight: 4 }}>
-          {messages.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无消息" />}
-          <Space direction="vertical" size={10} style={{ width: '100%' }}>
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                style={{
-                  background: message.role === 'user' ? '#e6f4ff' : '#f7f7f7',
-                  border: '1px solid #e5e5e5',
-                  borderRadius: 12,
-                  padding: 12,
-                }}
-              >
-                <Space size={8} wrap>
-                  <Tag color={message.role === 'user' ? 'blue' : message.role === 'assistant' ? 'green' : 'gold'}>
-                    {message.role}
-                  </Tag>
-                  {message.meta && <Typography.Text type="secondary">{message.meta}</Typography.Text>}
-                </Space>
-                <Typography.Paragraph style={{ marginTop: 8, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
-                  {message.text}
-                </Typography.Paragraph>
-                {!!message.traces?.length && (
-                  <div style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 8, padding: 8 }}>
-                    <Typography.Text type="secondary">工具调用日志</Typography.Text>
-                    <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                      {message.traces.map((trace, index) => (
-                        <li key={`${message.id}_${index}`} style={{ marginBottom: 4 }}>
-                          <Typography.Text code>{traceSummary(trace)}</Typography.Text>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-            {sending && (
-              <div style={{ border: '1px dashed #91caff', borderRadius: 10, padding: 10, background: '#f0f8ff' }}>
-                <Space>
-                  <Spin size="small" />
-                  <Typography.Text type="secondary">Agent 正在处理中...</Typography.Text>
-                </Space>
-              </div>
-            )}
-          </Space>
-        </div>
+        <ChatMessageList messages={messages} sending={sending} />
 
         <Input.TextArea
           value={input}
@@ -444,9 +367,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
           }}
           disabled={sending}
         />
-        <Button type="primary" onClick={() => void sendMessage()} loading={sending}>
-          发送
-        </Button>
+        <Button type="primary" onClick={() => void sendMessage()} loading={sending}>发送</Button>
       </Space>
     </Drawer>
   )

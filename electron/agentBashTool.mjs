@@ -91,5 +91,5 @@ export const executeBashWithPolicy = async ({
     resultPreview: output.slice(0, 180),
   })
 
-  return output
+  return { output, granted }
 }

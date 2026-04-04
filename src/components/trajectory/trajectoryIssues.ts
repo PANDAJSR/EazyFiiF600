@@ -6,6 +6,7 @@ import { checkSubject2ClosedLoopAroundRod } from './subject2Issues'
 import { checkSubject3PassThroughVerticalRing, checkSubject4PassThroughHorizontalRing } from './subject34Issues'
 import { checkSubject5FigureEightAroundVerticalRods } from './subject5Issues'
 import { checkSubject6VerticalFigureEightAroundCrossbars } from './subject6Issues'
+import { checkSubject7PassThreeRingsWithColorChanges } from './subject7Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -219,6 +220,7 @@ export const buildTrajectoryIssues = (
   const [subject4RodA, subject4RodB] = rodConfig.subject4
   const [subject5RodA, subject5RodB] = rodConfig.subject5
   const [subject6RodA, subject6RodB, subject6RodC, subject6RodD] = rodConfig.subject6
+  const [subject7RodA, subject7RodB] = rodConfig.subject7
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -334,6 +336,21 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject6-no-eight',
         message: '科目⑥绕竖8字未完成：未检测到绕两根同高横杆形成上下8字',
+      })
+    }
+  }
+
+  if (subject7RodA && subject7RodB && hasFiniteXY(subject7RodA) && hasFiniteXY(subject7RodB)) {
+    const subject7Result = checkSubject7PassThreeRingsWithColorChanges(subject7RodA, subject7RodB, startPos, blocks)
+    if (subject7Result === 'color-not-enough') {
+      issues.push({
+        key: 'subject7-color-not-enough',
+        message: '科目⑦变色穿圈未完成：最小穿圈路径中“设置全部灯光颜色”需出现至少3种颜色',
+      })
+    } else if (subject7Result === 'no-path') {
+      issues.push({
+        key: 'subject7-no-path',
+        message: '科目⑦变色穿圈未完成：未检测到从最低圈到最高圈上方的连续穿圈路径',
       })
     }
   }

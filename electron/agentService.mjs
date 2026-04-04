@@ -7,9 +7,10 @@ import {
   setAgentError,
   updateAgentPhase,
 } from './agentStatus.mjs'
-import { executeBashWithPolicy, parseToolArgs } from './agentBashTool.mjs'
-import { streamChatCompletion } from './openaiChatStream.mjs'
-const MAX_TOOL_ROUNDS = 8
+import {
+  unsupportedOperationError,
+} from './agentResponseUtils.mjs'
+import { runChatTurn, runResponsesTurn } from './agentTurns.mjs'
 
 const normalizeEnvValue = (value) => {
   if (typeof value !== 'string') {
@@ -121,194 +122,6 @@ const createClientBundle = (envOverrides) => {
   return { client, model, provider }
 }
 
-const unsupportedOperationError = (error) => {
-  if (!(error instanceof Error)) {
-    return false
-  }
-  const message = error.message.toLowerCase()
-  return message.includes('unsupported') || message.includes('requested operation is unsupported')
-}
-
-const extractResponseText = (response) => {
-  if (typeof response?.output_text === 'string' && response.output_text.trim()) {
-    return response.output_text
-  }
-  const chunks = []
-  for (const item of response?.output ?? []) {
-    if (item?.type !== 'message') {
-      continue
-    }
-    for (const part of item?.content ?? []) {
-      if (part?.type === 'output_text' && typeof part?.text === 'string') {
-        chunks.push(part.text)
-      }
-    }
-  }
-  return chunks.join('\n').trim()
-}
-
-const runResponsesTurn = async ({
-  client,
-  model,
-  userInput,
-  timeoutSec,
-  traces,
-  permissionMode,
-  onEvent,
-}) => {
-  updateAgentPhase('llm-responses', '使用 Responses API 推理')
-  let lastAnswer = ''
-  let input = userInput
-
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const stream = await client.responses.create({
-      model,
-      previous_response_id: state.previousResponseId,
-      input,
-      instructions: SYSTEM_PROMPT,
-      tools: [BASH_TOOL_RESPONSES],
-      tool_choice: 'auto',
-      max_output_tokens: 4096,
-      stream: true,
-    })
-    let response = null
-    for await (const event of stream) {
-      if (event.type === 'response.output_text.delta' && event.delta) {
-        lastAnswer += event.delta
-        if (onEvent) {
-          onEvent({ type: 'text-delta', delta: event.delta })
-        }
-      }
-      if (event.type === 'response.completed') {
-        response = event.response
-      }
-    }
-    if (!response) {
-      throw new Error('Responses 流式返回异常：缺少 completed 事件')
-    }
-    state.previousResponseId = response.id
-    if (!lastAnswer) {
-      const answer = extractResponseText(response)
-      if (answer) {
-        lastAnswer = answer
-      }
-    }
-    const calls = []
-    for (const item of response.output ?? []) {
-      if (item?.type === 'function_call' && typeof item.call_id === 'string' && item.name) {
-        calls.push({
-          callId: item.call_id,
-          name: item.name,
-          arguments: item.arguments ?? '{}',
-        })
-      }
-    }
-    if (calls.length === 0) {
-      state.messages.push({ role: 'assistant', content: lastAnswer || '' })
-      return lastAnswer
-    }
-    const outputs = []
-    for (const call of calls) {
-      if (call.name !== 'Bash') {
-        outputs.push({
-          type: 'function_call_output',
-          call_id: call.callId,
-          output: `不支持的工具: ${call.name}`,
-        })
-        continue
-      }
-      const args = parseToolArgs(call.arguments)
-      const result = await executeBashWithPolicy({
-        command: args.command,
-        timeoutSec: args.timeout ?? timeoutSec,
-        traces,
-        permissionMode,
-        onPhase: updateAgentPhase,
-      })
-      outputs.push({
-        type: 'function_call_output',
-        call_id: call.callId,
-        output: result,
-      })
-    }
-    input = outputs
-  }
-  throw new Error('工具调用轮次过多，已中断')
-}
-
-const runChatTurn = async ({
-  client,
-  model,
-  userInput,
-  timeoutSec,
-  traces,
-  permissionMode,
-  onEvent,
-}) => {
-  updateAgentPhase('llm-chat', '使用 Chat Completions 推理')
-  state.messages.push({ role: 'user', content: userInput })
-
-  let lastAnswer = ''
-
-  for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
-    const completion = await streamChatCompletion({
-      client,
-      model,
-      messages: state.messages,
-      tools: [BASH_TOOL_CHAT],
-      maxTokens: 4096,
-      onTextDelta: (delta) => {
-        if (onEvent) {
-          onEvent({ type: 'text-delta', delta })
-        }
-      },
-    })
-
-    state.messages.push({
-      role: 'assistant',
-      content: completion.content || null,
-      tool_calls: completion.toolCalls,
-    })
-
-    if (completion.content && completion.content.trim()) {
-      lastAnswer = completion.content
-    }
-
-    const toolCalls = completion.toolCalls ?? []
-    if (toolCalls.length === 0) {
-      return lastAnswer
-    }
-
-    for (const toolCall of toolCalls) {
-      if (toolCall.type !== 'function' || !('function' in toolCall) || toolCall.function.name !== 'Bash') {
-        state.messages.push({
-          role: 'tool',
-          tool_call_id: toolCall.id,
-          content: `不支持的工具: ${'function' in toolCall ? toolCall.function.name : toolCall.type}`,
-        })
-        continue
-      }
-
-      const args = parseToolArgs(toolCall.function.arguments)
-      const result = await executeBashWithPolicy({
-        command: args.command,
-        timeoutSec: args.timeout ?? timeoutSec,
-        traces,
-        permissionMode,
-        onPhase: updateAgentPhase,
-      })
-
-      state.messages.push({
-        role: 'tool',
-        tool_call_id: toolCall.id,
-        content: result,
-      })
-    }
-  }
-
-  throw new Error('工具调用轮次过多，已中断')
-}
-
 export const resetAgentSession = () => {
   state.messages = [{ role: 'system', content: SYSTEM_PROMPT }]
   state.transportMode = undefined
@@ -348,6 +161,10 @@ export const chatWithAgent = async ({
         traces,
         permissionMode,
         onEvent,
+        state,
+        systemPrompt: SYSTEM_PROMPT,
+        bashTool: BASH_TOOL_RESPONSES,
+        onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }
@@ -362,6 +179,9 @@ export const chatWithAgent = async ({
         traces,
         permissionMode,
         onEvent,
+        state,
+        bashTool: BASH_TOOL_CHAT,
+        onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Chat）')
       return { reply, traces, provider, model, transportMode: 'chat' }
@@ -381,6 +201,10 @@ export const chatWithAgent = async ({
         traces,
         permissionMode,
         onEvent,
+        state,
+        systemPrompt: SYSTEM_PROMPT,
+        bashTool: BASH_TOOL_RESPONSES,
+        onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Fallback 到 Responses）')
       return { reply, traces, provider, model, transportMode: 'responses' }

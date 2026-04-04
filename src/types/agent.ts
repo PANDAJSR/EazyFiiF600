@@ -74,5 +74,17 @@ export type AgentSetEnvPayload = {
 export type AgentStreamEvent =
   | { requestId?: string; type: 'start' }
   | { requestId?: string; type: 'text-delta'; delta: string }
+  | {
+    requestId?: string
+    type: 'tool-call'
+    phase: 'model' | 'exec-start' | 'exec-end'
+    tool: 'Bash'
+    toolCallId: string
+    toolIndex?: number
+    textOffset: number
+    commandPreview?: string
+    granted?: boolean
+    resultPreview?: string
+  }
   | { requestId?: string; type: 'end' }
   | { requestId?: string; type: 'error'; error: string }
