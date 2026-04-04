@@ -1,5 +1,5 @@
 import { Button, InputNumber, Typography } from 'antd'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useState } from 'react'
 import { createDefaultRodConfig, ROD_SUBJECT_SPECS } from './rodConfig'
 import type { RodConfig, RodSubjectId } from './rodConfig'
 
@@ -98,21 +98,26 @@ const parseLabeledCoordinates = (rawText: string): Partial<Record<GroupId, Coord
 }
 
 function DeferredNumberInput({ className, value, placeholder, onCommit, onPaste }: DeferredNumberInputProps) {
-  const [draft, setDraft] = useState<number | null>(value ?? null)
-
-  useEffect(() => {
-    setDraft(value ?? null)
-  }, [value])
+  const [draft, setDraft] = useState<number | null>(null)
+  const [isEditing, setIsEditing] = useState(false)
 
   const commit = useCallback(() => {
-    onCommit(typeof draft === 'number' && Number.isFinite(draft) ? draft : null)
+    const nextValue = typeof draft === 'number' && Number.isFinite(draft) ? draft : null
+    onCommit(nextValue)
+    setIsEditing(false)
   }, [draft, onCommit])
+
+  const displayValue = isEditing ? draft : (value ?? null)
 
   return (
     <InputNumber
       className={className}
-      value={draft}
+      value={displayValue}
       placeholder={placeholder}
+      onFocus={() => {
+        setIsEditing(true)
+        setDraft(value ?? null)
+      }}
       onChange={(nextValue) => {
         setDraft(typeof nextValue === 'number' && Number.isFinite(nextValue) ? nextValue : null)
       }}
