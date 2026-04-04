@@ -48,6 +48,7 @@ PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、up
 如果你不确定积木类型，先调用 GetDroneBlocks 参考当前工程已有类型，再调用 PatchDroneProgram 写入。
 当用户明确要求“直接修改/写入”时，你必须真正调用 PatchDroneProgram 执行修改，不要只给口头方案。
 如果 PatchDroneProgram 返回 ok=false，你必须继续补全参数并再次调用，直到 ok=true 或达到工具轮次上限，再向用户汇报结果。
+任意工具调用失败后，不允许停在失败说明上；你必须基于错误信息调整参数并继续尝试调用工具，直到成功或达到工具轮次上限。
 若需要执行危险 Bash 命令，请先解释风险。`
 
 const state = {
