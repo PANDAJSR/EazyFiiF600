@@ -4,6 +4,7 @@ import { extractResponseText, safeToolArgsPreview } from './agentResponseUtils.m
 import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 8
+const PROJECT_TOOL_NAMES = new Set(['ListProjectDrones', 'GetDroneBlocks', 'PatchDroneProgram'])
 
 export const runResponsesTurn = async ({
   client,
@@ -122,7 +123,7 @@ export const runResponsesTurn = async ({
         continue
       }
 
-      if (call.name === 'ListProjectDrones' || call.name === 'GetDroneBlocks') {
+      if (PROJECT_TOOL_NAMES.has(call.name)) {
         onEvent?.({
           type: 'tool-call',
           phase: 'exec-start',
@@ -131,11 +132,15 @@ export const runResponsesTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
         })
-        const output = executeProjectToolCall({
+        const { output, nextProjectContext } = executeProjectToolCall({
           name: call.name,
           rawArguments: call.arguments,
           projectContext,
         })
+        if (nextProjectContext) {
+          state.projectContext = nextProjectContext
+          projectContext = nextProjectContext
+        }
         onEvent?.({
           type: 'tool-call',
           phase: 'exec-end',
@@ -269,7 +274,7 @@ export const runChatTurn = async ({
         continue
       }
 
-      if (toolCall.function.name === 'ListProjectDrones' || toolCall.function.name === 'GetDroneBlocks') {
+      if (PROJECT_TOOL_NAMES.has(toolCall.function.name)) {
         onEvent?.({
           type: 'tool-call',
           phase: 'exec-start',
@@ -278,11 +283,15 @@ export const runChatTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(toolCall.function.arguments),
         })
-        const output = executeProjectToolCall({
+        const { output, nextProjectContext } = executeProjectToolCall({
           name: toolCall.function.name,
           rawArguments: toolCall.function.arguments,
           projectContext,
         })
+        if (nextProjectContext) {
+          state.projectContext = nextProjectContext
+          projectContext = nextProjectContext
+        }
         onEvent?.({
           type: 'tool-call',
           phase: 'exec-end',

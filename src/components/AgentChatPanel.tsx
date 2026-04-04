@@ -52,6 +52,7 @@ type AgentChatPanelProps = {
   open: boolean
   onClose: () => void
   projectContext: ParseResult
+  onProjectContextPatched?: (next: ParseResult) => void
 }
 
 const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
@@ -103,7 +104,12 @@ const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<Age
   return list
 }
 
-function AgentChatPanel({ open, onClose, projectContext }: AgentChatPanelProps) {
+function AgentChatPanel({
+  open,
+  onClose,
+  projectContext,
+  onProjectContextPatched,
+}: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newMessageId(),
@@ -268,6 +274,9 @@ function AgentChatPanel({ open, onClose, projectContext }: AgentChatPanelProps) 
           : tracesToToolBadges(typedResult.traces, typedResult.reply || messageItem.text || ''),
         meta: `${typedResult.provider} · ${typedResult.model} · ${typedResult.transportMode}`,
       }))
+      if (typedResult.projectContext) {
+        onProjectContextPatched?.(typedResult.projectContext)
+      }
     } finally {
       setSending(false)
       activeRequestIdRef.current = null

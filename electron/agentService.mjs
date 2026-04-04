@@ -36,7 +36,7 @@ const readEnv = (key, overrides) => {
 }
 
 const SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
-你可以使用 Bash、ListProjectDrones、GetDroneBlocks 三个工具。
+你可以使用 Bash、ListProjectDrones、GetDroneBlocks、PatchDroneProgram 四个工具。
 当用户问题和当前工程的无人机/积木有关时，优先调用项目工具读取 JSON 数据后再回答，不要臆造工程内容。
 若需要执行危险 Bash 命令，请先解释风险。`
 
@@ -180,7 +180,14 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Responses）')
-      return { reply, traces, provider, model, transportMode: 'responses' }
+      return {
+        reply,
+        traces,
+        provider,
+        model,
+        transportMode: 'responses',
+        projectContext: state.projectContext ?? undefined,
+      }
     }
 
     try {
@@ -198,7 +205,14 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Chat）')
-      return { reply, traces, provider, model, transportMode: 'chat' }
+      return {
+        reply,
+        traces,
+        provider,
+        model,
+        transportMode: 'chat',
+        projectContext: state.projectContext ?? undefined,
+      }
     } catch (error) {
       if (!unsupportedOperationError(error)) {
         throw error
@@ -222,7 +236,14 @@ export const chatWithAgent = async ({
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Fallback 到 Responses）')
-      return { reply, traces, provider, model, transportMode: 'responses' }
+      return {
+        reply,
+        traces,
+        provider,
+        model,
+        transportMode: 'responses',
+        projectContext: state.projectContext ?? undefined,
+      }
     }
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error)

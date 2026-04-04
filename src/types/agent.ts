@@ -1,6 +1,6 @@
 import type { ParseResult } from './fii'
 
-export type AgentToolName = 'Bash' | 'ListProjectDrones' | 'GetDroneBlocks'
+export type AgentToolName = 'Bash' | 'ListProjectDrones' | 'GetDroneBlocks' | 'PatchDroneProgram'
 
 export type AgentToolTrace = {
   phase: 'start' | 'end'
@@ -25,6 +25,7 @@ export type AgentChatSuccess = {
   provider: 'openai' | 'azure'
   model: string
   transportMode: 'chat' | 'responses'
+  projectContext?: ParseResult
 }
 
 export type AgentChatFailure = {

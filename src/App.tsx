@@ -373,6 +373,10 @@ function App() {
         open={agentPanelOpen}
         onClose={() => setAgentPanelOpen(false)}
         projectContext={result}
+        onProjectContextPatched={(next) => {
+          setResult(next)
+          setHasUnsavedChanges(true)
+        }}
       />
     </ConfigProvider>
   )
