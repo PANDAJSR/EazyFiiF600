@@ -56,6 +56,7 @@ const state = {
   transportMode: undefined,
   previousResponseId: undefined,
   projectContext: null,
+  pendingMutation: false,
 }
 
 const BASH_TOOL_CHAT = {
@@ -156,6 +157,7 @@ export const resetAgentSession = () => {
   state.transportMode = undefined
   state.previousResponseId = undefined
   state.projectContext = null
+  state.pendingMutation = false
   resetAgentStatus()
 }
 
@@ -193,8 +195,15 @@ export const chatWithAgent = async ({
     const traces = []
     const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
     const permissionMode = readEnv('NANO_PERMISSION_MODE', envOverrides) ?? 'manual'
-    const requireToolForMutation = shouldRequireMutationTool(prompt, state.projectContext)
-    console.info('[agent][service] mutation tool required', { requestId, requireToolForMutation })
+    const requireToolForMutation = state.pendingMutation || shouldRequireMutationTool(prompt, state.projectContext)
+    if (requireToolForMutation) {
+      state.pendingMutation = true
+    }
+    console.info('[agent][service] mutation tool required', {
+      requestId,
+      requireToolForMutation,
+      pendingMutation: state.pendingMutation,
+    })
 
     if (state.transportMode === 'responses') {
       state.messages.push({ role: 'user', content: prompt })
@@ -219,6 +228,7 @@ export const chatWithAgent = async ({
         requestId,
         replyLength: reply.length,
         traces: traces.length,
+        pendingMutation: state.pendingMutation,
       })
       return {
         reply,
@@ -251,6 +261,7 @@ export const chatWithAgent = async ({
         requestId,
         replyLength: reply.length,
         traces: traces.length,
+        pendingMutation: state.pendingMutation,
       })
       return {
         reply,
@@ -293,6 +304,7 @@ export const chatWithAgent = async ({
         requestId,
         replyLength: reply.length,
         traces: traces.length,
+        pendingMutation: state.pendingMutation,
       })
       return {
         reply,

@@ -5,6 +5,14 @@ import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 8
 const PROJECT_TOOL_NAMES = new Set(['ListProjectDrones', 'GetDroneBlocks', 'PatchDroneProgram'])
+const parsePatchOk = (output) => {
+  try {
+    const parsed = JSON.parse(output)
+    return parsed?.schema === 'eazyfii.project.dronePatch.v1' && parsed?.ok === true
+  } catch {
+    return false
+  }
+}
 
 export const runResponsesTurn = async ({
   client,
@@ -91,7 +99,7 @@ export const runResponsesTurn = async ({
     })
 
     if (calls.length === 0) {
-      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < 2) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][responses] no tool call for mutation request, forcing retry', {
           requestId,
@@ -168,6 +176,10 @@ export const runResponsesTurn = async ({
         })
         if (call.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
+          if (parsePatchOk(output)) {
+            state.pendingMutation = false
+            console.info('[agent][turns][responses] patch success, clear pending mutation', { requestId })
+          }
         }
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
@@ -273,7 +285,7 @@ export const runChatTurn = async ({
       answerChars: lastAnswer.length,
     })
     if (toolCalls.length === 0) {
-      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < 2) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][chat] no tool call for mutation request, forcing retry', {
           requestId,
@@ -365,6 +377,10 @@ export const runChatTurn = async ({
         })
         if (toolCall.function.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
+          if (parsePatchOk(output)) {
+            state.pendingMutation = false
+            console.info('[agent][turns][chat] patch success, clear pending mutation', { requestId })
+          }
         }
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
