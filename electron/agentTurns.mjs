@@ -3,7 +3,7 @@ import { streamChatCompletion } from './openaiChatStream.mjs'
 import { extractResponseText, safeToolArgsPreview } from './agentResponseUtils.mjs'
 import { executeProjectToolCall } from './agentProjectTools.mjs'
 
-const MAX_TOOL_ROUNDS = 8
+const MAX_TOOL_ROUNDS = 100
 const PROJECT_TOOL_NAMES = new Set([
   'ListProjectDrones',
   'GetDroneBlocks',
