@@ -22,6 +22,14 @@ const parsePatchOk = (output) => {
   }
 }
 
+const hasContinuationPromise = (text) => {
+  const raw = String(text ?? '').trim()
+  if (!raw) {
+    return false
+  }
+  return /(我将|我会|继续|下一轮|下一步|然后再|接下来).*(调用|修改|修复|重试|检查|执行)/.test(raw)
+}
+
 const emitProjectContextPatched = ({ onEvent, nextProjectContext }) => {
   if (!onEvent || !nextProjectContext) {
     return
@@ -53,6 +61,7 @@ export const runResponsesTurn = async ({
   let input = userInput
   let didPatchDroneProgram = false
   let forcedMutationRetryCount = 0
+  let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     console.info('[agent][turns][responses] round start', { requestId, round: round + 1 })
@@ -117,6 +126,11 @@ export const runResponsesTurn = async ({
     })
 
     if (calls.length === 0) {
+      if (hasContinuationPromise(lastAnswer) && forcedContinuationRetryCount < 2) {
+        forcedContinuationRetryCount += 1
+        input = '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。'
+        continue
+      }
       if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][responses] no tool call for mutation request, forcing retry', {
@@ -265,6 +279,7 @@ export const runChatTurn = async ({
   let lastAnswer = ''
   let didPatchDroneProgram = false
   let forcedMutationRetryCount = 0
+  let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     console.info('[agent][turns][chat] round start', { requestId, round: round + 1 })
@@ -306,6 +321,14 @@ export const runChatTurn = async ({
       answerChars: lastAnswer.length,
     })
     if (toolCalls.length === 0) {
+      if (hasContinuationPromise(lastAnswer) && forcedContinuationRetryCount < 2) {
+        forcedContinuationRetryCount += 1
+        state.messages.push({
+          role: 'user',
+          content: '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。',
+        })
+        continue
+      }
       if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][chat] no tool call for mutation request, forcing retry', {
