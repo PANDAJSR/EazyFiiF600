@@ -1,4 +1,5 @@
 import { Button, InputNumber, Typography } from 'antd'
+import { useCallback, useEffect, useState } from 'react'
 import { createDefaultRodConfig, ROD_SUBJECT_SPECS } from './rodConfig'
 import type { RodConfig, RodSubjectId } from './rodConfig'
 
@@ -18,6 +19,14 @@ type FieldTarget = {
 type CoordPair = {
   x: number
   y: number
+}
+
+type DeferredNumberInputProps = {
+  className?: string
+  value?: number
+  placeholder?: string
+  onCommit: (value: number | null) => void
+  onPaste?: (event: React.ClipboardEvent<HTMLInputElement>) => void
 }
 
 const SUBJECT_NUMBER_TO_ID: Record<number, RodSubjectId> = {
@@ -86,6 +95,32 @@ const parseLabeledCoordinates = (rawText: string): Partial<Record<GroupId, Coord
   })
 
   return parsed
+}
+
+function DeferredNumberInput({ className, value, placeholder, onCommit, onPaste }: DeferredNumberInputProps) {
+  const [draft, setDraft] = useState<number | null>(value ?? null)
+
+  useEffect(() => {
+    setDraft(value ?? null)
+  }, [value])
+
+  const commit = useCallback(() => {
+    onCommit(typeof draft === 'number' && Number.isFinite(draft) ? draft : null)
+  }, [draft, onCommit])
+
+  return (
+    <InputNumber
+      className={className}
+      value={draft}
+      placeholder={placeholder}
+      onChange={(nextValue) => {
+        setDraft(typeof nextValue === 'number' && Number.isFinite(nextValue) ? nextValue : null)
+      }}
+      onBlur={commit}
+      onPressEnter={commit}
+      onPaste={onPaste}
+    />
+  )
 }
 
 function RodConfigPanel({ config, onChange }: Props) {
@@ -245,18 +280,18 @@ function RodConfigPanel({ config, onChange }: Props) {
             {config.takeoffZone.map((point, pointIndex) => (
               <div key={`takeoff-zone-${pointIndex}`} className="rod-config-point-row">
                 <span className="rod-config-point-label">点{pointIndex + 1}</span>
-                <InputNumber
+                <DeferredNumberInput
                   className="rod-config-input"
                   value={point.x}
                   placeholder="X"
-                  onChange={(value) => updatePoint('takeoffZone', pointIndex, 'x', value)}
+                  onCommit={(value) => updatePoint('takeoffZone', pointIndex, 'x', value)}
                   onPaste={(event) => spreadPasteValues(event, 'takeoffZone', pointIndex, 'x')}
                 />
-                <InputNumber
+                <DeferredNumberInput
                   className="rod-config-input"
                   value={point.y}
                   placeholder="Y"
-                  onChange={(value) => updatePoint('takeoffZone', pointIndex, 'y', value)}
+                  onCommit={(value) => updatePoint('takeoffZone', pointIndex, 'y', value)}
                   onPaste={(event) => spreadPasteValues(event, 'takeoffZone', pointIndex, 'y')}
                 />
               </div>
@@ -278,18 +313,18 @@ function RodConfigPanel({ config, onChange }: Props) {
               {config[subject.id].map((point, pointIndex) => (
                 <div key={`${subject.id}-${pointIndex}`} className="rod-config-point-row">
                   <span className="rod-config-point-label">点{pointIndex + 1}</span>
-                  <InputNumber
+                  <DeferredNumberInput
                     className="rod-config-input"
                     value={point.x}
                     placeholder="X"
-                    onChange={(value) => updatePoint(subject.id, pointIndex, 'x', value)}
+                    onCommit={(value) => updatePoint(subject.id, pointIndex, 'x', value)}
                     onPaste={(event) => spreadPasteValues(event, subject.id, pointIndex, 'x')}
                   />
-                  <InputNumber
+                  <DeferredNumberInput
                     className="rod-config-input"
                     value={point.y}
                     placeholder="Y"
-                    onChange={(value) => updatePoint(subject.id, pointIndex, 'y', value)}
+                    onCommit={(value) => updatePoint(subject.id, pointIndex, 'y', value)}
                     onPaste={(event) => spreadPasteValues(event, subject.id, pointIndex, 'y')}
                   />
                 </div>
@@ -297,22 +332,22 @@ function RodConfigPanel({ config, onChange }: Props) {
               {subject.id === 'subject3' ? (
                 <div className="rod-config-point-row">
                   <span className="rod-config-point-label">圈高</span>
-                  <InputNumber
+                  <DeferredNumberInput
                     className="rod-config-input"
                     value={config.subject3Ring.centerHeight}
                     placeholder="圈中心离地高度(cm)"
-                    onChange={updateSubject3RingHeight}
+                    onCommit={updateSubject3RingHeight}
                   />
                 </div>
               ) : null}
               {subject.id === 'subject9' ? (
                 <div className="rod-config-point-row">
                   <span className="rod-config-point-label">二杆高</span>
-                  <InputNumber
+                  <DeferredNumberInput
                     className="rod-config-input"
                     value={config.subject9Config.secondCrossbarHeight}
                     placeholder="第二横杆离地高度(cm)"
-                    onChange={updateSubject9SecondCrossbarHeight}
+                    onCommit={updateSubject9SecondCrossbarHeight}
                   />
                 </div>
               ) : null}
