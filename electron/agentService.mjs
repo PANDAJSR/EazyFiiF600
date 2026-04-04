@@ -56,6 +56,8 @@ PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、in
 如果你不确定积木类型，先调用 GetDroneBlocks 参考当前工程已有类型，再调用 PatchDroneProgram 写入。
 当规划与科目道具相关的路径时，先调用 GetRodConfig 获取杆子坐标与高度参数，再生成或修改程序。
 当要生成或修改积木程序时，先调用 GetBlockCatalog 获取“可用积木类型与参数键名”，禁止使用目录外或参数名不匹配的积木。
+当用户任务是“科目1/绕竖杆”时，转向是硬约束：在每一段平移（EazyFii_MoveToCoordAutoDelay）之前，必须先插入 Goertek_Turn，使机头先对准“下一段将要飞行的朝向”；禁止只给连续平移而不转向的方案。
+当用户任务是“科目1/绕竖杆”时，输出前必须自检：若本次写入片段中存在平移段但不存在 Goertek_Turn，视为不合格，必须先补齐转动积木再调用 PatchDroneProgram。
 当用户明确要求“直接修改/写入”时，你必须真正调用 PatchDroneProgram 执行修改，不要只给口头方案。
 如果 PatchDroneProgram 返回 ok=false，你必须继续补全参数并再次调用，直到 ok=true 或达到工具轮次上限，再向用户汇报结果。
 任意工具调用失败后，不允许停在失败说明上；你必须基于错误信息调整参数并继续尝试调用工具，直到成功或达到工具轮次上限。
