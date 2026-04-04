@@ -37,6 +37,7 @@ const cloneConfig = (source: RodConfig): RodConfig => {
   const nextConfig: RodConfig = {
     ...source,
     subject3Ring: { ...source.subject3Ring },
+    subject9Config: { ...source.subject9Config },
     takeoffZone: source.takeoffZone.map((point) => ({ ...point })),
   }
 
@@ -111,6 +112,15 @@ function RodConfigPanel({ config, onChange }: Props) {
       return
     }
 
+    if (group === 'subject9') {
+      onChange({
+        ...config,
+        [group]: config[group].map(() => ({})),
+        subject9Config: {},
+      })
+      return
+    }
+
     onChange({
       ...config,
       [group]: config[group].map(() => ({})),
@@ -143,6 +153,16 @@ function RodConfigPanel({ config, onChange }: Props) {
       subject3Ring: {
         ...config.subject3Ring,
         centerHeight: value ?? undefined,
+      },
+    })
+  }
+
+  const updateSubject9SecondCrossbarHeight = (value: number | null) => {
+    onChange({
+      ...config,
+      subject9Config: {
+        ...config.subject9Config,
+        secondCrossbarHeight: value ?? undefined,
       },
     })
   }
@@ -282,6 +302,17 @@ function RodConfigPanel({ config, onChange }: Props) {
                     value={config.subject3Ring.centerHeight}
                     placeholder="圈中心离地高度(cm)"
                     onChange={updateSubject3RingHeight}
+                  />
+                </div>
+              ) : null}
+              {subject.id === 'subject9' ? (
+                <div className="rod-config-point-row">
+                  <span className="rod-config-point-label">二杆高</span>
+                  <InputNumber
+                    className="rod-config-input"
+                    value={config.subject9Config.secondCrossbarHeight}
+                    placeholder="第二横杆离地高度(cm)"
+                    onChange={updateSubject9SecondCrossbarHeight}
                   />
                 </div>
               ) : null}

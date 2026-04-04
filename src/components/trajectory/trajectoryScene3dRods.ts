@@ -13,6 +13,7 @@ const SUBJECT7_RING_HEIGHTS = [100, 125, 150] as const
 const SUBJECT8_RING_DIAMETER = 65
 const SUBJECT8_HIGH_RING_CENTER_HEIGHT = 150
 const SUBJECT8_LOW_RING_CENTER_HEIGHT = 110
+const SUBJECT9_FIRST_CROSSBAR_HEIGHT = 150
 const ROD_RADIUS = 1.8
 const RING_TUBE_RADIUS = 1.35
 const TAKEOFF_ZONE_Z = 0.12
@@ -202,6 +203,18 @@ export const renderSubjectRods = (
     addVerticalRod(subject8RodC.x, subject8RodC.y)
     addSubject8Ring(subject8RodA, subject8RodB, SUBJECT8_HIGH_RING_CENTER_HEIGHT)
     addSubject8Ring(subject8RodB, subject8RodC, SUBJECT8_LOW_RING_CENTER_HEIGHT)
+  }
+
+  const subject9RodA = rodConfig?.subject9[0]
+  const subject9RodB = rodConfig?.subject9[1]
+  const subject9SecondCrossbarHeight = rodConfig?.subject9Config.secondCrossbarHeight
+  if (isFiniteRodPoint(subject9RodA) && isFiniteRodPoint(subject9RodB)) {
+    addVerticalRod(subject9RodA.x, subject9RodA.y)
+    addVerticalRod(subject9RodB.x, subject9RodB.y)
+    addCrossbar(subject9RodA, subject9RodB, SUBJECT9_FIRST_CROSSBAR_HEIGHT)
+    if (isFiniteNumber(subject9SecondCrossbarHeight)) {
+      addCrossbar(subject9RodA, subject9RodB, subject9SecondCrossbarHeight)
+    }
   }
 
   disposers.push(() => {

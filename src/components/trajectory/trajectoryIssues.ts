@@ -8,6 +8,7 @@ import { checkSubject5FigureEightAroundVerticalRods } from './subject5Issues'
 import { checkSubject6VerticalFigureEightAroundCrossbars } from './subject6Issues'
 import { checkSubject7PassThreeRingsWithColorChanges } from './subject7Issues'
 import { checkSubject8PassHighLowRings } from './subject8Issues'
+import { checkSubject9VerticalFigureEightAroundDifferentHeightCrossbars } from './subject9Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -223,6 +224,7 @@ export const buildTrajectoryIssues = (
   const [subject6RodA, subject6RodB, subject6RodC, subject6RodD] = rodConfig.subject6
   const [subject7RodA, subject7RodB] = rodConfig.subject7
   const [subject8RodA, subject8RodB, subject8RodC] = rodConfig.subject8
+  const [subject9RodA, subject9RodB] = rodConfig.subject9
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -375,6 +377,38 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject8-low-ring-not-ascending',
         message: '科目⑧穿高低圈未完成：低圈需从低到高穿越',
+      })
+    }
+  }
+
+  if (
+    subject9RodA &&
+    subject9RodB &&
+    hasFiniteXY(subject9RodA) &&
+    hasFiniteXY(subject9RodB) &&
+    hasFiniteNumber(rodConfig.subject9Config.secondCrossbarHeight)
+  ) {
+    const subject9Result = checkSubject9VerticalFigureEightAroundDifferentHeightCrossbars(
+      subject9RodA,
+      subject9RodB,
+      rodConfig.subject9Config.secondCrossbarHeight,
+      startPos,
+      blocks,
+    )
+    if (subject9Result === 'height-invalid') {
+      issues.push({
+        key: 'subject9-height-invalid',
+        message: '科目⑨垂直8字未完成：第二横杆高度需与150cm不同',
+      })
+    } else if (subject9Result === 'entry-exit-invalid') {
+      issues.push({
+        key: 'subject9-entry-exit-invalid',
+        message: '科目⑨垂直8字未完成：需从两横杆中间进入并在同侧改出',
+      })
+    } else if (subject9Result === 'no-eight') {
+      issues.push({
+        key: 'subject9-no-eight',
+        message: '科目⑨垂直8字未完成：未检测到绕两根不同高度横杆形成上下8字',
       })
     }
   }

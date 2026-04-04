@@ -19,9 +19,14 @@ export type Subject3RingConfig = {
   centerHeight?: number
 }
 
+export type Subject9Config = {
+  secondCrossbarHeight?: number
+}
+
 export type RodConfig = Record<RodSubjectId, RodPoint[]> & {
   takeoffZone: RodPoint[]
   subject3Ring: Subject3RingConfig
+  subject9Config: Subject9Config
 }
 
 export type RodSubjectSpec = {
@@ -72,6 +77,16 @@ const normalizeSubject3RingConfig = (value: unknown): Subject3RingConfig => {
   }
 }
 
+const normalizeSubject9Config = (value: unknown): Subject9Config => {
+  if (!value || typeof value !== 'object') {
+    return {}
+  }
+  const raw = value as Partial<Subject9Config>
+  return {
+    secondCrossbarHeight: toFiniteNumber(raw.secondCrossbarHeight),
+  }
+}
+
 export const ROD_SUBJECT_SPECS: RodSubjectSpec[] = [
   { id: 'subject1', label: '科目一', marker: '①', count: 1 },
   { id: 'subject2', label: '科目二', marker: '②', count: 2 },
@@ -89,7 +104,7 @@ export const createDefaultRodConfig = (): RodConfig =>
   ROD_SUBJECT_SPECS.reduce<RodConfig>((acc, spec) => {
     acc[spec.id] = Array.from({ length: spec.count }, () => ({}))
     return acc
-  }, { takeoffZone: Array.from({ length: 4 }, () => ({})), subject3Ring: {} } as RodConfig)
+  }, { takeoffZone: Array.from({ length: 4 }, () => ({})), subject3Ring: {}, subject9Config: {} } as RodConfig)
 
 export const normalizeRodConfig = (value: unknown): RodConfig => {
   const fallback = createDefaultRodConfig()
@@ -97,12 +112,13 @@ export const normalizeRodConfig = (value: unknown): RodConfig => {
     return fallback
   }
 
-  const raw = value as Partial<Record<RodSubjectId | 'takeoffZone' | 'subject3Ring', unknown>>
+  const raw = value as Partial<Record<RodSubjectId | 'takeoffZone' | 'subject3Ring' | 'subject9Config', unknown>>
 
   const next: RodConfig = {
     ...fallback,
     takeoffZone: fallback.takeoffZone.map((_, index) => normalizeRodPoint((raw.takeoffZone as unknown[] | undefined)?.[index])),
     subject3Ring: normalizeSubject3RingConfig(raw.subject3Ring),
+    subject9Config: normalizeSubject9Config(raw.subject9Config),
   }
 
   for (const subjectId of ROD_SUBJECT_IDS) {
