@@ -8,6 +8,7 @@ export type AgentToolName =
   | 'GetRodConfig'
   | 'GetBlockCatalog'
   | 'GetTrajectoryIssuesDetailed'
+  | 'GetTrajectoryDebugSnapshot'
 
 export type AgentToolTrace = {
   phase: 'start' | 'end'

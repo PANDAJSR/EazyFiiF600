@@ -3,52 +3,16 @@ import {
   PATCH_DRONE_PROGRAM_TOOL_NAME,
   patchDroneProgram,
 } from './agentDronePatchTool.mjs'
+import { BLOCK_CATALOG_SNAPSHOT } from './agentBlockCatalogSnapshot.mjs'
+import { normalizeRodConfigSnapshot } from './agentRodConfigNormalize.mjs'
+import { buildTrajectoryDebugSnapshotPayload } from './agentTrajectoryDebugTool.mjs'
 
 const LIST_PROJECT_DRONES_TOOL_NAME = 'ListProjectDrones'
 const GET_DRONE_BLOCKS_TOOL_NAME = 'GetDroneBlocks'
 const GET_ROD_CONFIG_TOOL_NAME = 'GetRodConfig'
 const GET_BLOCK_CATALOG_TOOL_NAME = 'GetBlockCatalog'
 const GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME = 'GetTrajectoryIssuesDetailed'
-
-const BLOCK_CATALOG_SNAPSHOT = {
-  schema: 'eazyfii.project.blockCatalog.v1',
-  blocks: [
-    { type: 'block_inittime', label: '在时间开始', fields: { time: '00:00' }, keywords: ['时间', '开始', 'init', 'time'] },
-    { type: 'Goertek_HorizontalSpeed', label: '水平速度', fields: { VH: '60', AH: '100' }, keywords: ['水平', '速度', 'vh', 'ah'] },
-    { type: 'Goertek_VerticalSpeed', label: '垂直速度', fields: { VV: '60', AV: '100' }, keywords: ['垂直', '速度', 'vv', 'av'] },
-    { type: 'Goertek_UnLock', label: '解锁', fields: {}, keywords: ['解锁', 'unlock'] },
-    { type: 'block_delay', label: '延时', fields: { time: '500' }, keywords: ['延时', '等待', 'delay', 'time'] },
-    { type: 'Goertek_TakeOff2', label: '起飞', fields: { alt: '100' }, keywords: ['起飞', 'takeoff', 'alt'] },
-    {
-      type: 'EazyFii_MoveToCoordAutoDelay',
-      label: '智能平移',
-      fields: { X: '0', Y: '0', Z: '100', time: '800' },
-      keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
-    },
-    { type: 'Goertek_MoveToCoord2', label: '平移到（异步）', fields: { X: '0', Y: '0', Z: '100' }, keywords: ['平移', '坐标', 'move to', 'x', 'y', 'z'] },
-    { type: 'Goertek_Move', label: '相对平移（异步）', fields: { X: '0', Y: '0', Z: '0' }, keywords: ['相对', '平移', 'move', 'x', 'y', 'z'] },
-    { type: 'Goertek_Turn', label: '转动（异步）', fields: { turnDirection: 'r', angle: '90' }, keywords: ['转向', '转动', 'turn', 'angle'] },
-    {
-      type: 'Goertek_LEDTurnOnAllSingleColor4',
-      label: '设置电机灯光',
-      fields: { motor: '1', color1: '#ffffff' },
-      keywords: ['灯光', 'led', '颜色', '电机'],
-    },
-    {
-      type: 'Goertek_LEDTurnOnAllSingleColor2',
-      label: '设置全部灯光颜色',
-      fields: { color1: '#ffffff' },
-      keywords: ['灯光', 'led', '颜色', '全部'],
-    },
-    { type: 'Goertek_Land', label: '降落', fields: {}, keywords: ['降落', 'land'] },
-  ],
-  constraints: [
-    '默认优先使用 EazyFii_MoveToCoordAutoDelay，不要默认使用 Goertek_MoveToCoord2。',
-    '禁止使用 Goertek_MoveToCoord（当前工程不识别）。',
-    'Goertek_MoveToCoord2 与 EazyFii_MoveToCoordAutoDelay 的 X/Y/Z 建议范围: X[0,400], Y[0,400], Z[100,300]。',
-    '仅使用工具返回的 fields 键名，不要自行改写键名大小写。',
-  ],
-}
+const GET_TRAJECTORY_DEBUG_SNAPSHOT_TOOL_NAME = 'GetTrajectoryDebugSnapshot'
 
 const compactDrone = (program) => ({
   droneId: program.drone.id,
@@ -109,50 +73,6 @@ const normalizeProjectContext = (context) => {
     })
 
   return { sourceName, warnings, programs }
-}
-
-const toFiniteNumber = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined)
-
-const normalizeRodPoint = (value) => {
-  if (!value || typeof value !== 'object') {
-    return {}
-  }
-  return {
-    x: toFiniteNumber(value.x),
-    y: toFiniteNumber(value.y),
-  }
-}
-
-const normalizeRodConfigSnapshot = (value) => {
-  if (!value || typeof value !== 'object') {
-    return null
-  }
-  const subjectIds = [
-    'subject1',
-    'subject2',
-    'subject3',
-    'subject4',
-    'subject5',
-    'subject6',
-    'subject7',
-    'subject8',
-    'subject9',
-    'subject10',
-  ]
-  const next = {
-    takeoffZone: Array.from({ length: 4 }, (_, i) => normalizeRodPoint(value.takeoffZone?.[i])),
-    subject3Ring: {
-      centerHeight: toFiniteNumber(value.subject3Ring?.centerHeight),
-    },
-    subject9Config: {
-      secondCrossbarHeight: toFiniteNumber(value.subject9Config?.secondCrossbarHeight),
-    },
-  }
-  for (const subjectId of subjectIds) {
-    const list = Array.isArray(value[subjectId]) ? value[subjectId] : []
-    next[subjectId] = list.map((point) => normalizeRodPoint(point))
-  }
-  return next
 }
 
 const parseObjectArgs = (rawArguments) => {
@@ -318,6 +238,48 @@ const getTrajectoryIssuesDetailed = (projectContext) => {
   }
 }
 
+const buildTrajectoryDebugSnapshot = (projectContext, rawArguments) => {
+  const project = normalizeProjectContext(projectContext)
+  if (!project) {
+    return { output: noProjectContextResult() }
+  }
+
+  const args = parseObjectArgs(rawArguments)
+  const matched = matchDroneCandidates(project, args)
+  if (matched.error && project.programs.length !== 1) {
+    return {
+      output: stringify({
+        ok: false,
+        schema: 'eazyfii.project.trajectoryDebug.v1',
+        error: matched.error,
+        hint: '当工程只有 1 架无人机时可省略参数；否则请传 droneId 或 droneName。',
+        availableDrones: project.programs.map(compactDrone),
+      }),
+    }
+  }
+
+  const target = matched.candidates?.[0] ?? project.programs[0]
+  if (!target) {
+    return {
+      output: stringify({
+        ok: false,
+        schema: 'eazyfii.project.trajectoryDebug.v1',
+        error: '当前工程没有可调试的无人机程序。',
+      }),
+    }
+  }
+
+  return {
+    output: stringify({
+      ...buildTrajectoryDebugSnapshotPayload({
+        project,
+        target,
+        compactDrone,
+      }),
+    }),
+  }
+}
+
 const projectTool = (name, description, properties = {}) => ({
   type: 'function',
   function: { name, description, parameters: { type: 'object', properties } },
@@ -340,6 +302,10 @@ export const PROJECT_TOOLS_CHAT = [
   projectTool(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectTool(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
   projectTool(GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME, '读取当前工程所有无人机的“问题”详细信息（JSON 输出，含问题与积木定位）。'),
+  projectTool(GET_TRAJECTORY_DEBUG_SNAPSHOT_TOOL_NAME, '读取轨迹调试快照：逐段输出 from->to、机头朝向、位移方向角、电机灯光与整体灯光（JSON + 文本行）。', {
+    droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
+    droneName: { type: 'string', description: '无人机名称（可能重复）。' },
+  }),
   projectTool(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -352,6 +318,10 @@ export const PROJECT_TOOLS_RESPONSES = [
   projectToolForResponses(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectToolForResponses(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
   projectToolForResponses(GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME, '读取当前工程所有无人机的“问题”详细信息（JSON 输出，含问题与积木定位）。'),
+  projectToolForResponses(GET_TRAJECTORY_DEBUG_SNAPSHOT_TOOL_NAME, '读取轨迹调试快照：逐段输出 from->to、机头朝向、位移方向角、电机灯光与整体灯光（JSON + 文本行）。', {
+    droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
+    droneName: { type: 'string', description: '无人机名称（可能重复）。' },
+  }),
   projectToolForResponses(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -370,6 +340,9 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
   }
   if (name === GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME) {
     return getTrajectoryIssuesDetailed(projectContext)
+  }
+  if (name === GET_TRAJECTORY_DEBUG_SNAPSHOT_TOOL_NAME) {
+    return buildTrajectoryDebugSnapshot(projectContext, rawArguments)
   }
   if (name === PATCH_DRONE_PROGRAM_TOOL_NAME) {
     const project = normalizeProjectContext(projectContext)

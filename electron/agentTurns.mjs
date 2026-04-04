@@ -10,6 +10,7 @@ const PROJECT_TOOL_NAMES = new Set([
   'GetRodConfig',
   'GetBlockCatalog',
   'GetTrajectoryIssuesDetailed',
+  'GetTrajectoryDebugSnapshot',
   'PatchDroneProgram',
 ])
 const parsePatchOk = (output) => {
