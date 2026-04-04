@@ -372,6 +372,7 @@ function App() {
       <AgentChatPanel
         open={agentPanelOpen}
         onClose={() => setAgentPanelOpen(false)}
+        projectContext={result}
       />
     </ConfigProvider>
   )

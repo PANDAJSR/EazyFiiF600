@@ -18,6 +18,7 @@ import type {
   AgentStreamEvent,
   AgentToolTrace,
 } from '../types/agent'
+import type { ParseResult } from '../types/fii'
 import {
   chatWithAgent,
   getAgentEnv,
@@ -50,6 +51,7 @@ type ChatMessage = {
 type AgentChatPanelProps = {
   open: boolean
   onClose: () => void
+  projectContext: ParseResult
 }
 
 const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
@@ -101,12 +103,12 @@ const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<Age
   return list
 }
 
-function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
+function AgentChatPanel({ open, onClose, projectContext }: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。当前仅支持 Bash 工具调用。',
+      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks）。',
     },
   ])
   const [input, setInput] = useState('')
@@ -245,7 +247,7 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
     appendMessage({ id: assistantMessageId, role: 'assistant', text: '' })
 
     try {
-      const result = await chatWithAgent({ message, requestId })
+      const result = await chatWithAgent({ message, requestId, projectContext })
       if (!result) {
         patchMessageById(assistantMessageId, { text: '未收到 Agent 返回结果。' })
         return

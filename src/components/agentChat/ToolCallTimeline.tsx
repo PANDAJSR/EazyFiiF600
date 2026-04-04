@@ -1,10 +1,11 @@
 import { Tag, Typography } from 'antd'
 import type { ReactNode } from 'react'
+import type { AgentToolName } from '../../types/agent'
 
 export type ToolCallBadge = {
   toolCallId: string
   toolIndex?: number
-  tool: 'Bash'
+  tool: AgentToolName
   phase: 'model' | 'exec-start' | 'exec-end'
   textOffset: number
   commandPreview?: string
@@ -37,7 +38,7 @@ const markerStatus = (marker: ToolCallBadge) => {
 const markerCommand = (marker: ToolCallBadge) => {
   const command = marker.commandPreview?.trim()
   if (!command) {
-    return '(命令解析中...)'
+    return '(参数解析中...)'
   }
   return command.length > 120 ? `${command.slice(0, 120)}...` : command
 }

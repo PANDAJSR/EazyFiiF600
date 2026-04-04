@@ -38,3 +38,18 @@ export const safeCommandPreview = (rawArgs) => {
   }
   return ''
 }
+
+export const safeToolArgsPreview = (rawArgs) => {
+  if (typeof rawArgs !== 'string') {
+    return ''
+  }
+  const trimmed = rawArgs.trim()
+  if (!trimmed) {
+    return ''
+  }
+  const command = safeCommandPreview(trimmed)
+  if (command) {
+    return command
+  }
+  return trimmed.length > 180 ? `${trimmed.slice(0, 180)}...` : trimmed
+}

@@ -11,6 +11,7 @@ import {
   unsupportedOperationError,
 } from './agentResponseUtils.mjs'
 import { runChatTurn, runResponsesTurn } from './agentTurns.mjs'
+import { PROJECT_TOOLS_CHAT, PROJECT_TOOLS_RESPONSES } from './agentProjectTools.mjs'
 
 const normalizeEnvValue = (value) => {
   if (typeof value !== 'string') {
@@ -34,14 +35,16 @@ const readEnv = (key, overrides) => {
   return normalizeEnvValue(process.env[key])
 }
 
-const SYSTEM_PROMPT = `你是一个命令行编码助手，运行在 Electron 主进程里。
-你只允许使用 Bash 工具，不要假装执行命令。
-若需要执行危险命令，请先解释风险。`
+const SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
+你可以使用 Bash、ListProjectDrones、GetDroneBlocks 三个工具。
+当用户问题和当前工程的无人机/积木有关时，优先调用项目工具读取 JSON 数据后再回答，不要臆造工程内容。
+若需要执行危险 Bash 命令，请先解释风险。`
 
 const state = {
   messages: [{ role: 'system', content: SYSTEM_PROMPT }],
   transportMode: undefined,
   previousResponseId: undefined,
+  projectContext: null,
 }
 
 const BASH_TOOL_CHAT = {
@@ -74,6 +77,9 @@ const BASH_TOOL_RESPONSES = {
     required: ['command'],
   },
 }
+
+const CHAT_TOOLS = [BASH_TOOL_CHAT, ...PROJECT_TOOLS_CHAT]
+const RESPONSES_TOOLS = [BASH_TOOL_RESPONSES, ...PROJECT_TOOLS_RESPONSES]
 
 const createClientBundle = (envOverrides) => {
   updateAgentPhase('init', '初始化模型客户端')
@@ -126,6 +132,7 @@ export const resetAgentSession = () => {
   state.messages = [{ role: 'system', content: SYSTEM_PROMPT }]
   state.transportMode = undefined
   state.previousResponseId = undefined
+  state.projectContext = null
   resetAgentStatus()
 }
 
@@ -133,6 +140,7 @@ export const chatWithAgent = async ({
   message,
   reset = false,
   envOverrides,
+  projectContext,
   onEvent,
 }) => {
   if (reset) {
@@ -146,6 +154,10 @@ export const chatWithAgent = async ({
 
   setAgentBusy('请求已接收，准备调用模型')
   try {
+    if (projectContext && typeof projectContext === 'object') {
+      state.projectContext = projectContext
+    }
+
     const { client, model, provider } = createClientBundle(envOverrides)
     const traces = []
     const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
@@ -163,7 +175,8 @@ export const chatWithAgent = async ({
         onEvent,
         state,
         systemPrompt: SYSTEM_PROMPT,
-        bashTool: BASH_TOOL_RESPONSES,
+        tools: RESPONSES_TOOLS,
+        projectContext: state.projectContext,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Responses）')
@@ -180,7 +193,8 @@ export const chatWithAgent = async ({
         permissionMode,
         onEvent,
         state,
-        bashTool: BASH_TOOL_CHAT,
+        tools: CHAT_TOOLS,
+        projectContext: state.projectContext,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Chat）')
@@ -203,7 +217,8 @@ export const chatWithAgent = async ({
         onEvent,
         state,
         systemPrompt: SYSTEM_PROMPT,
-        bashTool: BASH_TOOL_RESPONSES,
+        tools: RESPONSES_TOOLS,
+        projectContext: state.projectContext,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Fallback 到 Responses）')

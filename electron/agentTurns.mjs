@@ -1,6 +1,7 @@
 import { executeBashWithPolicy, parseToolArgs } from './agentBashTool.mjs'
 import { streamChatCompletion } from './openaiChatStream.mjs'
-import { extractResponseText, safeCommandPreview } from './agentResponseUtils.mjs'
+import { extractResponseText, safeToolArgsPreview } from './agentResponseUtils.mjs'
+import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 8
 
@@ -14,7 +15,8 @@ export const runResponsesTurn = async ({
   onEvent,
   state,
   systemPrompt,
-  bashTool,
+  tools,
+  projectContext,
   onPhase,
 }) => {
   onPhase('llm-responses', '使用 Responses API 推理')
@@ -27,7 +29,7 @@ export const runResponsesTurn = async ({
       previous_response_id: state.previousResponseId,
       input,
       instructions: systemPrompt,
-      tools: [bashTool],
+      tools,
       tool_choice: 'auto',
       max_output_tokens: 4096,
       stream: true,
@@ -62,10 +64,10 @@ export const runResponsesTurn = async ({
         onEvent?.({
           type: 'tool-call',
           phase: 'model',
-          tool: 'Bash',
+          tool: item.name,
           toolCallId: item.call_id,
           textOffset: lastAnswer.length,
-          commandPreview: safeCommandPreview(item.arguments),
+          commandPreview: safeToolArgsPreview(item.arguments),
         })
         calls.push({
           callId: item.call_id,
@@ -82,48 +84,80 @@ export const runResponsesTurn = async ({
 
     const outputs = []
     for (const call of calls) {
-      if (call.name !== 'Bash') {
+      if (call.name === 'Bash') {
+        const args = parseToolArgs(call.arguments)
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-start',
+          tool: 'Bash',
+          toolCallId: call.callId,
+          textOffset: lastAnswer.length,
+          commandPreview: args.command,
+        })
+
+        const { output, granted } = await executeBashWithPolicy({
+          command: args.command,
+          timeoutSec: args.timeout ?? timeoutSec,
+          traces,
+          permissionMode,
+          onPhase,
+        })
+
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-end',
+          tool: 'Bash',
+          toolCallId: call.callId,
+          textOffset: lastAnswer.length,
+          commandPreview: args.command,
+          granted,
+          resultPreview: output.slice(0, 160),
+        })
+
         outputs.push({
           type: 'function_call_output',
           call_id: call.callId,
-          output: `不支持的工具: ${call.name}`,
+          output,
         })
         continue
       }
 
-      const args = parseToolArgs(call.arguments)
-      onEvent?.({
-        type: 'tool-call',
-        phase: 'exec-start',
-        tool: 'Bash',
-        toolCallId: call.callId,
-        textOffset: lastAnswer.length,
-        commandPreview: args.command,
-      })
-
-      const { output, granted } = await executeBashWithPolicy({
-        command: args.command,
-        timeoutSec: args.timeout ?? timeoutSec,
-        traces,
-        permissionMode,
-        onPhase,
-      })
-
-      onEvent?.({
-        type: 'tool-call',
-        phase: 'exec-end',
-        tool: 'Bash',
-        toolCallId: call.callId,
-        textOffset: lastAnswer.length,
-        commandPreview: args.command,
-        granted,
-        resultPreview: output.slice(0, 160),
-      })
+      if (call.name === 'ListProjectDrones' || call.name === 'GetDroneBlocks') {
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-start',
+          tool: call.name,
+          toolCallId: call.callId,
+          textOffset: lastAnswer.length,
+          commandPreview: safeToolArgsPreview(call.arguments),
+        })
+        const output = executeProjectToolCall({
+          name: call.name,
+          rawArguments: call.arguments,
+          projectContext,
+        })
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-end',
+          tool: call.name,
+          toolCallId: call.callId,
+          textOffset: lastAnswer.length,
+          commandPreview: safeToolArgsPreview(call.arguments),
+          granted: true,
+          resultPreview: output.slice(0, 160),
+        })
+        outputs.push({
+          type: 'function_call_output',
+          call_id: call.callId,
+          output,
+        })
+        continue
+      }
 
       outputs.push({
         type: 'function_call_output',
         call_id: call.callId,
-        output,
+        output: `不支持的工具: ${call.name}`,
       })
     }
 
@@ -142,7 +176,8 @@ export const runChatTurn = async ({
   permissionMode,
   onEvent,
   state,
-  bashTool,
+  tools,
+  projectContext,
   onPhase,
 }) => {
   onPhase('llm-chat', '使用 Chat Completions 推理')
@@ -155,18 +190,18 @@ export const runChatTurn = async ({
       client,
       model,
       messages: state.messages,
-      tools: [bashTool],
+      tools,
       maxTokens: 4096,
       onTextDelta: (delta) => onEvent?.({ type: 'text-delta', delta }),
-      onToolCallDelta: ({ toolIndex, callId, arguments: rawArgs, textOffset }) => {
+      onToolCallDelta: ({ toolIndex, callId, name, arguments: rawArgs, textOffset }) => {
         onEvent?.({
           type: 'tool-call',
           phase: 'model',
-          tool: 'Bash',
+          tool: name || 'Bash',
           toolCallId: callId,
           toolIndex,
           textOffset,
-          commandPreview: safeCommandPreview(rawArgs),
+          commandPreview: safeToolArgsPreview(rawArgs),
         })
       },
     })
@@ -187,7 +222,7 @@ export const runChatTurn = async ({
     }
 
     for (const toolCall of toolCalls) {
-      if (toolCall.type !== 'function' || !('function' in toolCall) || toolCall.function.name !== 'Bash') {
+      if (toolCall.type !== 'function' || !('function' in toolCall)) {
         state.messages.push({
           role: 'tool',
           tool_call_id: toolCall.id,
@@ -196,39 +231,80 @@ export const runChatTurn = async ({
         continue
       }
 
-      const args = parseToolArgs(toolCall.function.arguments)
-      onEvent?.({
-        type: 'tool-call',
-        phase: 'exec-start',
-        tool: 'Bash',
-        toolCallId: toolCall.id,
-        textOffset: lastAnswer.length,
-        commandPreview: args.command,
-      })
+      if (toolCall.function.name === 'Bash') {
+        const args = parseToolArgs(toolCall.function.arguments)
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-start',
+          tool: 'Bash',
+          toolCallId: toolCall.id,
+          textOffset: lastAnswer.length,
+          commandPreview: args.command,
+        })
 
-      const { output, granted } = await executeBashWithPolicy({
-        command: args.command,
-        timeoutSec: args.timeout ?? timeoutSec,
-        traces,
-        permissionMode,
-        onPhase,
-      })
+        const { output, granted } = await executeBashWithPolicy({
+          command: args.command,
+          timeoutSec: args.timeout ?? timeoutSec,
+          traces,
+          permissionMode,
+          onPhase,
+        })
 
-      onEvent?.({
-        type: 'tool-call',
-        phase: 'exec-end',
-        tool: 'Bash',
-        toolCallId: toolCall.id,
-        textOffset: lastAnswer.length,
-        commandPreview: args.command,
-        granted,
-        resultPreview: output.slice(0, 160),
-      })
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-end',
+          tool: 'Bash',
+          toolCallId: toolCall.id,
+          textOffset: lastAnswer.length,
+          commandPreview: args.command,
+          granted,
+          resultPreview: output.slice(0, 160),
+        })
+
+        state.messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: output,
+        })
+        continue
+      }
+
+      if (toolCall.function.name === 'ListProjectDrones' || toolCall.function.name === 'GetDroneBlocks') {
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-start',
+          tool: toolCall.function.name,
+          toolCallId: toolCall.id,
+          textOffset: lastAnswer.length,
+          commandPreview: safeToolArgsPreview(toolCall.function.arguments),
+        })
+        const output = executeProjectToolCall({
+          name: toolCall.function.name,
+          rawArguments: toolCall.function.arguments,
+          projectContext,
+        })
+        onEvent?.({
+          type: 'tool-call',
+          phase: 'exec-end',
+          tool: toolCall.function.name,
+          toolCallId: toolCall.id,
+          textOffset: lastAnswer.length,
+          commandPreview: safeToolArgsPreview(toolCall.function.arguments),
+          granted: true,
+          resultPreview: output.slice(0, 160),
+        })
+        state.messages.push({
+          role: 'tool',
+          tool_call_id: toolCall.id,
+          content: output,
+        })
+        continue
+      }
 
       state.messages.push({
         role: 'tool',
         tool_call_id: toolCall.id,
-        content: output,
+        content: `不支持的工具: ${toolCall.function.name}`,
       })
     }
   }

@@ -131,7 +131,7 @@ ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
 })
 
 ipcMain.handle('agent:chat', async (_event, payload) => {
-  const { message, reset, requestId } = payload ?? {}
+  const { message, reset, requestId, projectContext } = payload ?? {}
   try {
     const timeoutMs = Number(process.env.NANO_AGENT_REQUEST_TIMEOUT_MS ?? 120000)
     _event.sender.send('agent:stream', {
@@ -143,6 +143,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
         message,
         reset: Boolean(reset),
         envOverrides: agentEnvStore.get(),
+        projectContext,
         onEvent: (event) => {
           _event.sender.send('agent:stream', {
             requestId,

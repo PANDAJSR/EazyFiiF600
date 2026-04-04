@@ -1,3 +1,7 @@
+import type { ParseResult } from './fii'
+
+export type AgentToolName = 'Bash' | 'ListProjectDrones' | 'GetDroneBlocks'
+
 export type AgentToolTrace = {
   phase: 'start' | 'end'
   tool: 'Bash'
@@ -11,6 +15,7 @@ export type AgentChatPayload = {
   message: string
   reset?: boolean
   requestId?: string
+  projectContext?: ParseResult
 }
 
 export type AgentChatSuccess = {
@@ -78,7 +83,7 @@ export type AgentStreamEvent =
     requestId?: string
     type: 'tool-call'
     phase: 'model' | 'exec-start' | 'exec-end'
-    tool: 'Bash'
+    tool: AgentToolName
     toolCallId: string
     toolIndex?: number
     textOffset: number
