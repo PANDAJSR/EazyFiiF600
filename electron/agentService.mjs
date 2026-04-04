@@ -105,6 +105,13 @@ const state = {
   projectContext: null,
   pendingMutation: false,
 }
+const cancelledRequestIds = new Set()
+const isRequestCancelled = (requestId) => Boolean(requestId && cancelledRequestIds.has(requestId))
+const throwIfCancelled = (requestId) => {
+  if (isRequestCancelled(requestId)) {
+    throw new Error('请求已停止')
+  }
+}
 
 const BASH_TOOL_CHAT = {
   type: 'function',
@@ -237,7 +244,16 @@ export const resetAgentSession = () => {
   state.previousResponseId = undefined
   state.projectContext = null
   state.pendingMutation = false
+  cancelledRequestIds.clear()
   resetAgentStatus()
+}
+
+export const stopAgentRequest = (requestId) => {
+  if (requestId) {
+    cancelledRequestIds.add(requestId)
+    return
+  }
+  cancelledRequestIds.add('__all__')
 }
 
 export const chatWithAgent = async ({
@@ -251,6 +267,10 @@ export const chatWithAgent = async ({
   requestTrajectoryIssueContext,
   onEvent,
 }) => {
+  if (cancelledRequestIds.has('__all__') && requestId) {
+    cancelledRequestIds.add(requestId)
+  }
+  throwIfCancelled(requestId)
   if (reset) {
     resetAgentSession()
   }
@@ -262,6 +282,7 @@ export const chatWithAgent = async ({
 
   setAgentBusy('请求已接收，准备调用模型')
   try {
+    throwIfCancelled(requestId)
     const systemPrompt = await buildSystemPrompt()
     state.messages[0] = { role: 'system', content: systemPrompt }
     console.info('[agent][service] start', {
@@ -315,6 +336,7 @@ export const chatWithAgent = async ({
     })
 
     if (state.transportMode === 'responses') {
+      throwIfCancelled(requestId)
       state.messages.push({ role: 'user', content: prompt })
       const reply = await runResponsesTurn({
         client,
@@ -332,6 +354,7 @@ export const chatWithAgent = async ({
         requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
+        shouldAbort: () => isRequestCancelled(requestId),
       })
       setAgentDone('已完成（Responses）')
       console.info('[agent][service] done responses', {
@@ -351,6 +374,7 @@ export const chatWithAgent = async ({
     }
 
     try {
+      throwIfCancelled(requestId)
       const reply = await runChatTurn({
         client,
         model,
@@ -366,6 +390,7 @@ export const chatWithAgent = async ({
         requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
+        shouldAbort: () => isRequestCancelled(requestId),
       })
       setAgentDone('已完成（Chat）')
       console.info('[agent][service] done chat', {
@@ -410,6 +435,7 @@ export const chatWithAgent = async ({
         requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
+        shouldAbort: () => isRequestCancelled(requestId),
       })
       setAgentDone('已完成（Fallback 到 Responses）')
       console.info('[agent][service] done fallback responses', {
@@ -433,6 +459,12 @@ export const chatWithAgent = async ({
     setAgentError(errMessage)
     throw error
   }
+  finally {
+    if (requestId) {
+      cancelledRequestIds.delete(requestId)
+    }
+    cancelledRequestIds.delete('__all__')
+  }
 }
 
-export { getAgentStatus }
+export { getAgentStatus, stopAgentRequest }

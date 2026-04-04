@@ -46,7 +46,6 @@ function App() {
   const [desktopProjectDirectory, setDesktopProjectDirectory] = useState<string>()
   const [pathDrawingMode, setPathDrawingMode] = useState(false)
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
-  const [agentPanelOpen, setAgentPanelOpen] = useState(false)
   const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
@@ -332,9 +331,6 @@ function App() {
               <Button type="primary" onClick={() => void handleSaveEdits()} disabled={loading}>
                 保存修改
               </Button>
-              <Button onClick={() => setAgentPanelOpen(true)}>
-                Agent 对话
-              </Button>
             </Space>
           </div>
           <div className="content-grid">
@@ -397,8 +393,6 @@ function App() {
         onConfirm={handleConfirmDroneDialog}
       />
       <AgentChatPanel
-        open={agentPanelOpen}
-        onClose={() => setAgentPanelOpen(false)}
         projectContext={result}
         rodConfigContext={agentRodConfigContext}
         trajectoryIssueContext={trajectoryIssueContext}

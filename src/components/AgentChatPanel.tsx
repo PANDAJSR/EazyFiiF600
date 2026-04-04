@@ -1,20 +1,9 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
-import {
-  Alert,
-  Badge,
-  Button,
-  Collapse,
-  Drawer,
-  Input,
-  Space,
-  Tag,
-  Typography,
-} from 'antd'
+import { SendOutlined, StopOutlined } from '@ant-design/icons'
+import { useEffect, useRef, useState } from 'react'
+import { Alert, Button, Collapse, Input, Space, Typography } from 'antd'
 import type {
   AgentChatResult,
   AgentEnvResult,
-  AgentRuntimeStatus,
-  AgentStatusResult,
   AgentStreamEvent,
   AgentToolTrace,
 } from '../types/agent'
@@ -22,14 +11,13 @@ import type { ParseResult } from '../types/fii'
 import {
   chatWithAgent,
   getAgentEnv,
-  getAgentStatus,
   isDesktopRuntime,
   onAgentStream,
   setAgentEnv,
+  stopAgentRequest,
 } from '../utils/desktopBridge'
 import type { ToolCallBadge } from './agentChat/ToolCallTimeline'
 import {
-  formatElapsed,
   newMessageId,
   parseEnvText,
   serializeEnvValues,
@@ -46,28 +34,13 @@ type ChatMessage = {
   text: string
   traces?: AgentToolTrace[]
   toolBadges?: ToolCallBadge[]
-  meta?: string
 }
 
 type AgentChatPanelProps = {
-  open: boolean
-  onClose: () => void
   projectContext: ParseResult
   rodConfigContext?: unknown
   trajectoryIssueContext?: TrajectoryIssueContext
   onProjectContextPatched?: (next: ParseResult) => void
-}
-
-const readStatus = async (): Promise<AgentRuntimeStatus | null> => {
-  const result = await getAgentStatus()
-  if (!result) {
-    return null
-  }
-  const typed = result as AgentStatusResult
-  if (!typed.ok) {
-    return null
-  }
-  return typed.status
 }
 
 const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<AgentStreamEvent, { type: 'tool-call' }>) => {
@@ -108,8 +81,6 @@ const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<Age
 }
 
 function AgentChatPanel({
-  open,
-  onClose,
   projectContext,
   rodConfigContext,
   trajectoryIssueContext,
@@ -119,12 +90,11 @@ function AgentChatPanel({
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / GetBlockCatalog / GetTrajectoryIssuesDetailed / GetTrajectoryDebugSnapshot / PatchDroneProgram）。',
+      text: '你好，可以让我帮你改积木，完成科目，或是解决飞行问题',
     },
   ])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
-  const [runtimeStatus, setRuntimeStatus] = useState<AgentRuntimeStatus | null>(null)
   const [envText, setEnvText] = useState('')
   const [envStoragePath, setEnvStoragePath] = useState<string>('')
   const [savingEnv, setSavingEnv] = useState(false)
@@ -132,26 +102,8 @@ function AgentChatPanel({
   const activeRequestIdRef = useRef<string | null>(null)
   const activeAssistantMessageIdRef = useRef<string | null>(null)
 
-  const runtimeHint = useMemo(() => {
-    if (isDesktopRuntime()) {
-      return null
-    }
-    return '当前不是 Electron 桌面环境，Agent 面板不可用。'
-  }, [])
-
   useEffect(() => {
-    if (!open || !isDesktopRuntime()) {
-      return
-    }
-    void readStatus().then((status) => setRuntimeStatus(status))
-    const timer = setInterval(() => {
-      void readStatus().then((status) => setRuntimeStatus(status))
-    }, 800)
-    return () => clearInterval(timer)
-  }, [open, sending])
-
-  useEffect(() => {
-    if (!open || !isDesktopRuntime()) {
+    if (!isDesktopRuntime()) {
       return
     }
     void (async () => {
@@ -167,7 +119,7 @@ function AgentChatPanel({
       setEnvText(serializeEnvValues(typed.values))
       setEnvStoragePath(typed.storagePath)
     })()
-  }, [open, onProjectContextPatched])
+  }, [onProjectContextPatched])
 
   const appendMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message])
@@ -186,7 +138,7 @@ function AgentChatPanel({
   }
 
   useEffect(() => {
-    if (!open || !isDesktopRuntime()) {
+    if (!isDesktopRuntime()) {
       return
     }
     const unsubscribe = onAgentStream((event: AgentStreamEvent) => {
@@ -208,13 +160,6 @@ function AgentChatPanel({
       }
 
       if (event.type === 'tool-call') {
-        console.info('[agent][renderer] tool event', {
-          requestId: event.requestId,
-          phase: event.phase,
-          tool: event.tool,
-          toolCallId: event.toolCallId,
-          preview: event.commandPreview,
-        })
         patchMessageById(assistantMessageId, (message) => ({
           ...message,
           toolBadges: upsertToolBadge(message.toolBadges, event),
@@ -228,19 +173,22 @@ function AgentChatPanel({
       }
     })
     return () => {
-      if (unsubscribe) {
-        unsubscribe()
-      }
+      unsubscribe?.()
     }
-  }, [open, onProjectContextPatched])
+  }, [onProjectContextPatched])
 
   const clearConversation = async () => {
     setMessages([{ id: newMessageId(), role: 'system', text: '会话已重置。你可以继续提问。' }])
     if (isDesktopRuntime()) {
       await chatWithAgent({ message: '请重置会话', reset: true })
-      const status = await readStatus()
-      setRuntimeStatus(status)
     }
+  }
+
+  const stopMessage = async () => {
+    if (!sending) {
+      return
+    }
+    await stopAgentRequest(activeRequestIdRef.current ?? undefined)
   }
 
   const sendMessage = async () => {
@@ -269,11 +217,6 @@ function AgentChatPanel({
     appendMessage({ id: assistantMessageId, role: 'assistant', text: '' })
 
     try {
-      console.info('[agent][renderer] send', {
-        requestId,
-        messageLength: message.length,
-        projectProgramCount: projectContext.programs.length,
-      })
       const result = await chatWithAgent({
         message,
         requestId,
@@ -291,11 +234,6 @@ function AgentChatPanel({
         patchMessageById(assistantMessageId, { text: `Agent 错误: ${typedResult.error}` })
         return
       }
-      console.info('[agent][renderer] done', {
-        requestId,
-        transportMode: typedResult.transportMode,
-        traceCount: typedResult.traces.length,
-      })
 
       patchMessageById(assistantMessageId, (messageItem) => ({
         ...messageItem,
@@ -304,7 +242,6 @@ function AgentChatPanel({
         toolBadges: messageItem.toolBadges?.length
           ? messageItem.toolBadges
           : tracesToToolBadges(typedResult.traces, typedResult.reply || messageItem.text || ''),
-        meta: `${typedResult.provider} · ${typedResult.model} · ${typedResult.transportMode}`,
       }))
       if (typedResult.projectContext) {
         onProjectContextPatched?.(typedResult.projectContext)
@@ -313,8 +250,6 @@ function AgentChatPanel({
       setSending(false)
       activeRequestIdRef.current = null
       activeAssistantMessageIdRef.current = null
-      const status = await readStatus()
-      setRuntimeStatus(status)
     }
   }
 
@@ -337,59 +272,70 @@ function AgentChatPanel({
       }
       setEnvText(serializeEnvValues(typed.values))
       setEnvStoragePath(typed.storagePath)
-      setEnvFeedback('已保存，后续请求将自动使用这些变量。')
+      setEnvFeedback('已保存。')
     } finally {
       setSavingEnv(false)
     }
   }
 
-  const elapsed = formatElapsed(runtimeStatus?.startedAt ?? null)
-  const stuckWarning =
-    sending && runtimeStatus?.startedAt && Date.now() - runtimeStatus.startedAt > 25000
-      ? '请求耗时较长，通常是模型端排队或网络延迟，可继续等待。'
-      : null
-
   return (
-    <Drawer
-      title="Agent 对话"
-      placement="right"
-      width={500}
-      open={open}
-      onClose={onClose}
-      extra={<Button onClick={() => void clearConversation()} disabled={sending}>重置会话</Button>}
-    >
-      <Space direction="vertical" size={12} style={{ width: '100%' }}>
-        {runtimeHint && <Alert type="warning" showIcon message={runtimeHint} />}
-        {!runtimeHint && (
-          <Alert
-            type={runtimeStatus?.phase === 'error' ? 'error' : sending ? 'info' : 'success'}
-            showIcon
-            message={(
-              <Space size={10} align="center">
-                <Badge status={sending ? 'processing' : runtimeStatus?.phase === 'error' ? 'error' : 'success'} />
-                <Typography.Text>{runtimeStatus?.detail ?? (sending ? '处理中' : '空闲')}</Typography.Text>
-                <Tag color="default">耗时 {elapsed}</Tag>
-                <Tag color="blue">#{runtimeStatus?.requestCount ?? 0}</Tag>
-              </Space>
-            )}
-            description={runtimeStatus?.lastError ?? stuckWarning ?? undefined}
+    <section className="floating-agent-panel">
+      <header className="floating-agent-header">
+        <Typography.Text strong>Agent 对话</Typography.Text>
+        <Button onClick={() => void clearConversation()} disabled={sending}>重置</Button>
+      </header>
+
+      <div className="floating-agent-body">
+        {!isDesktopRuntime() && <Alert type="warning" showIcon message="当前不是 Electron 桌面环境，Agent 面板不可用。" />}
+        <ChatMessageList messages={messages} sending={sending} />
+
+        <div className="agent-input-row">
+          <Input.TextArea
+            value={input}
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="输入你的问题，Shift+Enter 换行"
+            autoSize={{ minRows: 2, maxRows: 5 }}
+            onPressEnter={(event) => {
+              if (!event.shiftKey) {
+                event.preventDefault()
+                if (sending) {
+                  void stopMessage()
+                  return
+                }
+                void sendMessage()
+              }
+            }}
+            disabled={sending}
           />
-        )}
+          <Button
+            type={sending ? 'default' : 'primary'}
+            danger={sending}
+            shape="circle"
+            size="large"
+            icon={sending ? <StopOutlined /> : <SendOutlined />}
+            onClick={() => {
+              if (sending) {
+                void stopMessage()
+                return
+              }
+              void sendMessage()
+            }}
+            disabled={!sending && !input.trim()}
+          />
+        </div>
 
         <Collapse
+          size="small"
           items={[{
             key: 'agent-env',
-            label: 'Agent 环境变量',
+            label: '环境变量',
             children: (
-              <Space direction="vertical" size={10} style={{ width: '100%' }}>
-                <Typography.Text type="secondary">
-                  仅影响 Agent 调用，不影响系统全局环境变量。按 `KEY=VALUE` 多行编辑。
-                </Typography.Text>
+              <Space direction="vertical" size={8} style={{ width: '100%' }}>
                 {envStoragePath && <Typography.Text type="secondary">保存位置: {envStoragePath}</Typography.Text>}
                 <Input.TextArea
                   value={envText}
                   placeholder={'NANO_PROVIDER=azure\nAZURE_OPENAI_ENDPOINT=https://xxx.openai.azure.com/\nAZURE_OPENAI_API_KEY=...'}
-                  autoSize={{ minRows: 8, maxRows: 16 }}
+                  autoSize={{ minRows: 5, maxRows: 12 }}
                   onChange={(event) => setEnvText(event.target.value)}
                 />
                 {!!envFeedback && <Alert type="info" showIcon message={envFeedback} />}
@@ -398,25 +344,8 @@ function AgentChatPanel({
             ),
           }]}
         />
-
-        <ChatMessageList messages={messages} sending={sending} />
-
-        <Input.TextArea
-          value={input}
-          onChange={(event) => setInput(event.target.value)}
-          placeholder="输入你的问题，例如：帮我看下当前目录有哪些文件"
-          autoSize={{ minRows: 3, maxRows: 7 }}
-          onPressEnter={(event) => {
-            if (!event.shiftKey) {
-              event.preventDefault()
-              void sendMessage()
-            }
-          }}
-          disabled={sending}
-        />
-        <Button type="primary" onClick={() => void sendMessage()} loading={sending}>发送</Button>
-      </Space>
-    </Drawer>
+      </div>
+    </section>
   )
 }
 

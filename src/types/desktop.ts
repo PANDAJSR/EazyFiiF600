@@ -53,6 +53,7 @@ export type DesktopAgentStatusResult = AgentStatusResult
 export type DesktopAgentSetEnvPayload = AgentSetEnvPayload
 export type DesktopAgentEnvResult = AgentEnvResult
 export type DesktopAgentStreamEvent = AgentStreamEvent
+export type DesktopAgentStopResult = { ok: true } | { ok: false; error: string }
 
 export type DesktopTrajectoryIssuesRequestPayload = {
   token: string

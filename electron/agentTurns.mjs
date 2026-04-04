@@ -59,7 +59,14 @@ export const runResponsesTurn = async ({
   requestTrajectoryIssueContext,
   requireToolForMutation,
   onPhase,
+  shouldAbort,
 }) => {
+  const ensureNotAborted = () => {
+    if (shouldAbort?.()) {
+      throw new Error('请求已停止')
+    }
+  }
+  ensureNotAborted()
   onPhase('llm-responses', '使用 Responses API 推理')
   let lastAnswer = ''
   let input = userInput
@@ -68,6 +75,7 @@ export const runResponsesTurn = async ({
   let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    ensureNotAborted()
     console.info('[agent][turns][responses] round start', { requestId, round: round + 1 })
     const stream = await client.responses.create({
       model,
@@ -82,6 +90,7 @@ export const runResponsesTurn = async ({
 
     let response = null
     for await (const event of stream) {
+      ensureNotAborted()
       if (event.type === 'response.output_text.delta' && event.delta) {
         lastAnswer += event.delta
         onEvent?.({ type: 'text-delta', delta: event.delta })
@@ -156,6 +165,7 @@ export const runResponsesTurn = async ({
 
     const outputs = []
     for (const call of calls) {
+      ensureNotAborted()
       console.info('[agent][turns][responses] tool dispatch', {
         requestId,
         round: round + 1,
@@ -180,6 +190,7 @@ export const runResponsesTurn = async ({
           permissionMode,
           onPhase,
         })
+        ensureNotAborted()
 
         onEvent?.({
           type: 'tool-call',
@@ -215,6 +226,7 @@ export const runResponsesTurn = async ({
           projectContext,
           requestTrajectoryIssueContext,
         })
+        ensureNotAborted()
         if (call.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
           if (parsePatchOk(output)) {
@@ -282,7 +294,14 @@ export const runChatTurn = async ({
   requestTrajectoryIssueContext,
   requireToolForMutation,
   onPhase,
+  shouldAbort,
 }) => {
+  const ensureNotAborted = () => {
+    if (shouldAbort?.()) {
+      throw new Error('请求已停止')
+    }
+  }
+  ensureNotAborted()
   onPhase('llm-chat', '使用 Chat Completions 推理')
   state.messages.push({ role: 'user', content: userInput })
 
@@ -292,6 +311,7 @@ export const runChatTurn = async ({
   let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
+    ensureNotAborted()
     console.info('[agent][turns][chat] round start', { requestId, round: round + 1 })
     const completion = await streamChatCompletion({
       client,
@@ -313,6 +333,7 @@ export const runChatTurn = async ({
         })
       },
     })
+    ensureNotAborted()
 
     state.messages.push({
       role: 'assistant',
@@ -362,6 +383,7 @@ export const runChatTurn = async ({
     }
 
     for (const toolCall of toolCalls) {
+      ensureNotAborted()
       if (toolCall.type !== 'function' || !('function' in toolCall)) {
         state.messages.push({
           role: 'tool',
@@ -394,6 +416,7 @@ export const runChatTurn = async ({
           permissionMode,
           onPhase,
         })
+        ensureNotAborted()
 
         onEvent?.({
           type: 'tool-call',
@@ -435,6 +458,7 @@ export const runChatTurn = async ({
           projectContext,
           requestTrajectoryIssueContext,
         })
+        ensureNotAborted()
         if (toolCall.function.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
           if (parsePatchOk(output)) {

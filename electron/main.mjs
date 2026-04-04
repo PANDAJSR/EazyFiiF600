@@ -3,7 +3,7 @@ import path from 'node:path'
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
-import { chatWithAgent, getAgentStatus, resetAgentSession } from './agentService.mjs'
+import { chatWithAgent, getAgentStatus, resetAgentSession, stopAgentRequest } from './agentService.mjs'
 import { createAgentEnvStore } from './agentEnvStore.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
@@ -220,6 +220,16 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
       requestId,
       error: errMessage,
     })
+    return { ok: false, error: errMessage }
+  }
+})
+
+ipcMain.handle('agent:stop', async (_event, payload) => {
+  try {
+    stopAgentRequest(payload?.requestId)
+    return { ok: true }
+  } catch (error) {
+    const errMessage = error instanceof Error ? error.message : String(error)
     return { ok: false, error: errMessage }
   }
 })

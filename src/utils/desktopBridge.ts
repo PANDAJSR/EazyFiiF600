@@ -4,6 +4,7 @@ import type {
   DesktopAgentEnvResult,
   DesktopAgentStreamEvent,
   DesktopAgentSetEnvPayload,
+  DesktopAgentStopResult,
   DesktopAgentStatusResult,
   DesktopTrajectoryIssuesRequestPayload,
   DesktopTrajectoryIssuesResponsePayload,
@@ -90,6 +91,13 @@ export const setAgentEnv = async (
     return null
   }
   return window.eazyFiiDesktop.setAgentEnv(payload)
+}
+
+export const stopAgentRequest = async (requestId?: string): Promise<DesktopAgentStopResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.stopAgentRequest(requestId ? { requestId } : undefined)
 }
 
 export const sendAgentTrajectoryIssuesResponse = (

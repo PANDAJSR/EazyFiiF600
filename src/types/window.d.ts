@@ -6,6 +6,7 @@ import type {
   DesktopAgentChatResult,
   DesktopAgentEnvResult,
   DesktopAgentStreamEvent,
+  DesktopAgentStopResult,
   DesktopAgentSetEnvPayload,
   DesktopAgentStatusResult,
   DesktopTrajectoryIssuesRequestPayload,
@@ -26,6 +27,7 @@ type DesktopApi = {
   getAgentStatus: () => Promise<DesktopAgentStatusResult>
   getAgentEnv: () => Promise<DesktopAgentEnvResult>
   setAgentEnv: (payload: DesktopAgentSetEnvPayload) => Promise<DesktopAgentEnvResult>
+  stopAgentRequest: (payload?: { requestId?: string }) => Promise<DesktopAgentStopResult>
   sendAgentTrajectoryIssuesResponse: (payload: DesktopTrajectoryIssuesResponsePayload) => void
   onAgentTrajectoryIssuesRequest: (handler: (payload: DesktopTrajectoryIssuesRequestPayload) => void) => () => void
   onAgentStream: (handler: (event: DesktopAgentStreamEvent) => void) => () => void

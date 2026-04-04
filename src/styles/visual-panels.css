@@ -630,12 +630,61 @@
   user-select: none !important;
 }
 
+.floating-agent-panel {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 460px;
+  height: min(72vh, 720px);
+  z-index: 1001;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid #d5e5f8;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(16, 50, 93, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.floating-agent-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid #e2ecf9;
+  background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+}
+
+.floating-agent-body {
+  flex: 1;
+  min-height: 0;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.agent-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
 @media (max-width: 900px) {
   .floating-trajectory-panel {
     width: calc(100vw - 20px) !important;
     height: min(62vh, 520px) !important;
     left: 10px !important;
     top: calc(100vh - min(62vh, 520px) - 10px) !important;
+  }
+
+  .floating-agent-panel {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    height: min(70vh, 640px);
   }
 }
 

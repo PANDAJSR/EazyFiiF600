@@ -32,7 +32,7 @@ const MessageBody = ({ message }: { message: ChatMessageItem }) => {
 
 export default function ChatMessageList({ messages, sending }: ChatMessageListProps) {
   return (
-    <div style={{ maxHeight: '55vh', overflow: 'auto', paddingRight: 4 }}>
+    <div style={{ flex: 1, minHeight: 0, overflow: 'auto', paddingRight: 4 }}>
       {messages.length === 0 && <Empty image={Empty.PRESENTED_IMAGE_SIMPLE} description="暂无消息" />}
       <Space direction="vertical" size={10} style={{ width: '100%' }}>
         {messages.map((message) => (
@@ -49,7 +49,6 @@ export default function ChatMessageList({ messages, sending }: ChatMessageListPr
               <Tag color={message.role === 'user' ? 'blue' : message.role === 'assistant' ? 'green' : 'gold'}>
                 {message.role}
               </Tag>
-              {message.meta && <Typography.Text type="secondary">{message.meta}</Typography.Text>}
             </Space>
 
             <MessageBody message={message} />
