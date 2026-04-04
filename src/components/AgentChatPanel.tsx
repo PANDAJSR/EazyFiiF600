@@ -32,6 +32,7 @@ import {
   newMessageId,
   parseEnvText,
   serializeEnvValues,
+  tracesToToolBadges,
 } from './agentChat/panelUtils'
 import ChatMessageList from './agentChat/ChatMessageList'
 
@@ -260,6 +261,9 @@ function AgentChatPanel({ open, onClose }: AgentChatPanelProps) {
         ...messageItem,
         text: typedResult.reply || messageItem.text || '(空回复)',
         traces: typedResult.traces,
+        toolBadges: messageItem.toolBadges?.length
+          ? messageItem.toolBadges
+          : tracesToToolBadges(typedResult.traces, typedResult.reply || messageItem.text || ''),
         meta: `${typedResult.provider} · ${typedResult.model} · ${typedResult.transportMode}`,
       }))
     } finally {

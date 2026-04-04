@@ -1,4 +1,5 @@
 import type { AgentEnvValues, AgentToolTrace } from '../../types/agent'
+import type { ToolCallBadge } from './ToolCallTimeline'
 
 export const newMessageId = () => `${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
 
@@ -56,4 +57,36 @@ export const parseEnvText = (text: string): AgentEnvValues => {
     next[key] = value
   }
   return next
+}
+
+export const tracesToToolBadges = (traces: AgentToolTrace[], replyText: string): ToolCallBadge[] => {
+  const offset = Math.max(0, replyText.length)
+  const badges: ToolCallBadge[] = []
+
+  traces.forEach((trace, index) => {
+    const toolCallId = `trace_${index}`
+    if (trace.phase === 'start') {
+      badges.push({
+        tool: 'Bash',
+        toolCallId,
+        toolIndex: index,
+        phase: 'exec-start',
+        textOffset: offset,
+        commandPreview: trace.command,
+      })
+      return
+    }
+    badges.push({
+      tool: 'Bash',
+      toolCallId,
+      toolIndex: index,
+      phase: 'exec-end',
+      textOffset: offset,
+      commandPreview: trace.command,
+      granted: trace.granted,
+      resultPreview: trace.resultPreview,
+    })
+  })
+
+  return badges
 }

@@ -1,7 +1,6 @@
 import { Empty, Space, Spin, Tag, Typography } from 'antd'
 import type { AgentToolTrace } from '../../types/agent'
 import ToolCallTimeline, { type ToolCallBadge } from './ToolCallTimeline'
-import { traceSummary } from './panelUtils'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -55,18 +54,6 @@ export default function ChatMessageList({ messages, sending }: ChatMessageListPr
 
             <MessageBody message={message} />
 
-            {!!message.traces?.length && (
-              <div style={{ background: '#fff', border: '1px dashed #d9d9d9', borderRadius: 8, padding: 8 }}>
-                <Typography.Text type="secondary">工具调用日志</Typography.Text>
-                <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
-                  {message.traces.map((trace, index) => (
-                    <li key={`${message.id}_${index}`} style={{ marginBottom: 4 }}>
-                      <Typography.Text code>{traceSummary(trace)}</Typography.Text>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
           </div>
         ))}
 
