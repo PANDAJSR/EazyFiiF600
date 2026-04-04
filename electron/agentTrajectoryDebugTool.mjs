@@ -56,10 +56,16 @@ export const buildTrajectoryDebugSnapshotPayload = ({ project, target, compactDr
   const motorLight = { '1': '000000', '2': '000000', '3': '000000', '4': '000000' }
   let allLight = '000000'
   const segments = []
-  const turnBlockTypes = new Set(['Goertek_Turn', 'Goertek_TurnTo'])
-
   for (const block of target.blocks) {
-    if (turnBlockTypes.has(block.type)) {
+    if (block.type === 'Goertek_TurnTo') {
+      const angle = toNumber(block.fields.angle)
+      if (angle !== null) {
+        headingDeg = normalizeHeadingDeg(angle)
+      }
+      continue
+    }
+
+    if (block.type === 'Goertek_Turn') {
       const angle = toNumber(block.fields.angle)
       if (angle !== null) {
         const direction = block.fields.turnDirection?.trim().toLowerCase()
@@ -153,7 +159,7 @@ export const buildTrajectoryDebugSnapshotPayload = ({ project, target, compactDr
     previewLines: segments.map((segment) => segment.line),
     segments,
     notes: [
-      'headingDeg 为该段平移执行时机头朝向，按 Goertek_TurnTo/Goertek_Turn 回放得到。',
+      'headingDeg 为该段平移执行时机头朝向；Goertek_TurnTo 按绝对角设置（以前方/+Y 为 0°），Goertek_Turn 按相对角累加回放。',
       'moveDirectionDeg 为该段位移方向角，按 atan2(ΔX,ΔY) 计算后归一化到 [0,360)。',
     ],
   }

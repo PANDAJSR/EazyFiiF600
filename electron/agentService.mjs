@@ -63,14 +63,14 @@ PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、in
 除“科目1/绕竖杆”外，Goertek_Turn 默认不是硬约束：若用户未明确要求机头朝向控制、且当前科目判定不依赖机头方向，则禁止为“套模板”额外插入 Goertek_Turn。
 除“科目1/绕竖杆”外，优先用最少积木完成目标；已有连续平移可满足判定时，不要主动改写为“转动+平移”交替结构。
 当任务涉及机头朝向控制（尤其“科目1/绕竖杆”）时，优先使用 Goertek_TurnTo（转向）积木以降低朝向计算与判定错误率；仅在兼容已有旧程序时使用 Goertek_Turn。
-术语约定（硬约束）：Goertek_TurnTo（转向）是“绝对方向角”（目标朝向）；Goertek_Turn（转动）是“相对方向角”（相对当前机头左/右转多少度）。
-当用户任务是“科目1/绕竖杆”时，转向是硬约束：在每一段平移（EazyFii_MoveToCoordAutoDelay）之前，必须先插入 Goertek_Turn，使机头先对准“下一段将要飞行的朝向”；禁止只给连续平移而不转向的方案。
-当用户任务是“科目1/绕竖杆”时，输出前必须自检：若本次写入片段中存在平移段但不存在 Goertek_Turn，视为不合格，必须先补齐转动积木再调用 PatchDroneProgram。
+术语约定（硬约束）：Goertek_TurnTo（转向）是“绝对方向角”（angle 为绝对目标朝向，参考系以前方/+Y 为 0°）；Goertek_Turn（转动）是“相对方向角”（相对当前机头左/右转多少度）。
+当用户任务是“科目1/绕竖杆”时，转向是硬约束：在每一段平移（EazyFii_MoveToCoordAutoDelay）之前，必须先插入 Goertek_TurnTo（优先）或 Goertek_Turn（兼容），使机头先对准“下一段将要飞行的朝向”；禁止只给连续平移而不转向的方案。
+当用户任务是“科目1/绕竖杆”时，输出前必须自检：若本次写入片段中存在平移段但不存在 Goertek_TurnTo/Goertek_Turn，视为不合格，必须先补齐转向/转动积木再调用 PatchDroneProgram。
 当用户任务是“科目1/绕竖杆”时，转角计算必须与判定一致：飞行段目标朝向 = atan2(ΔX, ΔY) 的角度制结果并归一化到 [0,360)；默认初始机头朝向为 0°（朝 +Y）。
-当用户任务是“科目1/绕竖杆”时，每次 Goertek_Turn 必须按“当前机头朝向 -> 下一段目标朝向”的最小相对角计算（左/右与角度匹配）；禁止用固定 90° 模板套全部边，禁止用 0° 转动占位。
+当用户任务是“科目1/绕竖杆”时，若使用 Goertek_TurnTo，则 angle 必须直接等于下一段目标朝向（绝对角，以 +Y 为 0°）；若使用 Goertek_Turn，则必须按“当前机头朝向 -> 下一段目标朝向”的最小相对角计算（左/右与角度匹配）；禁止用固定 90° 模板套全部边，禁止用 0° 转动占位。
 当用户任务是“科目1/绕竖杆”时，首段平移前同样必须先按“起点到第一目标点”的 ΔX/ΔY 计算并执行转向，最后返航段也必须按同一规则计算转向。
 当用户任务是“科目1/绕竖杆”时，Goertek_Turn 左右语义固定为：turnDirection='r' 表示机头角度增加（heading = heading + angle），turnDirection='l' 表示机头角度减少（heading = heading - angle）；不得反用。
-当用户任务是“科目1/绕竖杆”时，必须用如下相对转角公式选方向：cw=(target-current+360)%360，ccw=(current-target+360)%360；若 cw<=ccw 则用 r/cw，否则用 l/ccw。
+当用户任务是“科目1/绕竖杆”时，若使用 Goertek_Turn，必须用如下相对转角公式选方向：cw=(target-current+360)%360，ccw=(current-target+360)%360；若 cw<=ccw 则用 r/cw，否则用 l/ccw。
 当用户任务是“科目1/绕竖杆”时，生成前做一次方向速查自检：ΔX=0,ΔY>0=>0°；ΔX>0,ΔY=0=>90°；ΔX=0,ΔY<0=>180°；ΔX<0,ΔY=0=>270°。若与将写入的 Turn 不一致，必须先修正。
 当用户任务是“科目1/绕竖杆”时，必须先在内部形成“逐段朝向计算表”（segmentIndex、fromXY、toXY、targetDeg、currentHeading、turnDirection、turnAngle、nextHeading），确认每一段 nextHeading 与 targetDeg 一致后，才允许调用 PatchDroneProgram。
 当用户任务是“科目1/绕竖杆”时，若出现连续多个 Goertek_Turn 角度完全相同（例如连续右转 90°）但对应平移段 ΔX/ΔY 不同，视为模板化错误，必须重算并改写。

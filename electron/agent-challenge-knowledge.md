@@ -154,13 +154,16 @@
 ### 11.2.1 科目1朝向计算（与系统判定对齐）
 - 判定使用的飞行方向角：`moveDirectionDeg = normalizeDeg(atan2(ΔX, ΔY) * 180 / π)`，其中 `ΔX = nextX - currentX`，`ΔY = nextY - currentY`。
 - 初始机头朝向按 `0°` 处理（朝 `+Y` 方向）；不是朝 `+X`。
-- 每一段平移前，先根据“当前机头角 -> 目标飞行方向角”计算相对转角，并写入 `Goertek_TurnTo`（或兼容 `Goertek_Turn`，左/右 + 角度）。
+- 每一段平移前，先计算该段目标飞行方向角 `targetDeg`：优先写入 `Goertek_TurnTo` 直接转到绝对角 `targetDeg`（以前方/+Y 为 0°）；若兼容旧程序使用 `Goertek_Turn`，再按当前机头角计算相对左/右转角。
 - 推荐使用最小转角原则：若顺时针差值 `cw` 与逆时针差值 `ccw`，取较小者作为转动方向与角度。
 - 首段（起点到第一个绕行点）和末段（闭环后返航）都必须独立计算转角，不能复用上一个边的固定角度。
 - 禁止“占位转向”：例如转动 0°、固定每段都右转 90°，但与实际 `ΔX/ΔY` 不一致。
 
 ### 11.2.2 左右转语义与速查表（防混淆）
-- Goertek_Turn 语义固定：
+- Goertek_TurnTo（转向）语义固定：
+- `angle` 是绝对目标朝向角，参考系以前方（`+Y`）为 `0°`，并按 `[0,360)` 理解。
+- `turnDirection` 仅表示执行转到该绝对角时的方向偏好，不改变 `angle` 的绝对角含义。
+- Goertek_Turn（转动）语义固定：
 - `turnDirection = r`：机头角度增加（`heading = heading + angle`，顺时针）。
 - `turnDirection = l`：机头角度减少（`heading = heading - angle`，逆时针）。
 - 相对转角推荐公式：
