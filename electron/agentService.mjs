@@ -467,4 +467,4 @@ export const chatWithAgent = async ({
   }
 }
 
-export { getAgentStatus, stopAgentRequest }
+export { getAgentStatus }

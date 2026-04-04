@@ -1,4 +1,3 @@
-import { SendOutlined, StopOutlined } from '@ant-design/icons'
 import { useEffect, useRef, useState } from 'react'
 import { Alert, Button, Collapse, Input, Space, Typography } from 'antd'
 import type {
@@ -86,6 +85,8 @@ function AgentChatPanel({
   trajectoryIssueContext,
   onProjectContextPatched,
 }: AgentChatPanelProps) {
+  const sendIcon = <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>▶</span>
+  const stopIcon = <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>■</span>
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newMessageId(),
@@ -312,7 +313,7 @@ function AgentChatPanel({
             danger={sending}
             shape="circle"
             size="large"
-            icon={sending ? <StopOutlined /> : <SendOutlined />}
+            icon={sending ? stopIcon : sendIcon}
             onClick={() => {
               if (sending) {
                 void stopMessage()
