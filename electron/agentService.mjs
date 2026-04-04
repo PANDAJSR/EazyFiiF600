@@ -83,6 +83,18 @@ const BASH_TOOL_RESPONSES = {
 const CHAT_TOOLS = [BASH_TOOL_CHAT, ...PROJECT_TOOLS_CHAT]
 const RESPONSES_TOOLS = [BASH_TOOL_RESPONSES, ...PROJECT_TOOLS_RESPONSES]
 
+const shouldRequireMutationTool = (prompt, projectContext) => {
+  if (!projectContext || typeof projectContext !== 'object') {
+    return false
+  }
+  const text = String(prompt ?? '')
+  if (!text.trim()) {
+    return false
+  }
+  const hitWriteIntent = /(直接改|帮我改|修改|写入|写一个|生成.*程序|别问|立刻改|马上改)/.test(text)
+  return hitWriteIntent
+}
+
 const createClientBundle = (envOverrides) => {
   updateAgentPhase('init', '初始化模型客户端')
   const providerEnv = readEnv('NANO_PROVIDER', envOverrides)
@@ -172,6 +184,8 @@ export const chatWithAgent = async ({
     const traces = []
     const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
     const permissionMode = readEnv('NANO_PERMISSION_MODE', envOverrides) ?? 'manual'
+    const requireToolForMutation = shouldRequireMutationTool(prompt, state.projectContext)
+    console.info('[agent][service] mutation tool required', { requestId, requireToolForMutation })
 
     if (state.transportMode === 'responses') {
       state.messages.push({ role: 'user', content: prompt })
@@ -188,6 +202,7 @@ export const chatWithAgent = async ({
         systemPrompt: SYSTEM_PROMPT,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
+        requireToolForMutation,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Responses）')
@@ -219,6 +234,7 @@ export const chatWithAgent = async ({
         state,
         tools: CHAT_TOOLS,
         projectContext: state.projectContext,
+        requireToolForMutation,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Chat）')
@@ -260,6 +276,7 @@ export const chatWithAgent = async ({
         systemPrompt: SYSTEM_PROMPT,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
+        requireToolForMutation,
         onPhase: updateAgentPhase,
       })
       setAgentDone('已完成（Fallback 到 Responses）')

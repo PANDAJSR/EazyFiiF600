@@ -19,11 +19,14 @@ export const runResponsesTurn = async ({
   systemPrompt,
   tools,
   projectContext,
+  requireToolForMutation,
   onPhase,
 }) => {
   onPhase('llm-responses', '使用 Responses API 推理')
   let lastAnswer = ''
   let input = userInput
+  let didPatchDroneProgram = false
+  let forcedMutationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     console.info('[agent][turns][responses] round start', { requestId, round: round + 1 })
@@ -33,7 +36,7 @@ export const runResponsesTurn = async ({
       input,
       instructions: systemPrompt,
       tools,
-      tool_choice: 'auto',
+      tool_choice: requireToolForMutation && !didPatchDroneProgram ? 'required' : 'auto',
       max_output_tokens: 4096,
       stream: true,
     })
@@ -88,6 +91,16 @@ export const runResponsesTurn = async ({
     })
 
     if (calls.length === 0) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < 2) {
+        forcedMutationRetryCount += 1
+        console.warn('[agent][turns][responses] no tool call for mutation request, forcing retry', {
+          requestId,
+          round: round + 1,
+          forcedMutationRetryCount,
+        })
+        input = '这是写入请求。你必须调用 PatchDroneProgram 执行真实修改，不要只回答方案。先调用工具，再汇报结果。'
+        continue
+      }
       console.info('[agent][turns][responses] end with no tool calls', { requestId, round: round + 1 })
       state.messages.push({ role: 'assistant', content: lastAnswer || '' })
       return lastAnswer
@@ -153,6 +166,9 @@ export const runResponsesTurn = async ({
           rawArguments: call.arguments,
           projectContext,
         })
+        if (call.name === 'PatchDroneProgram') {
+          didPatchDroneProgram = true
+        }
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
@@ -207,12 +223,15 @@ export const runChatTurn = async ({
   state,
   tools,
   projectContext,
+  requireToolForMutation,
   onPhase,
 }) => {
   onPhase('llm-chat', '使用 Chat Completions 推理')
   state.messages.push({ role: 'user', content: userInput })
 
   let lastAnswer = ''
+  let didPatchDroneProgram = false
+  let forcedMutationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     console.info('[agent][turns][chat] round start', { requestId, round: round + 1 })
@@ -254,6 +273,19 @@ export const runChatTurn = async ({
       answerChars: lastAnswer.length,
     })
     if (toolCalls.length === 0) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < 2) {
+        forcedMutationRetryCount += 1
+        console.warn('[agent][turns][chat] no tool call for mutation request, forcing retry', {
+          requestId,
+          round: round + 1,
+          forcedMutationRetryCount,
+        })
+        state.messages.push({
+          role: 'user',
+          content: '这是写入请求。你必须调用 PatchDroneProgram 执行真实修改，不要只回答方案。先调用工具，再汇报结果。',
+        })
+        continue
+      }
       console.info('[agent][turns][chat] end with no tool calls', { requestId, round: round + 1 })
       return lastAnswer
     }
@@ -331,6 +363,9 @@ export const runChatTurn = async ({
           rawArguments: toolCall.function.arguments,
           projectContext,
         })
+        if (toolCall.function.name === 'PatchDroneProgram') {
+          didPatchDroneProgram = true
+        }
         if (nextProjectContext) {
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
