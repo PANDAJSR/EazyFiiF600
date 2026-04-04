@@ -140,7 +140,28 @@ const BASH_TOOL_RESPONSES = {
 const CHAT_TOOLS = [BASH_TOOL_CHAT, ...PROJECT_TOOLS_CHAT]
 const RESPONSES_TOOLS = [BASH_TOOL_RESPONSES, ...PROJECT_TOOLS_RESPONSES]
 
-const shouldRequireMutationTool = (prompt, projectContext) => {
+const CONTINUE_REPAIR_PROMPT = /^(修|改|继续|继续修|继续改|接着修|接着改|再修|再改|继续处理|继续执行)$/
+const CONTINUE_PROMISE_TEXT = /(我将|我会|继续|下一轮|下一步|然后再|接下来).*(修|改|处理|执行|调用|检查|复检|重试)/
+
+const hasOutstandingTrajectoryIssues = (projectContext) => {
+  const totalIssues = projectContext?.trajectoryIssueContext?.summary?.totalIssues
+  return Number.isFinite(totalIssues) && Number(totalIssues) > 0
+}
+
+const getLastAssistantText = (messages) => {
+  if (!Array.isArray(messages)) {
+    return ''
+  }
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const item = messages[index]
+    if (item?.role === 'assistant' && typeof item.content === 'string') {
+      return item.content
+    }
+  }
+  return ''
+}
+
+const shouldRequireMutationTool = (prompt, projectContext, messages) => {
   if (!projectContext || typeof projectContext !== 'object') {
     return false
   }
@@ -149,7 +170,18 @@ const shouldRequireMutationTool = (prompt, projectContext) => {
     return false
   }
   const hitWriteIntent = /(直接改|帮我改|修改|写入|写一个|生成.*程序|别问|立刻改|马上改)/.test(text)
-  return hitWriteIntent
+  if (hitWriteIntent) {
+    return true
+  }
+  const compact = text.replace(/\s+/g, '')
+  if (!CONTINUE_REPAIR_PROMPT.test(compact)) {
+    return false
+  }
+  if (hasOutstandingTrajectoryIssues(projectContext)) {
+    return true
+  }
+  const lastAssistantText = getLastAssistantText(messages)
+  return CONTINUE_PROMISE_TEXT.test(lastAssistantText)
 }
 
 const createClientBundle = (envOverrides) => {
@@ -267,7 +299,11 @@ export const chatWithAgent = async ({
     const traces = []
     const timeoutSec = Number(readEnv('NANO_BASH_TIMEOUT_SEC', envOverrides) ?? 30)
     const permissionMode = readEnv('NANO_PERMISSION_MODE', envOverrides) ?? 'manual'
-    const requireToolForMutation = state.pendingMutation || shouldRequireMutationTool(prompt, state.projectContext)
+    const requireToolForMutation = state.pendingMutation || shouldRequireMutationTool(
+      prompt,
+      state.projectContext,
+      state.messages,
+    )
     if (requireToolForMutation) {
       state.pendingMutation = true
     }

@@ -27,7 +27,10 @@ const hasContinuationPromise = (text) => {
   if (!raw) {
     return false
   }
-  return /(我将|我会|继续|下一轮|下一步|然后再|接下来).*(调用|修改|修复|重试|检查|执行)/.test(raw)
+  return (
+    /(我将|我会|继续|下一轮|下一步|然后再|接下来).*(调用|修改|修复|重试|检查|执行|处理)/.test(raw)
+    || /(继续修|继续改|继续处理|接着修|接着改|收到[,，]?我继续修)/.test(raw)
+  )
 }
 
 const emitProjectContextPatched = ({ onEvent, nextProjectContext }) => {
@@ -126,10 +129,14 @@ export const runResponsesTurn = async ({
     })
 
     if (calls.length === 0) {
-      if (hasContinuationPromise(lastAnswer) && forcedContinuationRetryCount < 2) {
+      const promisedContinuation = hasContinuationPromise(lastAnswer)
+      if (promisedContinuation && forcedContinuationRetryCount < 2) {
         forcedContinuationRetryCount += 1
         input = '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。'
         continue
+      }
+      if (promisedContinuation) {
+        state.pendingMutation = true
       }
       if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1
@@ -288,6 +295,7 @@ export const runChatTurn = async ({
       model,
       messages: state.messages,
       tools,
+      toolChoice: requireToolForMutation && !didPatchDroneProgram ? 'required' : 'auto',
       maxTokens: 4096,
       onTextDelta: (delta) => onEvent?.({ type: 'text-delta', delta }),
       onToolCallDelta: ({ toolIndex, callId, name, arguments: rawArgs, textOffset }) => {
@@ -321,13 +329,17 @@ export const runChatTurn = async ({
       answerChars: lastAnswer.length,
     })
     if (toolCalls.length === 0) {
-      if (hasContinuationPromise(lastAnswer) && forcedContinuationRetryCount < 2) {
+      const promisedContinuation = hasContinuationPromise(lastAnswer)
+      if (promisedContinuation && forcedContinuationRetryCount < 2) {
         forcedContinuationRetryCount += 1
         state.messages.push({
           role: 'user',
           content: '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。',
         })
         continue
+      }
+      if (promisedContinuation) {
+        state.pendingMutation = true
       }
       if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
         forcedMutationRetryCount += 1

@@ -3,6 +3,7 @@ export const streamChatCompletion = async ({
   model,
   messages,
   tools,
+  toolChoice,
   maxTokens,
   onTextDelta,
   onToolCallDelta,
@@ -11,7 +12,7 @@ export const streamChatCompletion = async ({
     model,
     messages,
     tools,
-    tool_choice: 'auto',
+    tool_choice: toolChoice ?? 'auto',
     max_tokens: maxTokens,
     stream: true,
   })
