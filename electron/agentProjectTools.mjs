@@ -259,7 +259,19 @@ const patchDroneProgram = (projectContext, rawArguments) => {
         ok: false,
         schema: 'eazyfii.project.dronePatch.v1',
         error: 'operations 不能为空。',
+        mustRetry: true,
+        retryGuide: '请先调用 GetDroneBlocks 获取当前积木，再基于用户目标构造 operations 后重新调用 PatchDroneProgram。',
         supportedOps: ['append_block', 'insert_after', 'update_fields', 'delete_block', 'move_block'],
+        example: {
+          droneId: droneId || targetProgram.drone.id,
+          operations: [
+            {
+              op: 'update_fields',
+              blockId: '示例积木ID',
+              fields: { X: '100', Y: '100' },
+            },
+          ],
+        },
       }),
     }
   }
@@ -377,6 +389,7 @@ const patchDroneProgram = (projectContext, rawArguments) => {
         appliedOps: changes.length,
         failedOps: errors.length,
       },
+      mustRetry: errors.length > 0,
       changes,
       errors,
       blocks: nextBlocks.map(blockOutput),
@@ -465,4 +478,3 @@ export const executeProjectToolCall = ({
     }),
   }
 }
-
