@@ -43,7 +43,7 @@ const __dirname = path.dirname(__filename)
 const challengeKnowledgeFile = path.resolve(__dirname, 'agent-challenge-knowledge.md')
 
 const BASE_SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
-你可以使用 Bash、ListProjectDrones、GetDroneBlocks、PatchDroneProgram 四个工具。
+你可以使用 Bash、ListProjectDrones、GetDroneBlocks、GetRodConfig、PatchDroneProgram 五个工具。
 当用户问题和当前工程的无人机/积木有关时，优先调用项目工具读取 JSON 数据后再回答，不要臆造工程内容。
 生成或修改飞行动作时，禁止使用 Goertek_MoveToCoord（该积木当前无法被本项目正确识别）。
 默认请使用我们定义的“智能平移”积木 EazyFii_MoveToCoordAutoDelay。
@@ -53,6 +53,7 @@ X、Y、Z、time 的值必须是非空字符串数字（例如 "120"、"0"、"10
 在发起 PatchDroneProgram 之前，你必须先自检 operations 中每个 block 的 type 与 fields 是否满足上面的约束，不满足就先修正再调用。
 PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、update_fields、delete_block、move_block；不要发明其它 op 名称。
 如果你不确定积木类型，先调用 GetDroneBlocks 参考当前工程已有类型，再调用 PatchDroneProgram 写入。
+当规划与科目道具相关的路径时，先调用 GetRodConfig 获取杆子坐标与高度参数，再生成或修改程序。
 当用户明确要求“直接修改/写入”时，你必须真正调用 PatchDroneProgram 执行修改，不要只给口头方案。
 如果 PatchDroneProgram 返回 ok=false，你必须继续补全参数并再次调用，直到 ok=true 或达到工具轮次上限，再向用户汇报结果。
 任意工具调用失败后，不允许停在失败说明上；你必须基于错误信息调整参数并继续尝试调用工具，直到成功或达到工具轮次上限。
@@ -192,6 +193,7 @@ export const chatWithAgent = async ({
   requestId,
   envOverrides,
   projectContext,
+  rodConfigContext,
   onEvent,
 }) => {
   if (reset) {
@@ -216,6 +218,16 @@ export const chatWithAgent = async ({
     })
     if (projectContext && typeof projectContext === 'object') {
       state.projectContext = projectContext
+    }
+    if (rodConfigContext && typeof rodConfigContext === 'object') {
+      const base =
+        state.projectContext && typeof state.projectContext === 'object'
+          ? state.projectContext
+          : { sourceName: '', warnings: [], programs: [] }
+      state.projectContext = {
+        ...base,
+        rodConfig: rodConfigContext,
+      }
     }
 
     const { client, model, provider } = createClientBundle(envOverrides)

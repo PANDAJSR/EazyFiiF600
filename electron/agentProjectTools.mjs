@@ -6,6 +6,7 @@ import {
 
 const LIST_PROJECT_DRONES_TOOL_NAME = 'ListProjectDrones'
 const GET_DRONE_BLOCKS_TOOL_NAME = 'GetDroneBlocks'
+const GET_ROD_CONFIG_TOOL_NAME = 'GetRodConfig'
 
 const compactDrone = (program) => ({
   droneId: program.drone.id,
@@ -66,6 +67,50 @@ const normalizeProjectContext = (context) => {
     })
 
   return { sourceName, warnings, programs }
+}
+
+const toFiniteNumber = (value) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined)
+
+const normalizeRodPoint = (value) => {
+  if (!value || typeof value !== 'object') {
+    return {}
+  }
+  return {
+    x: toFiniteNumber(value.x),
+    y: toFiniteNumber(value.y),
+  }
+}
+
+const normalizeRodConfigSnapshot = (value) => {
+  if (!value || typeof value !== 'object') {
+    return null
+  }
+  const subjectIds = [
+    'subject1',
+    'subject2',
+    'subject3',
+    'subject4',
+    'subject5',
+    'subject6',
+    'subject7',
+    'subject8',
+    'subject9',
+    'subject10',
+  ]
+  const next = {
+    takeoffZone: Array.from({ length: 4 }, (_, i) => normalizeRodPoint(value.takeoffZone?.[i])),
+    subject3Ring: {
+      centerHeight: toFiniteNumber(value.subject3Ring?.centerHeight),
+    },
+    subject9Config: {
+      secondCrossbarHeight: toFiniteNumber(value.subject9Config?.secondCrossbarHeight),
+    },
+  }
+  for (const subjectId of subjectIds) {
+    const list = Array.isArray(value[subjectId]) ? value[subjectId] : []
+    next[subjectId] = list.map((point) => normalizeRodPoint(point))
+  }
+  return next
 }
 
 const parseObjectArgs = (rawArguments) => {
@@ -178,6 +223,31 @@ const getDroneBlocks = (projectContext, rawArguments) => {
   }
 }
 
+const getRodConfig = (projectContext) => {
+  const rodConfig = normalizeRodConfigSnapshot(projectContext?.rodConfig)
+  if (!rodConfig) {
+    return {
+      output: stringify({
+        ok: false,
+        schema: 'eazyfii.project.rodConfig.v1',
+        error: '未找到杆子配置。请先在“杆子配置”面板填写或加载配置。',
+      }),
+    }
+  }
+  return {
+    output: stringify({
+      ok: true,
+      schema: 'eazyfii.project.rodConfig.v1',
+      rodConfig,
+      notes: [
+        '坐标单位为厘米平面坐标（X/Y）。',
+        'subject3Ring.centerHeight 为科目三圈中心离地高度（cm）。',
+        'subject9Config.secondCrossbarHeight 为科目九第二横杆离地高度（cm）。',
+      ],
+    }),
+  }
+}
+
 const projectTool = (name, description, properties = {}) => ({
   type: 'function',
   function: { name, description, parameters: { type: 'object', properties } },
@@ -197,6 +267,7 @@ export const PROJECT_TOOLS_CHAT = [
     droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
     droneName: { type: 'string', description: '无人机名称（可能重复）。' },
   }),
+  projectTool(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectTool(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -206,6 +277,7 @@ export const PROJECT_TOOLS_RESPONSES = [
     droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
     droneName: { type: 'string', description: '无人机名称（可能重复）。' },
   }),
+  projectToolForResponses(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectToolForResponses(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -215,6 +287,9 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
   }
   if (name === GET_DRONE_BLOCKS_TOOL_NAME) {
     return getDroneBlocks(projectContext, rawArguments)
+  }
+  if (name === GET_ROD_CONFIG_TOOL_NAME) {
+    return getRodConfig(projectContext)
   }
   if (name === PATCH_DRONE_PROGRAM_TOOL_NAME) {
     const project = normalizeProjectContext(projectContext)
@@ -250,4 +325,3 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
     }),
   }
 }
-

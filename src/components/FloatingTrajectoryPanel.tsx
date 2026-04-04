@@ -35,6 +35,7 @@ type Props = {
   }) => void
   backgroundTrajectories?: TrajectoryDisplay[]
   activeTrajectoryColor?: string
+  onRodConfigChange?: (config: RodConfig) => void
 }
 
 type ViewMode = '2d' | '3d' | 'rod'
@@ -151,6 +152,7 @@ function FloatingTrajectoryPanel({
   onMovePoint,
   backgroundTrajectories = [],
   activeTrajectoryColor = '#1b6ed6',
+  onRodConfigChange,
 }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
@@ -160,6 +162,10 @@ function FloatingTrajectoryPanel({
   const floatingRectRef = useRef<Rect>(getInitialRect())
   const skipSaveOnceRef = useRef(false)
   const saveTimerRef = useRef<number | null>(null)
+
+  useEffect(() => {
+    onRodConfigChange?.(rodConfig)
+  }, [onRodConfigChange, rodConfig])
 
   useEffect(() => {
     let cancelled = false

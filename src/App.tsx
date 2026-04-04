@@ -6,6 +6,7 @@ import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
 import type { ParseResult } from './types/fii'
+import type { RodConfig } from './components/trajectory/rodConfig'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
@@ -40,6 +41,7 @@ function App() {
   const [pathDrawingMode, setPathDrawingMode] = useState(false)
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
   const [agentPanelOpen, setAgentPanelOpen] = useState(false)
+  const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -345,6 +347,7 @@ function App() {
             onMovePoint={handleMovePoint}
             backgroundTrajectories={backgroundTrajectories.filter((item) => item.droneId !== selectedDroneId)}
             activeTrajectoryColor={selectedTrajectoryColor}
+            onRodConfigChange={setAgentRodConfigContext}
           />
         </Layout.Content>
       </Layout>
@@ -373,6 +376,7 @@ function App() {
         open={agentPanelOpen}
         onClose={() => setAgentPanelOpen(false)}
         projectContext={result}
+        rodConfigContext={agentRodConfigContext}
         onProjectContextPatched={(next) => {
           setResult(next)
           setHasUnsavedChanges(true)

@@ -131,7 +131,7 @@ ipcMain.handle('desktop:write-text-file', async (_event, payload) => {
 })
 
 ipcMain.handle('agent:chat', async (_event, payload) => {
-  const { message, reset, requestId, projectContext } = payload ?? {}
+  const { message, reset, requestId, projectContext, rodConfigContext } = payload ?? {}
   const projectProgramCount = Array.isArray(projectContext?.programs) ? projectContext.programs.length : 0
   console.info('[agent][main] request received', {
     requestId,
@@ -152,6 +152,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
         requestId,
         envOverrides: agentEnvStore.get(),
         projectContext,
+        rodConfigContext,
         onEvent: (event) => {
           _event.sender.send('agent:stream', {
             requestId,

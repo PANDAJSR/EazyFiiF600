@@ -4,7 +4,7 @@ import { extractResponseText, safeToolArgsPreview } from './agentResponseUtils.m
 import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 8
-const PROJECT_TOOL_NAMES = new Set(['ListProjectDrones', 'GetDroneBlocks', 'PatchDroneProgram'])
+const PROJECT_TOOL_NAMES = new Set(['ListProjectDrones', 'GetDroneBlocks', 'GetRodConfig', 'PatchDroneProgram'])
 const parsePatchOk = (output) => {
   try {
     const parsed = JSON.parse(output)

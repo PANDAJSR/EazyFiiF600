@@ -52,6 +52,7 @@ type AgentChatPanelProps = {
   open: boolean
   onClose: () => void
   projectContext: ParseResult
+  rodConfigContext?: unknown
   onProjectContextPatched?: (next: ParseResult) => void
 }
 
@@ -108,13 +109,14 @@ function AgentChatPanel({
   open,
   onClose,
   projectContext,
+  rodConfigContext,
   onProjectContextPatched,
 }: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / PatchDroneProgram）。',
+      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / PatchDroneProgram）。',
     },
   ])
   const [input, setInput] = useState('')
@@ -265,7 +267,7 @@ function AgentChatPanel({
         messageLength: message.length,
         projectProgramCount: projectContext.programs.length,
       })
-      const result = await chatWithAgent({ message, requestId, projectContext })
+      const result = await chatWithAgent({ message, requestId, projectContext, rodConfigContext })
       if (!result) {
         patchMessageById(assistantMessageId, { text: '未收到 Agent 返回结果。' })
         return
