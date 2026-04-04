@@ -5,7 +5,7 @@ import type { XYZ } from './trajectoryUtils'
 const SUBJECT1_MAX_HEIGHT = 150
 const SUBJECT1_HEADING_TOLERANCE_DEG = 1
 const DEFAULT_HEADING_DEG = 0
-const TURN_BLOCK_TYPE = 'Goertek_Turn'
+const TURN_BLOCK_TYPES = new Set(['Goertek_Turn', 'Goertek_TurnTo'])
 const LAND_BLOCK_TYPE = 'Goertek_Land'
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
 const RELATIVE_MOVE_BLOCK_TYPE = 'Goertek_Move'
@@ -109,7 +109,7 @@ const buildSubject1Visits = (startPos: XYZ, blocks: ParsedBlock[]): Subject1Visi
   for (let index = 0; index < blocks.length; index += 1) {
     const block = blocks[index]
 
-    if (block.type === TURN_BLOCK_TYPE) {
+    if (TURN_BLOCK_TYPES.has(block.type)) {
       const angle = toNumber(block.fields.angle)
       if (angle === null) {
         continue

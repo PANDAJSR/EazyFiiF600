@@ -64,8 +64,8 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
     fields: { X: '0', Y: '0', Z: '0' },
   },
   {
-    type: 'Goertek_Turn',
-    label: '转动（异步）',
+    type: 'Goertek_TurnTo',
+    label: '转向',
     keywords: ['转向', '转动', 'turn', 'angle'],
     fields: { turnDirection: 'r', angle: '90' },
   },

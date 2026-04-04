@@ -30,6 +30,7 @@ const NUMERIC_TEXT_FIELDS = new Set([
   'Goertek_Move:Y',
   'Goertek_Move:Z',
   'Goertek_Turn:angle',
+  'Goertek_TurnTo:angle',
 ])
 const TIME_TEXT_FIELDS = new Set(['block_inittime:time'])
 
@@ -61,6 +62,7 @@ export const blockTheme: Record<string, { color: string; bg: string; border: str
   [AUTO_DELAY_BLOCK_TYPE]: { color: '#17324d', bg: '#e2fff2', border: '#89c7a7' },
   Goertek_Move: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_Turn: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
+  Goertek_TurnTo: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_Land: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
 }
 
@@ -153,14 +155,15 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
         ],
       }
     case 'Goertek_Turn':
+    case 'Goertek_TurnTo':
       return {
-        title: '转动（异步）',
+        title: '转向',
         values: [
           token('向'),
           token(f.turnDirection ?? 'r', true, false, 'turnDirection', 'select', ['r', 'l']),
-          token('转动'),
+          token('转'),
           token(f.angle ?? '90', true, false, 'angle'),
-          token('度'),
+          token('°'),
         ],
       }
     case 'Goertek_Land':
