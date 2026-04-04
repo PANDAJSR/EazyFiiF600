@@ -1,4 +1,7 @@
 import OpenAI, { AzureOpenAI } from 'openai'
+import fs from 'node:fs/promises'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import {
   getAgentStatus,
   resetAgentStatus,
@@ -35,7 +38,11 @@ const readEnv = (key, overrides) => {
   return normalizeEnvValue(process.env[key])
 }
 
-const SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const challengeKnowledgeFile = path.resolve(__dirname, 'agent-challenge-knowledge.md')
+
+const BASE_SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
 你可以使用 Bash、ListProjectDrones、GetDroneBlocks、PatchDroneProgram 四个工具。
 当用户问题和当前工程的无人机/积木有关时，优先调用项目工具读取 JSON 数据后再回答，不要臆造工程内容。
 生成或修改飞行动作时，禁止使用 Goertek_MoveToCoord（该积木当前无法被本项目正确识别）。
@@ -51,8 +58,26 @@ PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、up
 任意工具调用失败后，不允许停在失败说明上；你必须基于错误信息调整参数并继续尝试调用工具，直到成功或达到工具轮次上限。
 若需要执行危险 Bash 命令，请先解释风险。`
 
+const loadChallengeKnowledge = async () => {
+  try {
+    const text = await fs.readFile(challengeKnowledgeFile, 'utf8')
+    return text.trim()
+  } catch {
+    return ''
+  }
+}
+
+const buildSystemPrompt = async () => {
+  const knowledge = await loadChallengeKnowledge()
+  const challengeSection = [
+    '以下是“编程挑战赛知识库”（Markdown）：',
+    knowledge || '(当前为空，可由项目维护者后续补充)',
+  ].join('\n')
+  return `${BASE_SYSTEM_PROMPT}\n\n${challengeSection}`
+}
+
 const state = {
-  messages: [{ role: 'system', content: SYSTEM_PROMPT }],
+  messages: [{ role: 'system', content: BASE_SYSTEM_PROMPT }],
   transportMode: undefined,
   previousResponseId: undefined,
   projectContext: null,
@@ -153,7 +178,7 @@ const createClientBundle = (envOverrides) => {
 }
 
 export const resetAgentSession = () => {
-  state.messages = [{ role: 'system', content: SYSTEM_PROMPT }]
+  state.messages = [{ role: 'system', content: BASE_SYSTEM_PROMPT }]
   state.transportMode = undefined
   state.previousResponseId = undefined
   state.projectContext = null
@@ -180,11 +205,14 @@ export const chatWithAgent = async ({
 
   setAgentBusy('请求已接收，准备调用模型')
   try {
+    const systemPrompt = await buildSystemPrompt()
+    state.messages[0] = { role: 'system', content: systemPrompt }
     console.info('[agent][service] start', {
       requestId,
       transportMode: state.transportMode ?? 'auto',
       reset: Boolean(reset),
       hasProjectContext: Boolean(projectContext),
+      systemPromptLength: systemPrompt.length,
     })
     if (projectContext && typeof projectContext === 'object') {
       state.projectContext = projectContext
@@ -217,7 +245,7 @@ export const chatWithAgent = async ({
         permissionMode,
         onEvent,
         state,
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
         requireToolForMutation,
@@ -293,7 +321,7 @@ export const chatWithAgent = async ({
         permissionMode,
         onEvent,
         state,
-        systemPrompt: SYSTEM_PROMPT,
+        systemPrompt,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
         requireToolForMutation,
