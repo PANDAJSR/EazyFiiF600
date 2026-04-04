@@ -7,6 +7,7 @@ export type AgentToolName =
   | 'PatchDroneProgram'
   | 'GetRodConfig'
   | 'GetBlockCatalog'
+  | 'GetTrajectoryIssuesDetailed'
 
 export type AgentToolTrace = {
   phase: 'start' | 'end'
@@ -23,6 +24,7 @@ export type AgentChatPayload = {
   requestId?: string
   projectContext?: ParseResult
   rodConfigContext?: unknown
+  trajectoryIssueContext?: unknown
 }
 
 export type AgentChatSuccess = {

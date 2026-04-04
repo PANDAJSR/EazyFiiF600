@@ -43,7 +43,7 @@ const __dirname = path.dirname(__filename)
 const challengeKnowledgeFile = path.resolve(__dirname, 'agent-challenge-knowledge.md')
 
 const BASE_SYSTEM_PROMPT = `你是 EazyFii 里的无人机积木编程 Agent，运行在 Electron 主进程里。
-你可以使用 Bash、ListProjectDrones、GetDroneBlocks、GetRodConfig、GetBlockCatalog、PatchDroneProgram 六个工具。
+你可以使用 Bash、ListProjectDrones、GetDroneBlocks、GetRodConfig、GetBlockCatalog、GetTrajectoryIssuesDetailed、PatchDroneProgram 七个工具。
 当用户问题和当前工程的无人机/积木有关时，优先调用项目工具读取 JSON 数据后再回答，不要臆造工程内容。
 生成或修改飞行动作时，禁止使用 Goertek_MoveToCoord（该积木当前无法被本项目正确识别）。
 默认请使用我们定义的“智能平移”积木 EazyFii_MoveToCoordAutoDelay。
@@ -56,6 +56,9 @@ PatchDroneProgram 的 op 只能使用: append_block、insert_after、insert、in
 如果你不确定积木类型，先调用 GetDroneBlocks 参考当前工程已有类型，再调用 PatchDroneProgram 写入。
 当规划与科目道具相关的路径时，先调用 GetRodConfig 获取杆子坐标与高度参数，再生成或修改程序。
 当要生成或修改积木程序时，先调用 GetBlockCatalog 获取“可用积木类型与参数键名”，禁止使用目录外或参数名不匹配的积木。
+当本次修改与“完成科目”相关（例如绕杆/穿圈/8字/闭合/机头朝向/灯光变色/高低圈/垂直8字等），每次调用 PatchDroneProgram 后都必须调用 GetTrajectoryIssuesDetailed 复检问题。
+若 GetTrajectoryIssuesDetailed 仍显示与目标科目相关的问题，你必须继续修改并再次复检，直到相关问题消除或达到工具轮次上限。
+对“完成科目”类任务，禁止只改一次就结束；必须以最新 GetTrajectoryIssuesDetailed 结果作为完成依据。
 当用户任务是“科目1/绕竖杆”时，转向是硬约束：在每一段平移（EazyFii_MoveToCoordAutoDelay）之前，必须先插入 Goertek_Turn，使机头先对准“下一段将要飞行的朝向”；禁止只给连续平移而不转向的方案。
 当用户任务是“科目1/绕竖杆”时，输出前必须自检：若本次写入片段中存在平移段但不存在 Goertek_Turn，视为不合格，必须先补齐转动积木再调用 PatchDroneProgram。
 当用户任务是“科目1/绕竖杆”时，转角计算必须与判定一致：飞行段目标朝向 = atan2(ΔX, ΔY) 的角度制结果并归一化到 [0,360)；默认初始机头朝向为 0°（朝 +Y）。
@@ -204,6 +207,7 @@ export const chatWithAgent = async ({
   envOverrides,
   projectContext,
   rodConfigContext,
+  trajectoryIssueContext,
   onEvent,
 }) => {
   if (reset) {
@@ -237,6 +241,16 @@ export const chatWithAgent = async ({
       state.projectContext = {
         ...base,
         rodConfig: rodConfigContext,
+      }
+    }
+    if (trajectoryIssueContext && typeof trajectoryIssueContext === 'object') {
+      const base =
+        state.projectContext && typeof state.projectContext === 'object'
+          ? state.projectContext
+          : { sourceName: '', warnings: [], programs: [] }
+      state.projectContext = {
+        ...base,
+        trajectoryIssueContext,
       }
     }
 

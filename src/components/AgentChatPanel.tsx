@@ -36,6 +36,7 @@ import {
   tracesToToolBadges,
 } from './agentChat/panelUtils'
 import ChatMessageList from './agentChat/ChatMessageList'
+import type { TrajectoryIssueContext } from './trajectory/trajectoryIssueContext'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -53,6 +54,7 @@ type AgentChatPanelProps = {
   onClose: () => void
   projectContext: ParseResult
   rodConfigContext?: unknown
+  trajectoryIssueContext?: TrajectoryIssueContext
   onProjectContextPatched?: (next: ParseResult) => void
 }
 
@@ -110,13 +112,14 @@ function AgentChatPanel({
   onClose,
   projectContext,
   rodConfigContext,
+  trajectoryIssueContext,
   onProjectContextPatched,
 }: AgentChatPanelProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: newMessageId(),
       role: 'system',
-      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / GetBlockCatalog / PatchDroneProgram）。',
+      text: '可以在这里直接问 Agent。支持 Bash 与无人机项目工具（ListProjectDrones / GetDroneBlocks / GetRodConfig / GetBlockCatalog / GetTrajectoryIssuesDetailed / PatchDroneProgram）。',
     },
   ])
   const [input, setInput] = useState('')
@@ -267,7 +270,13 @@ function AgentChatPanel({
         messageLength: message.length,
         projectProgramCount: projectContext.programs.length,
       })
-      const result = await chatWithAgent({ message, requestId, projectContext, rodConfigContext })
+      const result = await chatWithAgent({
+        message,
+        requestId,
+        projectContext,
+        rodConfigContext,
+        trajectoryIssueContext,
+      })
       if (!result) {
         patchMessageById(assistantMessageId, { text: '未收到 Agent 返回结果。' })
         return

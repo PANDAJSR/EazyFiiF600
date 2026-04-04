@@ -19,6 +19,7 @@ import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhen
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
+import { buildTrajectoryIssueContext } from './components/trajectory/trajectoryIssueContext'
 
 type PendingFocusTarget = {
   blockId: string
@@ -49,6 +50,10 @@ function App() {
   const selectedProgram = useMemo(
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
+  )
+  const trajectoryIssueContext = useMemo(
+    () => buildTrajectoryIssueContext(result, agentRodConfigContext),
+    [agentRodConfigContext, result],
   )
   const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
   const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
@@ -377,6 +382,7 @@ function App() {
         onClose={() => setAgentPanelOpen(false)}
         projectContext={result}
         rodConfigContext={agentRodConfigContext}
+        trajectoryIssueContext={trajectoryIssueContext}
         onProjectContextPatched={(next) => {
           setResult(next)
           setHasUnsavedChanges(true)

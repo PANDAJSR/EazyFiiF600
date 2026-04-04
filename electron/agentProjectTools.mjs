@@ -8,6 +8,7 @@ const LIST_PROJECT_DRONES_TOOL_NAME = 'ListProjectDrones'
 const GET_DRONE_BLOCKS_TOOL_NAME = 'GetDroneBlocks'
 const GET_ROD_CONFIG_TOOL_NAME = 'GetRodConfig'
 const GET_BLOCK_CATALOG_TOOL_NAME = 'GetBlockCatalog'
+const GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME = 'GetTrajectoryIssuesDetailed'
 
 const BLOCK_CATALOG_SNAPSHOT = {
   schema: 'eazyfii.project.blockCatalog.v1',
@@ -298,6 +299,25 @@ const getBlockCatalog = () => {
   }
 }
 
+const getTrajectoryIssuesDetailed = (projectContext) => {
+  const issuesContext = projectContext?.trajectoryIssueContext
+  if (!issuesContext || typeof issuesContext !== 'object') {
+    return {
+      output: stringify({
+        ok: false,
+        schema: 'eazyfii.project.trajectoryIssues.v1',
+        error: '未找到问题详情。请在轨迹面板加载项目后再重试。',
+      }),
+    }
+  }
+  return {
+    output: stringify({
+      ok: true,
+      ...issuesContext,
+    }),
+  }
+}
+
 const projectTool = (name, description, properties = {}) => ({
   type: 'function',
   function: { name, description, parameters: { type: 'object', properties } },
@@ -319,6 +339,7 @@ export const PROJECT_TOOLS_CHAT = [
   }),
   projectTool(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectTool(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
+  projectTool(GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME, '读取当前工程所有无人机的“问题”详细信息（JSON 输出，含问题与积木定位）。'),
   projectTool(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -330,6 +351,7 @@ export const PROJECT_TOOLS_RESPONSES = [
   }),
   projectToolForResponses(GET_ROD_CONFIG_TOOL_NAME, '读取当前工程的杆子配置（坐标/高度等，JSON 输出）。'),
   projectToolForResponses(GET_BLOCK_CATALOG_TOOL_NAME, '读取当前工程支持的积木类型、参数键名、默认值与约束（JSON 输出）。'),
+  projectToolForResponses(GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME, '读取当前工程所有无人机的“问题”详细信息（JSON 输出，含问题与积木定位）。'),
   projectToolForResponses(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
@@ -345,6 +367,9 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
   }
   if (name === GET_BLOCK_CATALOG_TOOL_NAME) {
     return getBlockCatalog()
+  }
+  if (name === GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME) {
+    return getTrajectoryIssuesDetailed(projectContext)
   }
   if (name === PATCH_DRONE_PROGRAM_TOOL_NAME) {
     const project = normalizeProjectContext(projectContext)
@@ -364,13 +389,21 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
         }),
       }
     }
-    return patchDroneProgram({
+    const patchResult = patchDroneProgram({
       project,
       rawArguments,
       droneId: matched.droneId,
       droneName: matched.droneName,
       candidates: matched.candidates,
     })
+    if (patchResult?.nextProjectContext && projectContext && typeof projectContext === 'object') {
+      patchResult.nextProjectContext = {
+        ...patchResult.nextProjectContext,
+        rodConfig: projectContext.rodConfig,
+        trajectoryIssueContext: projectContext.trajectoryIssueContext,
+      }
+    }
+    return patchResult
   }
   return {
     output: stringify({
