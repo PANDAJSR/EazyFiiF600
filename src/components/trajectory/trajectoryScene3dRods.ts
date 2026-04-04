@@ -10,6 +10,9 @@ const SUBJECT4_RING_DIAMETER = 65
 const SUBJECT4_RING_CENTER_HEIGHT = 120
 const SUBJECT7_RING_DIAMETER = 65
 const SUBJECT7_RING_HEIGHTS = [100, 125, 150] as const
+const SUBJECT8_RING_DIAMETER = 65
+const SUBJECT8_HIGH_RING_CENTER_HEIGHT = 150
+const SUBJECT8_LOW_RING_CENTER_HEIGHT = 110
 const ROD_RADIUS = 1.8
 const RING_TUBE_RADIUS = 1.35
 const TAKEOFF_ZONE_Z = 0.12
@@ -43,6 +46,7 @@ export const renderSubjectRods = (
   const subject3RingGeometry = new THREE.TorusGeometry(SUBJECT3_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject7RingGeometry = new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
+  const subject8RingGeometry = new THREE.TorusGeometry(SUBJECT8_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
 
   const addVerticalRod = (x: number, y: number) => {
     const rod = new THREE.Mesh(rodGeometry, rodMaterial)
@@ -110,6 +114,20 @@ export const renderSubjectRods = (
     }
   }
 
+  const addSubject8Ring = (
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    centerHeight: number,
+  ) => {
+    const direction = new THREE.Vector3(end.x - start.x, end.y - start.y, 0)
+    if (direction.lengthSq() < 0.001) {
+      return
+    }
+    const ring = new THREE.Mesh(subject8RingGeometry, ringMaterial)
+    ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, centerHeight)
+    scene.add(ring)
+  }
+
   const subject1Rod = rodConfig?.subject1[0]
   if (isFiniteRodPoint(subject1Rod)) {
     addVerticalRod(subject1Rod.x, subject1Rod.y)
@@ -175,11 +193,23 @@ export const renderSubjectRods = (
     addSubject7Rings(subject7RodA, subject7RodB)
   }
 
+  const subject8RodA = rodConfig?.subject8[0]
+  const subject8RodB = rodConfig?.subject8[1]
+  const subject8RodC = rodConfig?.subject8[2]
+  if (isFiniteRodPoint(subject8RodA) && isFiniteRodPoint(subject8RodB) && isFiniteRodPoint(subject8RodC)) {
+    addVerticalRod(subject8RodA.x, subject8RodA.y)
+    addVerticalRod(subject8RodB.x, subject8RodB.y)
+    addVerticalRod(subject8RodC.x, subject8RodC.y)
+    addSubject8Ring(subject8RodA, subject8RodB, SUBJECT8_HIGH_RING_CENTER_HEIGHT)
+    addSubject8Ring(subject8RodB, subject8RodC, SUBJECT8_LOW_RING_CENTER_HEIGHT)
+  }
+
   disposers.push(() => {
     rodGeometry.dispose()
     subject3RingGeometry.dispose()
     subject4RingGeometry.dispose()
     subject7RingGeometry.dispose()
+    subject8RingGeometry.dispose()
     rodMaterial.dispose()
     crossbarMaterial.dispose()
     ringMaterial.dispose()

@@ -7,6 +7,7 @@ import { checkSubject3PassThroughVerticalRing, checkSubject4PassThroughHorizonta
 import { checkSubject5FigureEightAroundVerticalRods } from './subject5Issues'
 import { checkSubject6VerticalFigureEightAroundCrossbars } from './subject6Issues'
 import { checkSubject7PassThreeRingsWithColorChanges } from './subject7Issues'
+import { checkSubject8PassHighLowRings } from './subject8Issues'
 import type { XYZ } from './trajectoryUtils'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
@@ -221,6 +222,7 @@ export const buildTrajectoryIssues = (
   const [subject5RodA, subject5RodB] = rodConfig.subject5
   const [subject6RodA, subject6RodB, subject6RodC, subject6RodD] = rodConfig.subject6
   const [subject7RodA, subject7RodB] = rodConfig.subject7
+  const [subject8RodA, subject8RodB, subject8RodC] = rodConfig.subject8
 
   if (subject1 && hasFiniteXY(subject1)) {
     const subject1Result = checkSubject1ClosedLoopUnder150(subject1, startPos, blocks)
@@ -351,6 +353,28 @@ export const buildTrajectoryIssues = (
       issues.push({
         key: 'subject7-no-path',
         message: '科目⑦变色穿圈未完成：未检测到从最低圈到最高圈上方的连续穿圈路径',
+      })
+    }
+  }
+
+  if (
+    subject8RodA &&
+    subject8RodB &&
+    subject8RodC &&
+    hasFiniteXY(subject8RodA) &&
+    hasFiniteXY(subject8RodB) &&
+    hasFiniteXY(subject8RodC)
+  ) {
+    const subject8Result = checkSubject8PassHighLowRings(subject8RodA, subject8RodB, subject8RodC, startPos, blocks)
+    if (subject8Result === 'high-ring-not-descending') {
+      issues.push({
+        key: 'subject8-high-ring-not-descending',
+        message: '科目⑧穿高低圈未完成：高圈需从高到低穿越',
+      })
+    } else if (subject8Result === 'low-ring-not-ascending') {
+      issues.push({
+        key: 'subject8-low-ring-not-ascending',
+        message: '科目⑧穿高低圈未完成：低圈需从低到高穿越',
       })
     }
   }
