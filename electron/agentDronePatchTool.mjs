@@ -64,6 +64,21 @@ const buildBlock = (draft, usedIds) => {
   }
 }
 
+const buildBlockList = (drafts, usedIds) => {
+  if (!Array.isArray(drafts) || drafts.length === 0) {
+    return { error: 'blocks 不能为空数组' }
+  }
+  const blocks = []
+  for (const draft of drafts) {
+    const built = buildBlock(draft, usedIds)
+    if (built.error) {
+      return { error: built.error }
+    }
+    blocks.push(built.block)
+  }
+  return { blocks }
+}
+
 const indexById = (blocks, blockId) => blocks.findIndex((block) => block.id === blockId)
 
 const toInsertPosition = (index, total) => {
@@ -76,6 +91,23 @@ const toInsertPosition = (index, total) => {
     return 0
   }
   return Math.min(total, asInt - 1)
+}
+
+const toRange = (startIndex, endIndex, total) => {
+  const startRaw = Number(startIndex)
+  const endRaw = Number(endIndex)
+  if (!Number.isFinite(startRaw) || !Number.isFinite(endRaw)) {
+    return null
+  }
+  const start = Math.max(1, Math.floor(startRaw))
+  const end = Math.max(start, Math.floor(endRaw))
+  if (start > total) {
+    return null
+  }
+  return {
+    start: start - 1,
+    deleteCount: Math.min(total, end) - start + 1,
+  }
 }
 
 const applyPatchOperation = ({ operation, indexLabel, nextBlocks, usedIds, changes, errors }) => {
@@ -126,6 +158,40 @@ const applyPatchOperation = ({ operation, indexLabel, nextBlocks, usedIds, chang
     }
     nextBlocks.splice(at, 0, built.block)
     changes.push(`第 ${indexLabel} 项: 在第 ${at + 1} 位插入 ${built.block.id}`)
+    return
+  }
+
+  if (op === 'insert_blocks_at') {
+    const at = toInsertPosition(operation.index, nextBlocks.length)
+    if (at === null) {
+      errors.push(`第 ${indexLabel} 项 insert_blocks_at 失败: index 无效`)
+      return
+    }
+    const builtList = buildBlockList(operation.blocks, usedIds)
+    if (builtList.error) {
+      errors.push(`第 ${indexLabel} 项 insert_blocks_at 失败: ${builtList.error}`)
+      return
+    }
+    nextBlocks.splice(at, 0, ...builtList.blocks)
+    changes.push(`第 ${indexLabel} 项: 在第 ${at + 1} 位插入连续积木 ${builtList.blocks.length} 个`)
+    return
+  }
+
+  if (op === 'replace_range') {
+    const range = toRange(operation.startIndex, operation.endIndex, nextBlocks.length)
+    if (!range) {
+      errors.push(`第 ${indexLabel} 项 replace_range 失败: startIndex/endIndex 无效`)
+      return
+    }
+    const builtList = buildBlockList(operation.blocks, usedIds)
+    if (builtList.error) {
+      errors.push(`第 ${indexLabel} 项 replace_range 失败: ${builtList.error}`)
+      return
+    }
+    nextBlocks.splice(range.start, range.deleteCount, ...builtList.blocks)
+    changes.push(
+      `第 ${indexLabel} 项: 替换第 ${range.start + 1}~${range.start + range.deleteCount} 个积木为 ${builtList.blocks.length} 个连续积木`,
+    )
     return
   }
 
@@ -181,6 +247,63 @@ const applyPatchOperation = ({ operation, indexLabel, nextBlocks, usedIds, chang
   errors.push(`第 ${indexLabel} 项操作不支持: ${op || '(空)'}`)
 }
 
+const normalizeInsertOrder = (operations) => {
+  if (!Array.isArray(operations) || operations.length < 2) {
+    return operations
+  }
+
+  const normalized = []
+  let cursor = 0
+
+  while (cursor < operations.length) {
+    const current = operations[cursor]
+    if (!current || typeof current !== 'object' || current.op !== 'insert') {
+      normalized.push(current)
+      cursor += 1
+      continue
+    }
+
+    const startIndex = Number(current.index)
+    if (!Number.isFinite(startIndex)) {
+      normalized.push(current)
+      cursor += 1
+      continue
+    }
+
+    const batch = [current]
+    let nextCursor = cursor + 1
+    while (nextCursor < operations.length) {
+      const next = operations[nextCursor]
+      if (!next || typeof next !== 'object' || next.op !== 'insert') {
+        break
+      }
+      const nextIndex = Number(next.index)
+      if (!Number.isFinite(nextIndex) || Math.floor(nextIndex) !== Math.floor(startIndex)) {
+        break
+      }
+      batch.push(next)
+      nextCursor += 1
+    }
+
+    if (batch.length === 1) {
+      normalized.push(current)
+      cursor = nextCursor
+      continue
+    }
+
+    // Preserve the model-declared order when multiple inserts target the same index.
+    batch.forEach((item, offset) => {
+      normalized.push({
+        ...item,
+        index: Math.floor(startIndex) + offset,
+      })
+    })
+    cursor = nextCursor
+  }
+
+  return normalized
+}
+
 export const PATCH_DRONE_PROGRAM_TOOL_NAME = 'PatchDroneProgram'
 
 export const PATCH_DRONE_PROGRAM_PROPERTIES = {
@@ -188,7 +311,8 @@ export const PATCH_DRONE_PROGRAM_PROPERTIES = {
   droneName: { type: 'string', description: '无人机名称（可能重复）。' },
   operations: {
     type: 'array',
-    description: '差量操作数组。支持 append_block / insert_after / insert / update_fields / delete_block / move_block。',
+    description:
+      '差量操作数组。支持 append_block / insert_after / insert / insert_blocks_at / replace_range / update_fields / delete_block / move_block。',
     items: { type: 'object' },
   },
 }
@@ -208,7 +332,8 @@ export const patchDroneProgram = ({ project, rawArguments, droneId, droneName, c
 
   const targetProgram = candidates[0]
   const args = parseObjectArgs(rawArguments)
-  const operations = Array.isArray(args.operations) ? args.operations : []
+  const rawOperations = Array.isArray(args.operations) ? args.operations : []
+  const operations = normalizeInsertOrder(rawOperations)
   if (!operations.length) {
     return {
       output: stringify({
@@ -217,14 +342,27 @@ export const patchDroneProgram = ({ project, rawArguments, droneId, droneName, c
         error: 'operations 不能为空。',
         mustRetry: true,
         retryGuide: '请先调用 GetDroneBlocks 获取当前积木，再基于用户目标构造 operations 后重新调用 PatchDroneProgram。',
-        supportedOps: ['append_block', 'insert_after', 'insert', 'update_fields', 'delete_block', 'move_block'],
+        supportedOps: [
+          'append_block',
+          'insert_after',
+          'insert',
+          'insert_blocks_at',
+          'replace_range',
+          'update_fields',
+          'delete_block',
+          'move_block',
+        ],
         example: {
           droneId: droneId || targetProgram.drone.id,
           operations: [
             {
-              op: 'update_fields',
-              blockId: '示例积木ID',
-              fields: { X: '100', Y: '100' },
+              op: 'replace_range',
+              startIndex: 8,
+              endIndex: 12,
+              blocks: [
+                { type: 'EazyFii_MoveToCoordAutoDelay', fields: { X: '120', Y: '120', Z: '100', time: '1200' } },
+                { type: 'Goertek_Turn', fields: { turnDirection: 'r', angle: '90' } },
+              ],
             },
           ],
         },
@@ -268,4 +406,3 @@ export const patchDroneProgram = ({ project, rawArguments, droneId, droneName, c
     nextProjectContext: project,
   }
 }
-
