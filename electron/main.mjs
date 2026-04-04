@@ -10,6 +10,38 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 const agentEnvFile = path.resolve(__dirname, '../.agent-env.json')
 const agentEnvStore = createAgentEnvStore(agentEnvFile)
+const trajectoryIssuesWaiters = new Map()
+
+ipcMain.on('agent:trajectory-issues:response', (event, payload) => {
+  const token = typeof payload?.token === 'string' ? payload.token : ''
+  if (!token) {
+    return
+  }
+  const waiter = trajectoryIssuesWaiters.get(token)
+  if (!waiter) {
+    return
+  }
+  if (event.sender.id !== waiter.senderId) {
+    return
+  }
+  clearTimeout(waiter.timeout)
+  trajectoryIssuesWaiters.delete(token)
+  waiter.resolve(payload?.trajectoryIssueContext)
+})
+
+const requestTrajectoryIssuesFromRenderer = (sender, requestId) => new Promise((resolve) => {
+  const token = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
+  const timeout = setTimeout(() => {
+    trajectoryIssuesWaiters.delete(token)
+    resolve(null)
+  }, 2000)
+  trajectoryIssuesWaiters.set(token, {
+    senderId: sender.id,
+    timeout,
+    resolve,
+  })
+  sender.send('agent:trajectory-issues:request', { token, requestId })
+})
 
 const collectTextFiles = async (rootDir, currentDir = rootDir, acc = []) => {
   const entries = await fs.readdir(currentDir, { withFileTypes: true })
@@ -154,6 +186,7 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
         projectContext,
         rodConfigContext,
         trajectoryIssueContext,
+        requestTrajectoryIssueContext: () => requestTrajectoryIssuesFromRenderer(_event.sender, requestId),
         onEvent: (event) => {
           _event.sender.send('agent:stream', {
             requestId,

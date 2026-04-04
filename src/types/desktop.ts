@@ -53,3 +53,12 @@ export type DesktopAgentStatusResult = AgentStatusResult
 export type DesktopAgentSetEnvPayload = AgentSetEnvPayload
 export type DesktopAgentEnvResult = AgentEnvResult
 export type DesktopAgentStreamEvent = AgentStreamEvent
+
+export type DesktopTrajectoryIssuesRequestPayload = {
+  token: string
+}
+
+export type DesktopTrajectoryIssuesResponsePayload = {
+  token: string
+  trajectoryIssueContext?: unknown
+}

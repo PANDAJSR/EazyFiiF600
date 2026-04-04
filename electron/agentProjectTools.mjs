@@ -238,6 +238,32 @@ const getTrajectoryIssuesDetailed = (projectContext) => {
   }
 }
 
+const withLatestTrajectoryIssues = async (projectContext, requestTrajectoryIssueContext) => {
+  if (!requestTrajectoryIssueContext) {
+    return projectContext
+  }
+  try {
+    const latest = await requestTrajectoryIssueContext()
+    if (!latest || typeof latest !== 'object') {
+      return projectContext
+    }
+    if (!projectContext || typeof projectContext !== 'object') {
+      return {
+        sourceName: '',
+        warnings: [],
+        programs: [],
+        trajectoryIssueContext: latest,
+      }
+    }
+    return {
+      ...projectContext,
+      trajectoryIssueContext: latest,
+    }
+  } catch {
+    return projectContext
+  }
+}
+
 const buildTrajectoryDebugSnapshot = (projectContext, rawArguments) => {
   const project = normalizeProjectContext(projectContext)
   if (!project) {
@@ -325,7 +351,12 @@ export const PROJECT_TOOLS_RESPONSES = [
   projectToolForResponses(PATCH_DRONE_PROGRAM_TOOL_NAME, '按差量操作编辑特定无人机程序并返回更新后的积木列表（JSON 输出）。', PATCH_DRONE_PROGRAM_PROPERTIES),
 ]
 
-export const executeProjectToolCall = ({ name, rawArguments, projectContext }) => {
+export const executeProjectToolCall = async ({
+  name,
+  rawArguments,
+  projectContext,
+  requestTrajectoryIssueContext,
+}) => {
   if (name === LIST_PROJECT_DRONES_TOOL_NAME) {
     return listProjectDrones(projectContext)
   }
@@ -339,7 +370,15 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
     return getBlockCatalog()
   }
   if (name === GET_TRAJECTORY_ISSUES_DETAILED_TOOL_NAME) {
-    return getTrajectoryIssuesDetailed(projectContext)
+    const refreshedProjectContext = await withLatestTrajectoryIssues(projectContext, requestTrajectoryIssueContext)
+    const result = getTrajectoryIssuesDetailed(refreshedProjectContext)
+    if (refreshedProjectContext && refreshedProjectContext !== projectContext) {
+      return {
+        ...result,
+        nextProjectContext: refreshedProjectContext,
+      }
+    }
+    return result
   }
   if (name === GET_TRAJECTORY_DEBUG_SNAPSHOT_TOOL_NAME) {
     return buildTrajectoryDebugSnapshot(projectContext, rawArguments)
@@ -370,11 +409,15 @@ export const executeProjectToolCall = ({ name, rawArguments, projectContext }) =
       candidates: matched.candidates,
     })
     if (patchResult?.nextProjectContext && projectContext && typeof projectContext === 'object') {
-      patchResult.nextProjectContext = {
+      const mergedProjectContext = {
         ...patchResult.nextProjectContext,
         rodConfig: projectContext.rodConfig,
         trajectoryIssueContext: projectContext.trajectoryIssueContext,
       }
+      patchResult.nextProjectContext = await withLatestTrajectoryIssues(
+        mergedProjectContext,
+        requestTrajectoryIssueContext,
+      )
     }
     return patchResult
   }

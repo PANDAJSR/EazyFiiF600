@@ -10,6 +10,12 @@ contextBridge.exposeInMainWorld('eazyFiiDesktop', {
   getAgentStatus: () => ipcRenderer.invoke('agent:get-status'),
   getAgentEnv: () => ipcRenderer.invoke('agent:get-env'),
   setAgentEnv: (payload) => ipcRenderer.invoke('agent:set-env', payload),
+  sendAgentTrajectoryIssuesResponse: (payload) => ipcRenderer.send('agent:trajectory-issues:response', payload),
+  onAgentTrajectoryIssuesRequest: (handler) => {
+    const listener = (_event, payload) => handler(payload)
+    ipcRenderer.on('agent:trajectory-issues:request', listener)
+    return () => ipcRenderer.removeListener('agent:trajectory-issues:request', listener)
+  },
   onAgentStream: (handler) => {
     const listener = (_event, payload) => handler(payload)
     ipcRenderer.on('agent:stream', listener)

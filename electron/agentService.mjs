@@ -248,6 +248,7 @@ export const chatWithAgent = async ({
   projectContext,
   rodConfigContext,
   trajectoryIssueContext,
+  requestTrajectoryIssueContext,
   onEvent,
 }) => {
   if (reset) {
@@ -328,6 +329,7 @@ export const chatWithAgent = async ({
         systemPrompt,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
+        requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
       })
@@ -361,6 +363,7 @@ export const chatWithAgent = async ({
         state,
         tools: CHAT_TOOLS,
         projectContext: state.projectContext,
+        requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
       })
@@ -404,6 +407,7 @@ export const chatWithAgent = async ({
         systemPrompt,
         tools: RESPONSES_TOOLS,
         projectContext: state.projectContext,
+        requestTrajectoryIssueContext,
         requireToolForMutation,
         onPhase: updateAgentPhase,
       })

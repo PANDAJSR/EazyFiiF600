@@ -5,6 +5,8 @@ import type {
   DesktopAgentStreamEvent,
   DesktopAgentSetEnvPayload,
   DesktopAgentStatusResult,
+  DesktopTrajectoryIssuesRequestPayload,
+  DesktopTrajectoryIssuesResponsePayload,
   DesktopOpenResult,
   DesktopReadTextFilePayload,
   DesktopWritePayload,
@@ -88,6 +90,24 @@ export const setAgentEnv = async (
     return null
   }
   return window.eazyFiiDesktop.setAgentEnv(payload)
+}
+
+export const sendAgentTrajectoryIssuesResponse = (
+  payload: DesktopTrajectoryIssuesResponsePayload,
+): void => {
+  if (!window.eazyFiiDesktop) {
+    return
+  }
+  window.eazyFiiDesktop.sendAgentTrajectoryIssuesResponse(payload)
+}
+
+export const onAgentTrajectoryIssuesRequest = (
+  handler: (payload: DesktopTrajectoryIssuesRequestPayload) => void,
+): (() => void) | null => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.onAgentTrajectoryIssuesRequest(handler)
 }
 
 export const onAgentStream = (

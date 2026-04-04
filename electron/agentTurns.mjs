@@ -56,6 +56,7 @@ export const runResponsesTurn = async ({
   systemPrompt,
   tools,
   projectContext,
+  requestTrajectoryIssueContext,
   requireToolForMutation,
   onPhase,
 }) => {
@@ -208,10 +209,11 @@ export const runResponsesTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
         })
-        const { output, nextProjectContext } = executeProjectToolCall({
+        const { output, nextProjectContext } = await executeProjectToolCall({
           name: call.name,
           rawArguments: call.arguments,
           projectContext,
+          requestTrajectoryIssueContext,
         })
         if (call.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
@@ -277,6 +279,7 @@ export const runChatTurn = async ({
   state,
   tools,
   projectContext,
+  requestTrajectoryIssueContext,
   requireToolForMutation,
   onPhase,
 }) => {
@@ -426,10 +429,11 @@ export const runChatTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(toolCall.function.arguments),
         })
-        const { output, nextProjectContext } = executeProjectToolCall({
+        const { output, nextProjectContext } = await executeProjectToolCall({
           name: toolCall.function.name,
           rawArguments: toolCall.function.arguments,
           projectContext,
+          requestTrajectoryIssueContext,
         })
         if (toolCall.function.name === 'PatchDroneProgram') {
           didPatchDroneProgram = true
