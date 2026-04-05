@@ -12,6 +12,7 @@
 - `20-subject-completion-rules.md`：完成科目相关判定与复检流程。
 - `30-programming-patterns.md`：编程策略与常用写法。
 - `40-drone-domain-basics.md`：飞机/道具/赛制基础知识。
+- `50-subject1-example.md`：科目1（绕竖杆）示例流程与积木字段示意。
 
 ## 推荐关键词
 - 编码：`PatchDroneProgram`、`op`、`fields`、`EazyFii_MoveToCoordAutoDelay`
