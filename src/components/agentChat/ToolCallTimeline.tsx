@@ -53,13 +53,17 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
       items={[{
         key: markerKey,
         label: (
-          <Space size={8} wrap>
-            <Tag color="blue">{marker.tool}</Tag>
-            <Tag color={tagColor}>{label}</Tag>
-            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, whiteSpace: 'nowrap' }}>
+            <Tag color="blue" style={{ marginInlineEnd: 0 }}>{marker.tool}</Tag>
+            <Tag color={tagColor} style={{ marginInlineEnd: 0 }}>{label}</Tag>
+            <Typography.Text
+              type="secondary"
+              ellipsis
+              style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            >
               {markerCommand(marker)}
             </Typography.Text>
-          </Space>
+          </div>
         ),
         children: (
           <Space direction="vertical" size={6} style={{ width: '100%' }}>
