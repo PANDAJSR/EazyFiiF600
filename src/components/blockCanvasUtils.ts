@@ -155,6 +155,16 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
         ],
       }
     case 'Goertek_Turn':
+      return {
+        title: '转动',
+        values: [
+          token('向'),
+          token(f.turnDirection ?? 'r', true, false, 'turnDirection', 'select', ['r', 'l']),
+          token('转'),
+          token(f.angle ?? '90', true, false, 'angle'),
+          token('°'),
+        ],
+      }
     case 'Goertek_TurnTo':
       return {
         title: '转向',
