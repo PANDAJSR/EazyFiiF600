@@ -3,6 +3,11 @@ import {
   PATCH_DRONE_PROGRAM_TOOL_NAME,
   patchDroneProgram,
 } from './agentDronePatchTool.mjs'
+import {
+  SEARCH_AGENT_KNOWLEDGE_TOOL_NAME,
+  SEARCH_AGENT_KNOWLEDGE_TOOL_PROPERTIES,
+  searchAgentKnowledge,
+} from './agentKnowledgeSearchTool.mjs'
 import { BLOCK_CATALOG_SNAPSHOT } from './agentBlockCatalogSnapshot.mjs'
 import { normalizeRodConfigSnapshot } from './agentRodConfigNormalize.mjs'
 import { buildTrajectoryDebugSnapshotPayload } from './agentTrajectoryDebugTool.mjs'
@@ -320,6 +325,7 @@ const projectToolForResponses = (name, description, properties = {}) => ({
 })
 
 export const PROJECT_TOOLS_CHAT = [
+  projectTool(SEARCH_AGENT_KNOWLEDGE_TOOL_NAME, '按关键词检索 agent-knowledge 目录中的无人机编程知识库（Markdown）。', SEARCH_AGENT_KNOWLEDGE_TOOL_PROPERTIES),
   projectTool(LIST_PROJECT_DRONES_TOOL_NAME, '读取当前 EazyFii 已打开工程中的无人机列表（JSON 输出）。'),
   projectTool(GET_DRONE_BLOCKS_TOOL_NAME, '按无人机 id 或名称读取该无人机的全部积木块（JSON 输出）。', {
     droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
@@ -336,6 +342,7 @@ export const PROJECT_TOOLS_CHAT = [
 ]
 
 export const PROJECT_TOOLS_RESPONSES = [
+  projectToolForResponses(SEARCH_AGENT_KNOWLEDGE_TOOL_NAME, '按关键词检索 agent-knowledge 目录中的无人机编程知识库（Markdown）。', SEARCH_AGENT_KNOWLEDGE_TOOL_PROPERTIES),
   projectToolForResponses(LIST_PROJECT_DRONES_TOOL_NAME, '读取当前 EazyFii 已打开工程中的无人机列表（JSON 输出）。'),
   projectToolForResponses(GET_DRONE_BLOCKS_TOOL_NAME, '按无人机 id 或名称读取该无人机的全部积木块（JSON 输出）。', {
     droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
@@ -357,6 +364,9 @@ export const executeProjectToolCall = async ({
   projectContext,
   requestTrajectoryIssueContext,
 }) => {
+  if (name === SEARCH_AGENT_KNOWLEDGE_TOOL_NAME) {
+    return searchAgentKnowledge(rawArguments)
+  }
   if (name === LIST_PROJECT_DRONES_TOOL_NAME) {
     return listProjectDrones(projectContext)
   }

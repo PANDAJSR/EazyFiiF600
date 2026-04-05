@@ -5,6 +5,7 @@ import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 100
 const PROJECT_TOOL_NAMES = new Set([
+  'SearchAgentKnowledge',
   'ListProjectDrones',
   'GetDroneBlocks',
   'GetRodConfig',
