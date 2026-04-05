@@ -53,7 +53,17 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
       items={[{
         key: markerKey,
         label: (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0, whiteSpace: 'nowrap' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 0,
+              width: '100%',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+            }}
+          >
             <Tag color="blue" style={{ marginInlineEnd: 0 }}>{marker.tool}</Tag>
             <Tag color={tagColor} style={{ marginInlineEnd: 0 }}>{label}</Tag>
             <Typography.Text
