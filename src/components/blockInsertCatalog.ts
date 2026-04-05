@@ -70,6 +70,12 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
     fields: { turnDirection: 'r', angle: '90' },
   },
   {
+    type: 'Goertek_Turn',
+    label: '转动（兼容）',
+    keywords: ['转向', '转动', 'turn', 'angle'],
+    fields: { turnDirection: 'r', angle: '90' },
+  },
+  {
     type: 'Goertek_LEDTurnOnAllSingleColor4',
     label: '设置电机灯光',
     keywords: ['灯光', 'led', '颜色', '电机'],
