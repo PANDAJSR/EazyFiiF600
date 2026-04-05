@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
-import AgentChatPanel from './components/AgentChatPanel'
+import AgentChatFloatingController from './components/AgentChatFloatingController'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
@@ -15,23 +15,17 @@ import usePathDrawingHotkey from './components/usePathDrawingHotkey'
 import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
-import {
-  isDesktopRuntime,
-  onAgentTrajectoryIssuesRequest,
-  sendAgentTrajectoryIssuesResponse,
-} from './utils/desktopBridge'
+import { isDesktopRuntime, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse } from './utils/desktopBridge'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
 import { buildTrajectoryIssueContext } from './components/trajectory/trajectoryIssueContext'
-
 type PendingFocusTarget = {
   blockId: string
   fieldKey?: string
   selectAll?: boolean
 }
-
 function App() {
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
@@ -55,10 +49,7 @@ function App() {
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
-  const trajectoryIssueContext = useMemo(
-    () => buildTrajectoryIssueContext(result, agentRodConfigContext),
-    [agentRodConfigContext, result],
-  )
+  const trajectoryIssueContext = useMemo(() => buildTrajectoryIssueContext(result, agentRodConfigContext), [agentRodConfigContext, result])
   const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
   const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
   const {
@@ -392,7 +383,7 @@ function App() {
         onCancel={() => setDroneDialogOpen(false)}
         onConfirm={handleConfirmDroneDialog}
       />
-      <AgentChatPanel
+      <AgentChatFloatingController
         projectContext={result}
         rodConfigContext={agentRodConfigContext}
         trajectoryIssueContext={trajectoryIssueContext}

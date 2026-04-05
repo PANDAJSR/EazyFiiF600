@@ -24,6 +24,7 @@ import {
 } from './agentChat/panelUtils'
 import ChatMessageList from './agentChat/ChatMessageList'
 import type { TrajectoryIssueContext } from './trajectory/trajectoryIssueContext'
+import useFloatingAgentPosition from './agentChat/useFloatingAgentPosition'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -40,6 +41,7 @@ type AgentChatPanelProps = {
   rodConfigContext?: unknown
   trajectoryIssueContext?: TrajectoryIssueContext
   onProjectContextPatched?: (next: ParseResult) => void
+  onClose?: () => void
 }
 
 const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<AgentStreamEvent, { type: 'tool-call' }>) => {
@@ -84,6 +86,7 @@ function AgentChatPanel({
   rodConfigContext,
   trajectoryIssueContext,
   onProjectContextPatched,
+  onClose,
 }: AgentChatPanelProps) {
   const sendIcon = <span aria-hidden style={{ fontSize: 16, lineHeight: 1 }}>▶</span>
   const stopIcon = <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>■</span>
@@ -100,6 +103,7 @@ function AgentChatPanel({
   const [envStoragePath, setEnvStoragePath] = useState<string>('')
   const [savingEnv, setSavingEnv] = useState(false)
   const [envFeedback, setEnvFeedback] = useState<string>('')
+  const { panelPosition, startDragPanel } = useFloatingAgentPosition()
   const activeRequestIdRef = useRef<string | null>(null)
   const activeAssistantMessageIdRef = useRef<string | null>(null)
 
@@ -121,6 +125,7 @@ function AgentChatPanel({
       setEnvStoragePath(typed.storagePath)
     })()
   }, [onProjectContextPatched])
+
 
   const appendMessage = (message: ChatMessage) => {
     setMessages((prev) => [...prev, message])
@@ -280,10 +285,32 @@ function AgentChatPanel({
   }
 
   return (
-    <section className="floating-agent-panel">
-      <header className="floating-agent-header">
+    <section
+      className="floating-agent-panel"
+      style={panelPosition
+        ? {
+            left: `${panelPosition.x}px`,
+            top: `${panelPosition.y}px`,
+            right: 'auto',
+            bottom: 'auto',
+          }
+        : undefined}
+    >
+      <header className="floating-agent-header" onPointerDown={(event) => startDragPanel(event, '.floating-agent-header-actions')}>
         <Typography.Text strong>Agent 对话</Typography.Text>
-        <Button onClick={() => void clearConversation()} disabled={sending}>重置</Button>
+        <Space className="floating-agent-header-actions" size={8} onPointerDown={(event) => event.stopPropagation()}>
+          <Button onClick={() => void clearConversation()} disabled={sending}>重置</Button>
+          <Button
+            className="floating-agent-close-btn"
+            type="text"
+            size="small"
+            shape="circle"
+            aria-label="关闭 Agent 对话窗口"
+            onClick={onClose}
+          >
+            ×
+          </Button>
+        </Space>
       </header>
 
       <div className="floating-agent-body">

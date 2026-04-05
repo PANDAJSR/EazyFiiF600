@@ -654,6 +654,19 @@
   padding: 10px 12px 8px;
   border-bottom: 1px solid #e2ecf9;
   background: linear-gradient(180deg, #f8fbff 0%, #ffffff 100%);
+  cursor: move;
+  user-select: none;
+}
+
+.floating-agent-header-actions {
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+}
+
+.floating-agent-close-btn {
+  font-size: 18px;
+  line-height: 1;
 }
 
 .floating-agent-body {
@@ -671,6 +684,19 @@
   gap: 8px;
 }
 
+.floating-agent-toggle-fab {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  z-index: 1002;
+  box-shadow: 0 8px 20px rgba(13, 58, 111, 0.14);
+}
+
+.agent-panel-dragging,
+.agent-panel-dragging * {
+  user-select: none !important;
+}
+
 @media (max-width: 900px) {
   .floating-trajectory-panel {
     width: calc(100vw - 20px) !important;
@@ -685,6 +711,11 @@
     bottom: 10px;
     width: auto;
     height: min(70vh, 640px);
+  }
+
+  .floating-agent-toggle-fab {
+    right: 10px;
+    top: 10px;
   }
 }
 
