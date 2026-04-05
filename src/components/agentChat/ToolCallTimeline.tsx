@@ -1,4 +1,5 @@
 import { Collapse, Space, Tag, Typography } from 'antd'
+import type { ReactNode } from 'react'
 import type { AgentToolName } from '../../types/agent'
 
 export type ToolCallBadge = {
@@ -32,6 +33,54 @@ const markerCommand = (marker: ToolCallBadge) => {
   return command.length > 120 ? `${command.slice(0, 120)}...` : command
 }
 
+const clampOffset = (offset: number, textLength: number) => {
+  if (!Number.isFinite(offset)) {
+    return 0
+  }
+  return Math.min(textLength, Math.max(0, Math.floor(offset)))
+}
+
+const renderMarker = (marker: ToolCallBadge, index: number) => {
+  const label = markerStatus(marker)
+  const tagColor = marker.phase === 'exec-end' ? (marker.granted === false ? 'error' : 'success') : 'processing'
+  const markerKey = `${marker.toolCallId}_${marker.toolIndex ?? index}`
+
+  return (
+    <Collapse
+      key={markerKey}
+      size="small"
+      ghost
+      items={[{
+        key: markerKey,
+        label: (
+          <Space size={8} wrap>
+            <Tag color="blue">{marker.tool}</Tag>
+            <Tag color={tagColor}>{label}</Tag>
+            <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
+              {markerCommand(marker)}
+            </Typography.Text>
+          </Space>
+        ),
+        children: (
+          <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <Typography.Text type="secondary">
+              调用位置: 第 {Math.max(0, marker.textOffset) + 1} 个字符
+            </Typography.Text>
+            <Typography.Paragraph code style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              {markerCommand(marker)}
+            </Typography.Paragraph>
+            {!!marker.resultPreview && (
+              <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+                {marker.resultPreview}
+              </Typography.Paragraph>
+            )}
+          </Space>
+        ),
+      }]}
+    />
+  )
+}
+
 export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProps) {
   if (!markers.length) {
     return (
@@ -48,51 +97,41 @@ export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProp
       return offsetA - offsetB
     }
     return (a.toolIndex ?? Number.MAX_SAFE_INTEGER) - (b.toolIndex ?? Number.MAX_SAFE_INTEGER)
+    })
+
+  const timelineNodes: ReactNode[] = []
+  let cursor = 0
+  sorted.forEach((marker, index) => {
+    const markerOffset = clampOffset(marker.textOffset, text.length)
+    if (markerOffset > cursor) {
+      const segment = text.slice(cursor, markerOffset)
+      if (segment) {
+        timelineNodes.push(
+          <Typography.Paragraph
+            key={`text_${cursor}_${markerOffset}_${index}`}
+            style={{ margin: 0, whiteSpace: 'pre-wrap' }}
+          >
+            {segment}
+          </Typography.Paragraph>,
+        )
+      }
+    }
+    timelineNodes.push(renderMarker(marker, index))
+    cursor = markerOffset
   })
+
+  if (cursor < text.length || timelineNodes.length === 0) {
+    const tailText = text.slice(cursor)
+    timelineNodes.push(
+      <Typography.Paragraph key={`text_tail_${cursor}`} style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+        {tailText}
+      </Typography.Paragraph>,
+    )
+  }
 
   return (
     <Space direction="vertical" size={8} style={{ width: '100%', marginTop: 8 }}>
-      <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-        {text}
-      </Typography.Paragraph>
-      {sorted.map((marker, index) => {
-        const label = markerStatus(marker)
-        const tagColor = marker.phase === 'exec-end' ? (marker.granted === false ? 'error' : 'success') : 'processing'
-        return (
-          <Collapse
-            key={`${marker.toolCallId}_${marker.toolIndex ?? index}`}
-            size="small"
-            ghost
-            items={[{
-              key: `${marker.toolCallId}_${marker.toolIndex ?? index}`,
-              label: (
-                <Space size={8} wrap>
-                  <Tag color="blue">{marker.tool}</Tag>
-                  <Tag color={tagColor}>{label}</Tag>
-                  <Typography.Text type="secondary" ellipsis style={{ maxWidth: 260 }}>
-                    {markerCommand(marker)}
-                  </Typography.Text>
-                </Space>
-              ),
-              children: (
-                <Space direction="vertical" size={6} style={{ width: '100%' }}>
-                  <Typography.Text type="secondary">
-                    调用位置: 第 {Math.max(0, marker.textOffset) + 1} 个字符
-                  </Typography.Text>
-                  <Typography.Paragraph code style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                    {markerCommand(marker)}
-                  </Typography.Paragraph>
-                  {!!marker.resultPreview && (
-                    <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-                      {marker.resultPreview}
-                    </Typography.Paragraph>
-                  )}
-                </Space>
-              ),
-            }]}
-          />
-        )
-      })}
+      {timelineNodes}
     </Space>
   )
 }
