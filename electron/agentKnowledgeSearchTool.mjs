@@ -70,6 +70,45 @@ const normalizeKeywords = (value) => {
   return unique.slice(0, 20)
 }
 
+const KEYWORD_ALIAS_GROUPS = [
+  ['科目一', '科目1', 'subject1'],
+  ['科目二', '科目2', 'subject2'],
+  ['科目三', '科目3', 'subject3'],
+  ['科目四', '科目4', 'subject4'],
+  ['科目五', '科目5', 'subject5'],
+  ['科目六', '科目6', 'subject6'],
+  ['科目七', '科目7', 'subject7'],
+  ['科目八', '科目8', 'subject8'],
+  ['科目九', '科目9', 'subject9'],
+  ['科目十', '科目10', 'subject10'],
+]
+
+const expandKeywordAliases = (keywords) => {
+  const expanded = [...keywords]
+  const seen = new Set(expanded.map((item) => item.toLowerCase()))
+
+  for (const keyword of keywords) {
+    const lowerKeyword = keyword.toLowerCase()
+    const group = KEYWORD_ALIAS_GROUPS.find((aliases) => aliases.some((alias) => alias.toLowerCase() === lowerKeyword))
+    if (!group) {
+      continue
+    }
+    for (const alias of group) {
+      const aliasKey = alias.toLowerCase()
+      if (seen.has(aliasKey)) {
+        continue
+      }
+      seen.add(aliasKey)
+      expanded.push(alias)
+      if (expanded.length >= 40) {
+        return expanded
+      }
+    }
+  }
+
+  return expanded
+}
+
 const getMaxResults = (value) => {
   const num = Number(value)
   if (!Number.isFinite(num) || num <= 0) {
@@ -217,7 +256,7 @@ export const searchAgentKnowledge = async (rawArguments) => {
   const query = typeof args.query === 'string' ? args.query.trim() : ''
   const queryKeywords = normalizeKeywords(query)
   const explicitKeywords = normalizeKeywords(args.keywords)
-  const keywords = normalizeKeywords([...explicitKeywords, ...queryKeywords])
+  const keywords = expandKeywordAliases(normalizeKeywords([...explicitKeywords, ...queryKeywords]))
   const maxResults = getMaxResults(args.maxResults)
 
   const docs = await listKnowledgeFiles()
