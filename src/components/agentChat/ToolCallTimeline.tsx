@@ -66,13 +66,19 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
           >
             <Tag color="blue" style={{ marginInlineEnd: 0 }}>{marker.tool}</Tag>
             <Tag color={tagColor} style={{ marginInlineEnd: 0 }}>{label}</Tag>
-            <Typography.Text
-              type="secondary"
-              ellipsis
-              style={{ flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}
+            <span
+              style={{
+                flex: 1,
+                minWidth: 0,
+                display: 'block',
+                color: 'rgba(0, 0, 0, 0.45)',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+              }}
             >
               {markerCommand(marker)}
-            </Typography.Text>
+            </span>
           </div>
         ),
         children: (
