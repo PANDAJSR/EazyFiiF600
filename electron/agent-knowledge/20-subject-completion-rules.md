@@ -16,6 +16,12 @@
 - 在封闭绕行段的每段平移前，必须先有 `Goertek_TurnTo`（优先）或 `Goertek_Turn`（兼容）。
 - 进场段、离场段（封闭图形外）默认不强制机头对齐飞行方向，除非用户明确要求。
 
+## 科目1术语硬定义（防混淆）
+- `转向`：仅指 `Goertek_TurnTo`，属于**绝对朝向控制**；`angle` 是世界坐标系中的目标朝向角。
+- `转动`：仅指 `Goertek_Turn`，属于**相对旋转控制**；`angle` 是相对当前机头的旋转量。
+- 禁止把“转向”和“转动”当同义词混用；描述动作时必须带上积木名（`TurnTo` 或 `Turn`）。
+- 科目1默认优先用 `Goertek_TurnTo`；只有在明确需要相对旋转时才使用 `Goertek_Turn`。
+
 ## 科目1角度与方向计算
 - 目标朝向：`targetDeg = normalizeDeg(atan2(ΔX, ΔY) * 180 / π)`，区间 `[0,360)`。
 - 默认初始机头朝向：`0°`（朝 `+Y`）。
@@ -23,6 +29,9 @@
 - `Goertek_Turn`：
   - `turnDirection='r'` => `heading = heading + angle`
   - `turnDirection='l'` => `heading = heading - angle`
+- 选择策略：
+  - 已知目标朝向 `targetDeg` 时，优先 `Goertek_TurnTo(angle=targetDeg)`。
+  - 仅在必须使用 `Goertek_Turn` 时，才按当前朝向计算相对角。
 - 最小相对角选择：
   - `cw=(target-current+360)%360`
   - `ccw=(current-target+360)%360`

@@ -13,13 +13,13 @@
 4. 延时 `100 ms`
 5. 智能平移到 `(120,120,100)`（前往杆子左下角，可根据实际路线情况调整，高度 `<150` 即可）
 6. 智能平移到 `(120,200,100)`（杆子左上角）
-7. 转动：右 `90°`（此处属于封闭绕行段，按科目1绕行段规则把机头朝向下一段飞行方向）
-8. 延时 `1000 ms`（转动是异步的，按飞机角速度建议延时 1 秒）
+7. 转向（`Goertek_TurnTo`）：到绝对朝向 `90°`（从 `(120,200)` 飞往 `(200,200)`，目标朝向为 `+X`）
+8. 延时 `1000 ms`（转向是异步的，按飞机角速度建议延时 1 秒）
 9. 智能平移到 `(200,200,100)`（杆子右上角）
-10. 转动：右 `90°`
+10. 转向（`Goertek_TurnTo`）：到绝对朝向 `180°`（下一段朝向 `-Y`）
 11. 延时 `1000 ms`
 12. 智能平移到 `(200,120,100)`（杆子右下角）
-13. 转动：右 `90°`
+13. 转向（`Goertek_TurnTo`）：到绝对朝向 `270°`（下一段朝向 `-X`）
 14. 延时 `1000 ms`
 15. 智能平移到 `(120,120,100)`（杆子左下角，完成科目1封闭图形）
 16. 离开科目1区域（离场段位于封闭图形外，默认不强制机头朝向）
@@ -31,13 +31,13 @@
 - `block_delay`：`{ time: "100" }`
 - `EazyFii_MoveToCoordAutoDelay`：`{ X: "120", Y: "120", Z: "100", time: "800" }`
 - `EazyFii_MoveToCoordAutoDelay`：`{ X: "120", Y: "200", Z: "100", time: "800" }`
-- `Goertek_Turn`：`{ turnDirection: "r", angle: "90" }`
+- `Goertek_TurnTo`：`{ angle: "90" }`
 - `block_delay`：`{ time: "1000" }`
 - `EazyFii_MoveToCoordAutoDelay`：`{ X: "200", Y: "200", Z: "100", time: "800" }`
-- `Goertek_Turn`：`{ turnDirection: "r", angle: "90" }`
+- `Goertek_TurnTo`：`{ angle: "180" }`
 - `block_delay`：`{ time: "1000" }`
 - `EazyFii_MoveToCoordAutoDelay`：`{ X: "200", Y: "120", Z: "100", time: "800" }`
-- `Goertek_Turn`：`{ turnDirection: "r", angle: "90" }`
+- `Goertek_TurnTo`：`{ angle: "270" }`
 - `block_delay`：`{ time: "1000" }`
 - `EazyFii_MoveToCoordAutoDelay`：`{ X: "120", Y: "120", Z: "100", time: "800" }`
 
