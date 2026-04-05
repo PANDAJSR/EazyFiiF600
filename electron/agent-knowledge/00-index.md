@@ -13,6 +13,7 @@
 - `30-programming-patterns.md`：编程策略与常用写法。
 - `40-drone-domain-basics.md`：飞机/道具/赛制基础知识。
 - `50-subject1-example.md`：科目1（绕竖杆）示例流程与积木字段示意。
+- `51-subject2-example.md`：科目2（绕横杆）示例流程与积木字段示意。
 - `60-subject-obstacles-3d.md`：各科目杆件/圈件在 3D 空间中的结构描述。
 
 ## 推荐关键词
