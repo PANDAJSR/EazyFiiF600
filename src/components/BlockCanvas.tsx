@@ -299,7 +299,7 @@ function BlockCanvas({
 
     const cardNodeWithMenu =
       onDuplicateBlock || onDeleteBlock || onSplitAutoDelayBlock ? (
-        <Dropdown trigger={['contextMenu']} menu={{ items: menuItems, onClick: handleCardMenuClick }}>
+        <Dropdown key={block.id} trigger={['contextMenu']} menu={{ items: menuItems, onClick: handleCardMenuClick }}>
           {cardNode}
         </Dropdown>
       ) : (

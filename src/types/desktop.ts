@@ -63,3 +63,36 @@ export type DesktopTrajectoryIssuesResponsePayload = {
   token: string
   trajectoryIssueContext?: unknown
 }
+
+export type DesktopTerminalCreatePayload = {
+  id: string
+  cols: number
+  rows: number
+}
+
+export type DesktopTerminalWritePayload = {
+  id: string
+  data: string
+}
+
+export type DesktopTerminalResizePayload = {
+  id: string
+  cols: number
+  rows: number
+}
+
+export type DesktopTerminalDestroyPayload = {
+  id: string
+}
+
+export type DesktopTerminalDataEvent = {
+  id: string
+  data: string
+}
+
+export type DesktopTerminalExitEvent = {
+  id: string
+  exitCode: number
+}
+
+export type DesktopTerminalResult = { ok: true } | { ok: false; error: string }

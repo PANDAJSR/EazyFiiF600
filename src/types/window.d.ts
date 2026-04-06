@@ -15,6 +15,13 @@ import type {
   DesktopWriteResult,
   DesktopWriteTextFilePayload,
   DesktopWriteTextFileResult,
+  DesktopTerminalCreatePayload,
+  DesktopTerminalWritePayload,
+  DesktopTerminalResizePayload,
+  DesktopTerminalDestroyPayload,
+  DesktopTerminalDataEvent,
+  DesktopTerminalExitEvent,
+  DesktopTerminalResult,
 } from './desktop'
 
 type DesktopApi = {
@@ -31,6 +38,12 @@ type DesktopApi = {
   sendAgentTrajectoryIssuesResponse: (payload: DesktopTrajectoryIssuesResponsePayload) => void
   onAgentTrajectoryIssuesRequest: (handler: (payload: DesktopTrajectoryIssuesRequestPayload) => void) => () => void
   onAgentStream: (handler: (event: DesktopAgentStreamEvent) => void) => () => void
+  terminalCreate: (payload: DesktopTerminalCreatePayload) => Promise<DesktopTerminalResult>
+  terminalWrite: (payload: DesktopTerminalWritePayload) => Promise<DesktopTerminalResult>
+  terminalResize: (payload: DesktopTerminalResizePayload) => Promise<DesktopTerminalResult>
+  terminalDestroy: (payload: DesktopTerminalDestroyPayload) => Promise<DesktopTerminalResult>
+  onTerminalData: (handler: (event: DesktopTerminalDataEvent) => void) => () => void
+  onTerminalExit: (handler: (event: DesktopTerminalExitEvent) => void) => () => void
 }
 
 declare global {
