@@ -4,6 +4,7 @@ import { extractResponseText, safeToolArgsPreview } from './agentResponseUtils.m
 import { executeProjectToolCall } from './agentProjectTools.mjs'
 
 const MAX_TOOL_ROUNDS = 100
+const MAX_FORCED_MUTATION_RETRIES = 2
 const PROJECT_TOOL_NAMES = new Set([
   'SearchAgentKnowledge',
   'ListProjectDrones',
@@ -124,7 +125,6 @@ export const runResponsesTurn = async ({
   let input = userInput
   let didPatchDroneProgram = false
   let forcedMutationRetryCount = 0
-  let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     ensureNotAborted()
@@ -146,6 +146,7 @@ export const runResponsesTurn = async ({
     })
 
     let response = null
+    let roundAnswer = ''
     let reasoningEventCount = 0
     const streamEventTypeCounts = new Map()
     for await (const event of stream) {
@@ -163,7 +164,7 @@ export const runResponsesTurn = async ({
         })
       }
       if (event.type === 'response.output_text.delta' && event.delta) {
-        lastAnswer += event.delta
+        roundAnswer += event.delta
         onEvent?.({ type: 'text-delta', delta: event.delta })
       }
       const reasoningDelta = readReasoningDelta(event)
@@ -173,7 +174,7 @@ export const runResponsesTurn = async ({
           type: 'reasoning-delta',
           blockId: readReasoningBlockId(event),
           delta: reasoningDelta,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
         })
       }
       if (event.type === 'response.completed') {
@@ -195,11 +196,14 @@ export const runResponsesTurn = async ({
     }
 
     state.previousResponseId = response.id
-    if (!lastAnswer) {
+    if (!roundAnswer) {
       const answer = extractResponseText(response)
       if (answer) {
-        lastAnswer = answer
+        roundAnswer = answer
       }
+    }
+    if (roundAnswer) {
+      lastAnswer = roundAnswer
     }
 
     const calls = []
@@ -210,7 +214,7 @@ export const runResponsesTurn = async ({
           phase: 'model',
           tool: item.name,
           toolCallId: item.call_id,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
           commandPreview: safeToolArgsPreview(item.arguments),
         })
         calls.push({
@@ -225,20 +229,11 @@ export const runResponsesTurn = async ({
       round: round + 1,
       responseId: response.id,
       toolCalls: calls.length,
-      answerChars: lastAnswer.length,
+      answerChars: roundAnswer.length,
     })
 
     if (calls.length === 0) {
-      const promisedContinuation = hasContinuationPromise(lastAnswer)
-      if (promisedContinuation && forcedContinuationRetryCount < 2) {
-        forcedContinuationRetryCount += 1
-        input = '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。'
-        continue
-      }
-      if (promisedContinuation) {
-        state.pendingMutation = true
-      }
-      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_FORCED_MUTATION_RETRIES) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][responses] no tool call for mutation request, forcing retry', {
           requestId,
@@ -247,6 +242,15 @@ export const runResponsesTurn = async ({
         })
         input = '这是写入请求。你必须调用 PatchDroneProgram 执行真实修改，不要只回答方案。先调用工具，再汇报结果。'
         continue
+      }
+      if (requireToolForMutation && !didPatchDroneProgram) {
+        throw new Error('模型未调用 PatchDroneProgram，写入请求未执行。')
+      }
+      if (hasContinuationPromise(lastAnswer)) {
+        console.warn('[agent][turns][responses] continuation promise without tool call', {
+          requestId,
+          round: round + 1,
+        })
       }
       console.info('[agent][turns][responses] end with no tool calls', { requestId, round: round + 1 })
       state.messages.push({ role: 'assistant', content: lastAnswer || '' })
@@ -269,7 +273,7 @@ export const runResponsesTurn = async ({
           phase: 'exec-start',
           tool: 'Bash',
           toolCallId: call.callId,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
         })
 
@@ -287,7 +291,7 @@ export const runResponsesTurn = async ({
           phase: 'exec-end',
           tool: 'Bash',
           toolCallId: call.callId,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
           granted,
           resultPreview: output,
@@ -307,7 +311,7 @@ export const runResponsesTurn = async ({
           phase: 'exec-start',
           tool: call.name,
           toolCallId: call.callId,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
         })
         const { output, nextProjectContext } = await executeProjectToolCall({
@@ -336,7 +340,7 @@ export const runResponsesTurn = async ({
           phase: 'exec-end',
           tool: call.name,
           toolCallId: call.callId,
-          textOffset: lastAnswer.length,
+          textOffset: roundAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
           granted: true,
           resultPreview: output,
@@ -400,7 +404,6 @@ export const runChatTurn = async ({
   let lastAnswer = ''
   let didPatchDroneProgram = false
   let forcedMutationRetryCount = 0
-  let forcedContinuationRetryCount = 0
 
   for (let round = 0; round < MAX_TOOL_ROUNDS; round += 1) {
     ensureNotAborted()
@@ -445,19 +448,7 @@ export const runChatTurn = async ({
       answerChars: lastAnswer.length,
     })
     if (toolCalls.length === 0) {
-      const promisedContinuation = hasContinuationPromise(lastAnswer)
-      if (promisedContinuation && forcedContinuationRetryCount < 2) {
-        forcedContinuationRetryCount += 1
-        state.messages.push({
-          role: 'user',
-          content: '你上一条回复承诺会继续执行，但还没有发起工具调用。请不要结束，立即调用下一步所需工具并继续。',
-        })
-        continue
-      }
-      if (promisedContinuation) {
-        state.pendingMutation = true
-      }
-      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_TOOL_ROUNDS - 1) {
+      if (requireToolForMutation && !didPatchDroneProgram && forcedMutationRetryCount < MAX_FORCED_MUTATION_RETRIES) {
         forcedMutationRetryCount += 1
         console.warn('[agent][turns][chat] no tool call for mutation request, forcing retry', {
           requestId,
@@ -469,6 +460,15 @@ export const runChatTurn = async ({
           content: '这是写入请求。你必须调用 PatchDroneProgram 执行真实修改，不要只回答方案。先调用工具，再汇报结果。',
         })
         continue
+      }
+      if (requireToolForMutation && !didPatchDroneProgram) {
+        throw new Error('模型未调用 PatchDroneProgram，写入请求未执行。')
+      }
+      if (hasContinuationPromise(lastAnswer)) {
+        console.warn('[agent][turns][chat] continuation promise without tool call', {
+          requestId,
+          round: round + 1,
+        })
       }
       console.info('[agent][turns][chat] end with no tool calls', { requestId, round: round + 1 })
       return lastAnswer
