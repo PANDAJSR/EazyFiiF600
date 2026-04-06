@@ -88,7 +88,7 @@ export const executeBashWithPolicy = async ({
     command,
     timeoutSec,
     granted,
-    resultPreview: output.slice(0, 180),
+    resultPreview: output,
   })
 
   return { output, granted }

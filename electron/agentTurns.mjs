@@ -181,7 +181,7 @@ export const runResponsesTurn = async ({
           tool: 'Bash',
           toolCallId: call.callId,
           textOffset: lastAnswer.length,
-          commandPreview: args.command,
+          commandPreview: safeToolArgsPreview(call.arguments),
         })
 
         const { output, granted } = await executeBashWithPolicy({
@@ -199,9 +199,9 @@ export const runResponsesTurn = async ({
           tool: 'Bash',
           toolCallId: call.callId,
           textOffset: lastAnswer.length,
-          commandPreview: args.command,
+          commandPreview: safeToolArgsPreview(call.arguments),
           granted,
-          resultPreview: output.slice(0, 160),
+          resultPreview: output,
         })
 
         outputs.push({
@@ -250,7 +250,7 @@ export const runResponsesTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(call.arguments),
           granted: true,
-          resultPreview: output.slice(0, 160),
+          resultPreview: output,
         })
         outputs.push({
           type: 'function_call_output',
@@ -407,7 +407,7 @@ export const runChatTurn = async ({
           tool: 'Bash',
           toolCallId: toolCall.id,
           textOffset: lastAnswer.length,
-          commandPreview: args.command,
+          commandPreview: safeToolArgsPreview(toolCall.function.arguments),
         })
 
         const { output, granted } = await executeBashWithPolicy({
@@ -425,9 +425,9 @@ export const runChatTurn = async ({
           tool: 'Bash',
           toolCallId: toolCall.id,
           textOffset: lastAnswer.length,
-          commandPreview: args.command,
+          commandPreview: safeToolArgsPreview(toolCall.function.arguments),
           granted,
-          resultPreview: output.slice(0, 160),
+          resultPreview: output,
         })
 
         state.messages.push({
@@ -482,7 +482,7 @@ export const runChatTurn = async ({
           textOffset: lastAnswer.length,
           commandPreview: safeToolArgsPreview(toolCall.function.arguments),
           granted: true,
-          resultPreview: output.slice(0, 160),
+          resultPreview: output,
         })
         state.messages.push({
           role: 'tool',

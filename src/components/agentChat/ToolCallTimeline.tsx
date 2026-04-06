@@ -30,7 +30,7 @@ const markerCommand = (marker: ToolCallBadge) => {
   if (!command) {
     return '(参数解析中...)'
   }
-  return command.length > 120 ? `${command.slice(0, 120)}...` : command
+  return command
 }
 
 const clampOffset = (offset: number, textLength: number) => {
@@ -73,11 +73,15 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
             <Typography.Text type="secondary">
               调用位置: 第 {Math.max(0, marker.textOffset) + 1} 个字符
             </Typography.Text>
+            <Typography.Text type="secondary">调用参数:</Typography.Text>
             <Typography.Paragraph code style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
               {markerCommand(marker)}
             </Typography.Paragraph>
             {!!marker.resultPreview && (
-              <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              <Typography.Text type="secondary">工具返回:</Typography.Text>
+            )}
+            {!!marker.resultPreview && (
+              <Typography.Paragraph code style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
                 {marker.resultPreview}
               </Typography.Paragraph>
             )}

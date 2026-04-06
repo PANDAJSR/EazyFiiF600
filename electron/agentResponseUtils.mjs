@@ -47,9 +47,14 @@ export const safeToolArgsPreview = (rawArgs) => {
   if (!trimmed) {
     return ''
   }
-  const command = safeCommandPreview(trimmed)
-  if (command) {
-    return command
+  try {
+    const parsed = JSON.parse(trimmed)
+    return JSON.stringify(parsed, null, 2)
+  } catch {
+    const command = safeCommandPreview(trimmed)
+    if (command) {
+      return command
+    }
+    return trimmed
   }
-  return trimmed.length > 180 ? `${trimmed.slice(0, 180)}...` : trimmed
 }
