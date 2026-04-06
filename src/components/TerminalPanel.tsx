@@ -43,7 +43,9 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
     fitAddonRef.current = fitAddon
     term.loadAddon(fitAddon)
     term.open(terminalRef.current)
-    fitAddon.fit()
+    requestAnimationFrame(() => {
+      fitAddon.fit()
+    })
 
     terminalInstanceRef.current = term
 
