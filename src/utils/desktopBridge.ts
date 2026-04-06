@@ -13,6 +13,13 @@ import type {
   DesktopWritePayload,
   DesktopWriteResult,
   DesktopWriteTextFilePayload,
+  DesktopTerminalCreatePayload,
+  DesktopTerminalWritePayload,
+  DesktopTerminalResizePayload,
+  DesktopTerminalDestroyPayload,
+  DesktopTerminalDataEvent,
+  DesktopTerminalExitEvent,
+  DesktopTerminalResult,
 } from '../types/desktop'
 
 export const isDesktopRuntime = () => Boolean(window.eazyFiiDesktop)
@@ -125,4 +132,58 @@ export const onAgentStream = (
     return null
   }
   return window.eazyFiiDesktop.onAgentStream(handler)
+}
+
+export const terminalCreate = async (
+  payload: DesktopTerminalCreatePayload,
+): Promise<DesktopTerminalResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.terminalCreate(payload)
+}
+
+export const terminalWrite = async (
+  payload: DesktopTerminalWritePayload,
+): Promise<DesktopTerminalResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.terminalWrite(payload)
+}
+
+export const terminalResize = async (
+  payload: DesktopTerminalResizePayload,
+): Promise<DesktopTerminalResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.terminalResize(payload)
+}
+
+export const terminalDestroy = async (
+  payload: DesktopTerminalDestroyPayload,
+): Promise<DesktopTerminalResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.terminalDestroy(payload)
+}
+
+export const onTerminalData = (
+  handler: (event: DesktopTerminalDataEvent) => void,
+): (() => void) | null => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.onTerminalData(handler)
+}
+
+export const onTerminalExit = (
+  handler: (event: DesktopTerminalExitEvent) => void,
+): (() => void) | null => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.onTerminalExit(handler)
 }

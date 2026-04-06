@@ -5,6 +5,14 @@ import { existsSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { chatWithAgent, getAgentStatus, resetAgentSession, stopAgentRequest } from './agentService.mjs'
 import { createAgentEnvStore } from './agentEnvStore.mjs'
+import {
+  createTerminal,
+  writeTerminal,
+  resizeTerminal,
+  destroyTerminal,
+  registerTerminalWindow,
+  unregisterTerminalWindow,
+} from './terminalPty.mjs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -74,6 +82,12 @@ const createWindow = async () => {
       contextIsolation: true,
       nodeIntegration: false,
     },
+  })
+
+  registerTerminalWindow(mainWindow)
+
+  mainWindow.on('closed', () => {
+    unregisterTerminalWindow(mainWindow)
   })
 
   const devUrl = process.env.VITE_DEV_SERVER_URL
@@ -280,6 +294,22 @@ ipcMain.handle('agent:set-env', async (_event, payload) => {
     const errMessage = error instanceof Error ? error.message : String(error)
     return { ok: false, error: errMessage }
   }
+})
+
+ipcMain.handle('terminal:create', (_event, { id, cols, rows }) => {
+  return createTerminal(id, cols, rows)
+})
+
+ipcMain.handle('terminal:write', (_event, { id, data }) => {
+  return writeTerminal(id, data)
+})
+
+ipcMain.handle('terminal:resize', (_event, { id, cols, rows }) => {
+  return resizeTerminal(id, cols, rows)
+})
+
+ipcMain.handle('terminal:destroy', (_event, { id }) => {
+  return destroyTerminal(id)
 })
 
 app.whenReady().then(async () => {

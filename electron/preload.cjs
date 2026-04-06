@@ -22,4 +22,18 @@ contextBridge.exposeInMainWorld('eazyFiiDesktop', {
     ipcRenderer.on('agent:stream', listener)
     return () => ipcRenderer.removeListener('agent:stream', listener)
   },
+  terminalCreate: (payload) => ipcRenderer.invoke('terminal:create', payload),
+  terminalWrite: (payload) => ipcRenderer.invoke('terminal:write', payload),
+  terminalResize: (payload) => ipcRenderer.invoke('terminal:resize', payload),
+  terminalDestroy: (payload) => ipcRenderer.invoke('terminal:destroy', payload),
+  onTerminalData: (handler) => {
+    const listener = (_event, payload) => handler(payload)
+    ipcRenderer.on('terminal:data', listener)
+    return () => ipcRenderer.removeListener('terminal:data', listener)
+  },
+  onTerminalExit: (handler) => {
+    const listener = (_event, payload) => handler(payload)
+    ipcRenderer.on('terminal:exit', listener)
+    return () => ipcRenderer.removeListener('terminal:exit', listener)
+  },
 })

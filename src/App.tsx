@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
 import AgentChatFloatingController from './components/AgentChatFloatingController'
+import TerminalFloatingController from './components/TerminalFloatingController'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
@@ -392,6 +393,7 @@ function App() {
           setHasUnsavedChanges(true)
         }}
       />
+      <TerminalFloatingController />
     </ConfigProvider>
   )
 }

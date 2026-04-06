@@ -879,3 +879,109 @@
 .rod-config-input {
   width: 120px;
 }
+
+.floating-terminal-panel {
+  position: fixed;
+  left: 20px;
+  bottom: 20px;
+  width: 700px;
+  height: 480px;
+  z-index: 1000;
+  background: rgba(30, 30, 30, 0.95);
+  border: 1px solid #3c3c3c;
+  border-radius: 14px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.floating-terminal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px 6px;
+  border-bottom: 1px solid #3c3c3c;
+  background: linear-gradient(180deg, #2d2d2d 0%, #1e1e1e 100%);
+  cursor: move;
+  user-select: none;
+}
+
+.floating-terminal-header .ant-typography {
+  color: #cccccc;
+}
+
+.floating-terminal-header-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: default;
+}
+
+.terminal-status {
+  font-size: 12px;
+}
+
+.floating-terminal-close-btn {
+  font-size: 18px;
+  line-height: 1;
+  color: #cccccc;
+}
+
+.floating-terminal-body {
+  flex: 1;
+  min-height: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  background: #1e1e1e;
+}
+
+.floating-terminal-toggle-fab {
+  position: fixed;
+  left: 20px;
+  top: 20px;
+  z-index: 1001;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.14);
+}
+
+.terminal-panel-dragging,
+.terminal-panel-dragging * {
+  user-select: none !important;
+}
+
+.terminal-container {
+  flex: 1;
+  padding: 8px;
+  background: #1e1e1e;
+}
+
+.terminal-container .xterm {
+  height: 100%;
+}
+
+.terminal-container .xterm-viewport {
+  overflow-y: auto;
+}
+
+.terminal-error {
+  padding: 12px;
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+}
+
+@media (max-width: 900px) {
+  .floating-terminal-panel {
+    left: 10px;
+    right: 10px;
+    bottom: 10px;
+    width: auto;
+    height: min(70vh, 480px);
+  }
+
+  .floating-terminal-toggle-fab {
+    left: 10px;
+    top: 10px;
+  }
+}
