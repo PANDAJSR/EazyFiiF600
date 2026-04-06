@@ -20,6 +20,8 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
   const [error, setError] = useState<string | null>(null)
   const { panelPosition, startDragPanel } = useFloatingTerminalPosition()
 
+  const connectedRef = useRef(false)
+
   useEffect(() => {
     if (!isDesktopRuntime() || !terminalRef.current) {
       return
@@ -43,8 +45,18 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
     fitAddonRef.current = fitAddon
     term.loadAddon(fitAddon)
     term.open(terminalRef.current)
+
+    const measureAndFit = () => {
+      if (fitAddonRef.current && terminalRef.current?.offsetParent !== null) {
+        try {
+          fitAddonRef.current.fit()
+        } catch {
+        }
+      }
+    }
+
     requestAnimationFrame(() => {
-      fitAddon.fit()
+      measureAndFit()
     })
 
     terminalInstanceRef.current = term
@@ -62,6 +74,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
           setError(`终端创建失败: ${result.error}`)
           return
         }
+        connectedRef.current = true
         setConnected(true)
       })
       .catch((err) => {
@@ -77,26 +90,25 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
     const unsubExit = onTerminalExit((event) => {
       if (event.id === TERMINAL_ID && terminalInstanceRef.current) {
         terminalInstanceRef.current.write('\r\n[终端已关闭]\r\n')
+        connectedRef.current = false
         setConnected(false)
       }
     })
 
     term.onData((data) => {
-      if (connected) {
+      if (connectedRef.current) {
         terminalWrite({ id: TERMINAL_ID, data })
       }
     })
 
     term.onResize(({ cols: newCols, rows: newRows }) => {
-      if (connected) {
+      if (connectedRef.current) {
         terminalResize({ id: TERMINAL_ID, cols: newCols, rows: newRows })
       }
     })
 
     const handleResize = () => {
-      if (fitAddonRef.current) {
-        fitAddonRef.current.fit()
-      }
+      measureAndFit()
     }
 
     window.addEventListener('resize', handleResize)
@@ -111,7 +123,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
         terminalInstanceRef.current = null
       }
     }
-  }, [connected])
+  }, [])
 
   const handleClear = () => {
     if (terminalInstanceRef.current) {
