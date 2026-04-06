@@ -81,7 +81,33 @@ const KEYWORD_ALIAS_GROUPS = [
   ['科目八', '科目8', 'subject8'],
   ['科目九', '科目9', 'subject9'],
   ['科目十', '科目10', 'subject10'],
+  ['绕杆', '绕横杆', '绕竖杆'],
+  ['积木编程', '积木写法', '字段示意', 'fields', 'op'],
+  ['闭合轨迹', '闭合', '封闭', '闭环'],
+  ['turnto', 'Goertek_TurnTo', 'TurnTo'],
+  ['无人机', '飞机', '飞行器'],
 ]
+
+const SUBJECT_INTENT_CONFIG = [
+  {
+    aliases: ['科目二', '科目2', 'subject2'],
+    fullDocFile: '51-subject2-example.md',
+  },
+]
+
+const detectSubjectIntent = (keywords) => {
+  const keywordSet = new Set(keywords.map((keyword) => keyword.toLowerCase()))
+  return SUBJECT_INTENT_CONFIG.find((config) => config.aliases.some((alias) => keywordSet.has(alias.toLowerCase()))) || null
+}
+
+const buildFullDocumentResult = (doc, keywords) => ({
+  file: doc.file,
+  title: `${doc.title}（全文）`,
+  score: 1_000_000,
+  snippet: buildSnippet(doc.content, keywords),
+  fullContent: doc.content,
+  isFullDocument: true,
+})
 
 const expandKeywordAliases = (keywords) => {
   const expanded = [...keywords]
@@ -187,11 +213,13 @@ const buildSnippet = (text, keywords) => {
   return normalizedText.slice(start, end)
 }
 
-const scoreSection = (title, content, keywords) => {
+const scoreSection = (title, content, keywords, docTitle = '') => {
   const titleText = String(title ?? '')
   const bodyText = String(content ?? '')
+  const docTitleText = String(docTitle ?? '')
   const lowerTitle = titleText.toLowerCase()
   const lowerBody = bodyText.toLowerCase()
+  const lowerDocTitle = docTitleText.toLowerCase()
 
   let score = 0
   for (const keyword of keywords) {
@@ -199,6 +227,9 @@ const scoreSection = (title, content, keywords) => {
     score += countOccurrences(lowerBody, lowerKeyword)
     if (lowerTitle.includes(lowerKeyword)) {
       score += 2
+    }
+    if (lowerDocTitle.includes(lowerKeyword)) {
+      score += 1
     }
   }
   return score
@@ -209,7 +240,7 @@ const searchInDoc = (doc, keywords) => {
   const matches = []
 
   for (const section of sections) {
-    const score = scoreSection(section.title, section.content, keywords)
+    const score = scoreSection(section.title, section.content, keywords, doc.title)
     if (score <= 0) {
       continue
     }
@@ -257,6 +288,7 @@ export const searchAgentKnowledge = async (rawArguments) => {
   const queryKeywords = normalizeKeywords(query)
   const explicitKeywords = normalizeKeywords(args.keywords)
   const keywords = expandKeywordAliases(normalizeKeywords([...explicitKeywords, ...queryKeywords]))
+  const subjectIntent = detectSubjectIntent(keywords)
   const maxResults = getMaxResults(args.maxResults)
 
   const docs = await listKnowledgeFiles()
@@ -294,7 +326,18 @@ export const searchAgentKnowledge = async (rawArguments) => {
       return left.file.localeCompare(right.file, 'zh-Hans-CN')
     })
 
-  if (!allMatches.length) {
+  let rankedMatches = allMatches
+  if (subjectIntent) {
+    const targetDoc = docs.find((doc) => doc.file === subjectIntent.fullDocFile)
+    if (targetDoc) {
+      rankedMatches = [
+        buildFullDocumentResult(targetDoc, keywords),
+        ...allMatches.filter((item) => item.file !== targetDoc.file),
+      ]
+    }
+  }
+
+  if (!rankedMatches.length) {
     return {
       output: stringify({
         ok: true,
@@ -315,8 +358,8 @@ export const searchAgentKnowledge = async (rawArguments) => {
       schema: SEARCH_SCHEMA,
       query,
       keywords,
-      totalMatches: allMatches.length,
-      results: allMatches.slice(0, maxResults),
+      totalMatches: rankedMatches.length,
+      results: rankedMatches.slice(0, maxResults),
     }),
   }
 }
