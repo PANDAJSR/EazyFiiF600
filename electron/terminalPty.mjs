@@ -1,9 +1,9 @@
 import * as pty from 'node-pty'
 import os from 'node:os'
 import { existsSync } from 'node:fs'
-import { spawn } from 'node:child_process'
 
 const terminals = new Map()
+const terminalWindows = new Set()
 
 const POSSIBLE_SHELLS = {
   darwin: ['/bin/zsh', '/bin/bash', '/usr/local/bin/bash'],
@@ -22,6 +22,17 @@ const findAvailableShell = () => {
   return null
 }
 
+const getShellArgs = (platform, shellPath) => {
+  if (platform === 'win32') {
+    return []
+  }
+  const shellName = shellPath.split('/').pop() || ''
+  if (shellName.includes('zsh') || shellName.includes('bash')) {
+    return ['-i']
+  }
+  return []
+}
+
 export const createTerminal = (id, cols, rows) => {
   console.log(`[terminalPty] createTerminal called: id=${id}, cols=${cols}, rows=${rows}`)
   if (terminals.has(id)) {
@@ -31,7 +42,12 @@ export const createTerminal = (id, cols, rows) => {
 
   const platform = os.platform()
   const shell = platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || findAvailableShell())
+  const shellArgs = getShellArgs(platform, shell || '')
   const cwd = process.env.HOME || os.homedir() || '/tmp'
+  const env = {
+    ...process.env,
+    TERM: process.env.TERM || 'xterm-256color',
+  }
 
   if (!shell) {
     const errMsg = `No available shell found for platform ${platform}`
@@ -39,35 +55,29 @@ export const createTerminal = (id, cols, rows) => {
     return { ok: false, error: errMsg }
   }
 
-  console.log(`[terminalPty] Spawning shell: ${shell}, cwd: ${cwd}, platform: ${platform}`)
+  console.log(`[terminalPty] Spawning shell: ${shell} ${shellArgs.join(' ')}, cwd: ${cwd}, platform: ${platform}`)
   console.log(`[terminalPty] Shell exists: ${existsSync(shell)}`)
 
   try {
-    const term = pty.spawn(shell, [], {
+    const term = pty.spawn(shell, shellArgs, {
       cols,
       rows,
       cwd,
-      env: process.env,
+      env,
     })
     console.log(`[terminalPty] pty.spawn succeeded for ${id}`)
 
     terminals.set(id, term)
 
     term.onData((data) => {
-      const windows = globalThis.getTerminalWindows?.()
-      if (windows) {
-        for (const win of windows) {
-          win.webContents.send('terminal:data', { id, data })
-        }
+      for (const win of terminalWindows) {
+        win.webContents.send('terminal:data', { id, data })
       }
     })
 
     term.onExit(({ exitCode }) => {
-      const windows = globalThis.getTerminalWindows?.()
-      if (windows) {
-        for (const win of windows) {
-          win.webContents.send('terminal:exit', { id, exitCode })
-        }
+      for (const win of terminalWindows) {
+        win.webContents.send('terminal:exit', { id, exitCode })
       }
       terminals.delete(id)
     })
@@ -119,14 +129,9 @@ export const destroyTerminal = (id) => {
 }
 
 export const registerTerminalWindow = (window) => {
-  if (!globalThis.getTerminalWindows) {
-    globalThis.getTerminalWindows = () => new Set()
-  }
-  globalThis.getTerminalWindows().add(window)
+  terminalWindows.add(window)
 }
 
 export const unregisterTerminalWindow = (window) => {
-  if (globalThis.getTerminalWindows) {
-    globalThis.getTerminalWindows().delete(window)
-  }
+  terminalWindows.delete(window)
 }
