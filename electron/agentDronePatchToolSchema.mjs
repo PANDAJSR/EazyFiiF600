@@ -12,7 +12,10 @@ const PATCH_DRONE_OPS = [
 const BLOCK_DRAFT_PROPERTIES = {
   id: { type: 'string', description: '可选。新积木 id；留空会自动生成。' },
   type: { type: 'string', description: '必填。积木类型，例如 EazyFii_MoveToCoordAutoDelay。' },
-  fields: { type: 'object', description: '可选。字段键值对，值应为字符串。' },
+  fields: {
+    type: 'object',
+    description: '新增/替换积木时必须提供。字段键值对，值应为字符串；不要只传 type。若不确定字段键名与默认值，先调用 GetBlockCatalog 后再写入。',
+  },
   comment: { type: 'string', description: '可选。积木注释。' },
 }
 
@@ -26,6 +29,8 @@ export const PATCH_DRONE_PROGRAM_PROPERTIES = {
       '必填。差量操作数组，按顺序执行。',
       'index/startIndex/endIndex/toIndex 均为 1-based。',
       'op 必须是: append_block / insert_after / insert / insert_blocks_at / replace_range / update_fields / delete_block / move_block。',
+      '凡是包含 block/blocks 的写入操作（append/insert/replace），每个积木都必须包含 type + fields，不要只写 type。',
+      '若字段不确定，先调用 GetBlockCatalog 查询该 type 的参数键名、默认值与约束，再组装 fields。',
       '各 op 必填字段：',
       '- append_block: block',
       '- insert_after: afterBlockId + block',

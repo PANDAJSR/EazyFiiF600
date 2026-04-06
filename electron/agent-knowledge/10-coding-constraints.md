@@ -19,6 +19,8 @@
 ## PatchDroneProgram 约束
 - 顶层参数必须包含：`operations`（非空数组），并优先传 `droneId`。
 - 所有索引参数（`index/startIndex/endIndex/toIndex`）按 **1-based** 理解。
+- 凡是 `append/insert/replace` 新增积木，必须给出 `block.type + block.fields`（或 `blocks[i].type + blocks[i].fields`），禁止只写积木类型。
+- 若新增积木字段不确定，必须先调用 `GetBlockCatalog` 获取参数键名、默认值与约束后再写入。
 - `op` 只允许：
   - `append_block`
   - `insert_after`
