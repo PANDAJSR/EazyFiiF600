@@ -7,8 +7,8 @@
   "main": "electron/main.mjs",
   "scripts": {
     "dev": "vite",
-    "dev:electron": "concurrently -k \"vite\" \"wait-on tcp:5173 && VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
-    "start:electron": "electron .",
+    "dev:electron": "node scripts/ensure-electron-installed.mjs && concurrently -k \"vite\" \"wait-on tcp:5173 && VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "start:electron": "node scripts/ensure-electron-installed.mjs && electron .",
     "cli:nano": "tsx cli/nano-cli.ts",
     "electron:install": "node node_modules/electron/install.js",
     "rebuild": "electron-rebuild -f -w node-pty",
