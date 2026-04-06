@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Alert, Button, Collapse, Input, Space, Typography } from 'antd'
+import { Alert, Button, Collapse, Input, Space, Switch, Typography } from 'antd'
 import type {
   AgentChatResult,
   AgentEnvResult,
@@ -16,6 +16,7 @@ import {
   stopAgentRequest,
 } from '../utils/desktopBridge'
 import type { ToolCallBadge } from './agentChat/ToolCallTimeline'
+import type { ReasoningBadge } from './agentChat/ToolCallTimeline'
 import {
   newMessageId,
   parseEnvText,
@@ -34,6 +35,7 @@ type ChatMessage = {
   text: string
   traces?: AgentToolTrace[]
   toolBadges?: ToolCallBadge[]
+  reasoningBadges?: ReasoningBadge[]
 }
 
 type AgentChatPanelProps = {
@@ -81,6 +83,29 @@ const upsertToolBadge = (badges: ToolCallBadge[] | undefined, event: Extract<Age
   return list
 }
 
+const upsertReasoningBadge = (
+  badges: ReasoningBadge[] | undefined,
+  event: Extract<AgentStreamEvent, { type: 'reasoning-delta' }>,
+) => {
+  const list = badges ? [...badges] : []
+  const matchIndex = list.findIndex((badge) => badge.blockId === event.blockId)
+  if (matchIndex < 0) {
+    list.push({
+      blockId: event.blockId,
+      textOffset: event.textOffset,
+      text: event.delta,
+    })
+    return list
+  }
+  const prev = list[matchIndex]
+  list[matchIndex] = {
+    ...prev,
+    textOffset: Math.min(prev.textOffset, event.textOffset),
+    text: `${prev.text}${event.delta}`,
+  }
+  return list
+}
+
 function AgentChatPanel({
   projectContext,
   rodConfigContext,
@@ -98,6 +123,7 @@ function AgentChatPanel({
     },
   ])
   const [input, setInput] = useState('')
+  const [enableReasoning, setEnableReasoning] = useState(false)
   const [sending, setSending] = useState(false)
   const [envText, setEnvText] = useState('')
   const [envStoragePath, setEnvStoragePath] = useState<string>('')
@@ -172,6 +198,13 @@ function AgentChatPanel({
         }))
       }
 
+      if (event.type === 'reasoning-delta') {
+        patchMessageById(assistantMessageId, (message) => ({
+          ...message,
+          reasoningBadges: upsertReasoningBadge(message.reasoningBadges, event),
+        }))
+      }
+
       if (event.type === 'error') {
         patchMessageById(assistantMessageId, {
           text: `Agent 错误: ${event.error}`,
@@ -226,6 +259,7 @@ function AgentChatPanel({
       const result = await chatWithAgent({
         message,
         requestId,
+        enableReasoning,
         projectContext,
         rodConfigContext,
         trajectoryIssueContext,
@@ -350,6 +384,19 @@ function AgentChatPanel({
             }}
             disabled={!sending && !input.trim()}
           />
+        </div>
+        <div className="agent-reasoning-row">
+          <Space size={8} align="center">
+            <Switch
+              checked={enableReasoning}
+              onChange={setEnableReasoning}
+              size="small"
+              disabled={sending}
+            />
+            <Typography.Text type="secondary">
+              {enableReasoning ? '已开启模型思考展示（按时序插入）' : '关闭模型思考展示'}
+            </Typography.Text>
+          </Space>
         </div>
 
         <Collapse

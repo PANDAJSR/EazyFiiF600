@@ -14,7 +14,17 @@ export type ToolCallBadge = {
   resultPreview?: string
 }
 
-type ToolCallTimelineProps = { text: string; markers: ToolCallBadge[] }
+export type ReasoningBadge = {
+  blockId: string
+  textOffset: number
+  text: string
+}
+
+type ToolCallTimelineProps = {
+  text: string
+  markers: ToolCallBadge[]
+  reasoningBadges?: ReasoningBadge[]
+}
 
 const markerStatus = (marker: ToolCallBadge) => {
   if (marker.phase === 'model') {
@@ -93,8 +103,52 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
   )
 }
 
-export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProps) {
-  if (!markers.length) {
+const renderReasoning = (marker: ReasoningBadge, index: number) => {
+  const markerKey = `${marker.blockId}_${index}`
+  return (
+    <Collapse
+      key={`reasoning_${markerKey}`}
+      size="small"
+      ghost
+      items={[{
+        key: markerKey,
+        label: (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
+              minWidth: 0,
+              width: '100%',
+              whiteSpace: 'nowrap',
+              overflow: 'hidden',
+            }}
+          >
+            <Tag color="cyan" style={{ marginInlineEnd: 0 }}>思考过程</Tag>
+            <Tag color="processing" style={{ marginInlineEnd: 0 }}>模型推理</Tag>
+          </div>
+        ),
+        children: (
+          <Space direction="vertical" size={6} style={{ width: '100%' }}>
+            <Typography.Text type="secondary">
+              推理位置: 第 {Math.max(0, marker.textOffset) + 1} 个字符
+            </Typography.Text>
+            <Typography.Paragraph style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
+              {marker.text || '(思考中...)'}
+            </Typography.Paragraph>
+          </Space>
+        ),
+      }]}
+    />
+  )
+}
+
+export default function ToolCallTimeline({
+  text,
+  markers,
+  reasoningBadges = [],
+}: ToolCallTimelineProps) {
+  if (!markers.length && !reasoningBadges.length) {
     return (
       <div style={{ marginTop: 8, marginBottom: 6 }}>
         <AgentMarkdown text={text} />
@@ -102,19 +156,30 @@ export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProp
     )
   }
 
-  const sorted = [...markers].sort((a, b) => {
+  const timelineEvents = [
+    ...markers.map((marker) => ({ kind: 'tool' as const, textOffset: marker.textOffset, marker })),
+    ...reasoningBadges.map((marker) => ({ kind: 'reasoning' as const, textOffset: marker.textOffset, marker })),
+  ]
+
+  const sorted = timelineEvents.sort((a, b) => {
     const offsetA = Number.isFinite(a.textOffset) ? a.textOffset : 0
     const offsetB = Number.isFinite(b.textOffset) ? b.textOffset : 0
     if (offsetA !== offsetB) {
       return offsetA - offsetB
     }
-    return (a.toolIndex ?? Number.MAX_SAFE_INTEGER) - (b.toolIndex ?? Number.MAX_SAFE_INTEGER)
-    })
+    if (a.kind !== b.kind) {
+      return a.kind === 'reasoning' ? -1 : 1
+    }
+    if (a.kind === 'tool' && b.kind === 'tool') {
+      return (a.marker.toolIndex ?? Number.MAX_SAFE_INTEGER) - (b.marker.toolIndex ?? Number.MAX_SAFE_INTEGER)
+    }
+    return 0
+  })
 
   const timelineNodes: ReactNode[] = []
   let cursor = 0
-  sorted.forEach((marker, index) => {
-    const markerOffset = clampOffset(marker.textOffset, text.length)
+  sorted.forEach((event, index) => {
+    const markerOffset = clampOffset(event.textOffset, text.length)
     if (markerOffset > cursor) {
       const segment = text.slice(cursor, markerOffset)
       if (segment) {
@@ -123,7 +188,11 @@ export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProp
         )
       }
     }
-    timelineNodes.push(renderMarker(marker, index))
+    if (event.kind === 'tool') {
+      timelineNodes.push(renderMarker(event.marker, index))
+    } else {
+      timelineNodes.push(renderReasoning(event.marker, index))
+    }
     cursor = markerOffset
   })
 

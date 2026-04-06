@@ -209,6 +209,7 @@ export const chatWithAgent = async ({
   message,
   reset = false,
   requestId,
+  enableReasoning = false,
   envOverrides,
   projectContext,
   rodConfigContext,
@@ -237,6 +238,7 @@ export const chatWithAgent = async ({
     console.info('[agent][service] start', {
       requestId,
       transportMode: state.transportMode ?? 'auto',
+      enableReasoning,
       reset: Boolean(reset),
       hasProjectContext: Boolean(projectContext),
       systemPromptLength: systemPrompt.length,
@@ -284,7 +286,8 @@ export const chatWithAgent = async ({
       pendingMutation: state.pendingMutation,
     })
 
-    if (state.transportMode === 'responses') {
+    const shouldUseResponses = state.transportMode === 'responses' || enableReasoning
+    if (shouldUseResponses) {
       throwIfCancelled(requestId)
       state.messages.push({ role: 'user', content: prompt })
       const reply = await runResponsesTurn({
@@ -302,6 +305,7 @@ export const chatWithAgent = async ({
         projectContext: state.projectContext,
         requestTrajectoryIssueContext,
         requireToolForMutation,
+        enableReasoning,
         onPhase: updateAgentPhase,
         shouldAbort: () => isRequestCancelled(requestId),
       })
@@ -338,6 +342,7 @@ export const chatWithAgent = async ({
         projectContext: state.projectContext,
         requestTrajectoryIssueContext,
         requireToolForMutation,
+        enableReasoning,
         onPhase: updateAgentPhase,
         shouldAbort: () => isRequestCancelled(requestId),
       })
@@ -383,6 +388,7 @@ export const chatWithAgent = async ({
         projectContext: state.projectContext,
         requestTrajectoryIssueContext,
         requireToolForMutation,
+        enableReasoning,
         onPhase: updateAgentPhase,
         shouldAbort: () => isRequestCancelled(requestId),
       })

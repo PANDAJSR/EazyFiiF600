@@ -44,6 +44,37 @@ const emitProjectContextPatched = ({ onEvent, nextProjectContext }) => {
   })
 }
 
+const readReasoningDelta = (event) => {
+  if (!event || typeof event !== 'object') {
+    return null
+  }
+  const eventType = typeof event.type === 'string' ? event.type : ''
+  if (!eventType.includes('reasoning')) {
+    return null
+  }
+  if (typeof event.delta === 'string' && event.delta) {
+    return event.delta
+  }
+  if (typeof event.text === 'string' && event.text) {
+    return event.text
+  }
+  if (typeof event.summary === 'string' && event.summary) {
+    return event.summary
+  }
+  return null
+}
+
+const readReasoningBlockId = (event) => {
+  if (!event || typeof event !== 'object') {
+    return 'reasoning'
+  }
+  const raw = event.item_id ?? event.output_item_id ?? event.id
+  if (typeof raw !== 'string' || !raw.trim()) {
+    return 'reasoning'
+  }
+  return raw
+}
+
 export const runResponsesTurn = async ({
   client,
   model,
@@ -59,6 +90,7 @@ export const runResponsesTurn = async ({
   projectContext,
   requestTrajectoryIssueContext,
   requireToolForMutation,
+  enableReasoning,
   onPhase,
   shouldAbort,
 }) => {
@@ -84,6 +116,11 @@ export const runResponsesTurn = async ({
       input,
       instructions: systemPrompt,
       tools,
+      reasoning: enableReasoning
+        ? {
+            summary: 'detailed',
+          }
+        : undefined,
       tool_choice: requireToolForMutation && !didPatchDroneProgram ? 'required' : 'auto',
       max_output_tokens: 4096,
       stream: true,
@@ -95,6 +132,15 @@ export const runResponsesTurn = async ({
       if (event.type === 'response.output_text.delta' && event.delta) {
         lastAnswer += event.delta
         onEvent?.({ type: 'text-delta', delta: event.delta })
+      }
+      const reasoningDelta = readReasoningDelta(event)
+      if (enableReasoning && reasoningDelta) {
+        onEvent?.({
+          type: 'reasoning-delta',
+          blockId: readReasoningBlockId(event),
+          delta: reasoningDelta,
+          textOffset: lastAnswer.length,
+        })
       }
       if (event.type === 'response.completed') {
         response = event.response
@@ -293,10 +339,12 @@ export const runChatTurn = async ({
   tools,
   projectContext,
   requestTrajectoryIssueContext,
+  enableReasoning,
   requireToolForMutation,
   onPhase,
   shouldAbort,
 }) => {
+  void enableReasoning
   const ensureNotAborted = () => {
     if (shouldAbort?.()) {
       throw new Error('请求已停止')

@@ -1,6 +1,6 @@
 import { Empty, Space, Spin, Tag, Typography } from 'antd'
 import type { AgentToolTrace } from '../../types/agent'
-import ToolCallTimeline, { type ToolCallBadge } from './ToolCallTimeline'
+import ToolCallTimeline, { type ReasoningBadge, type ToolCallBadge } from './ToolCallTimeline'
 
 type ChatRole = 'user' | 'assistant' | 'system'
 
@@ -10,6 +10,7 @@ export type ChatMessageItem = {
   text: string
   traces?: AgentToolTrace[]
   toolBadges?: ToolCallBadge[]
+  reasoningBadges?: ReasoningBadge[]
   meta?: string
 }
 
@@ -20,7 +21,13 @@ type ChatMessageListProps = {
 
 const MessageBody = ({ message }: { message: ChatMessageItem }) => {
   if (message.role === 'assistant') {
-    return <ToolCallTimeline text={message.text} markers={message.toolBadges ?? []} />
+    return (
+      <ToolCallTimeline
+        text={message.text}
+        markers={message.toolBadges ?? []}
+        reasoningBadges={message.reasoningBadges ?? []}
+      />
+    )
   }
 
   return (

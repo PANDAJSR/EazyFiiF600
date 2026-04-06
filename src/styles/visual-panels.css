@@ -684,6 +684,11 @@
   gap: 8px;
 }
 
+.agent-reasoning-row {
+  display: flex;
+  align-items: center;
+}
+
 .floating-agent-toggle-fab {
   position: fixed;
   right: 20px;

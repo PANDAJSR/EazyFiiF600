@@ -23,6 +23,7 @@ export type AgentChatPayload = {
   message: string
   reset?: boolean
   requestId?: string
+  enableReasoning?: boolean
   projectContext?: ParseResult
   rodConfigContext?: unknown
   trajectoryIssueContext?: unknown
@@ -90,6 +91,7 @@ export type AgentSetEnvPayload = {
 export type AgentStreamEvent =
   | { requestId?: string; type: 'start' }
   | { requestId?: string; type: 'text-delta'; delta: string }
+  | { requestId?: string; type: 'reasoning-delta'; blockId: string; delta: string; textOffset: number }
   | { requestId?: string; type: 'project-context-patched'; projectContext: ParseResult }
   | {
     requestId?: string
