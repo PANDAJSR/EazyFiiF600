@@ -31,6 +31,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
     let disposed = false
     let localDataSubscription: { dispose: () => void } | null = null
     let localResizeSubscription: { dispose: () => void } | null = null
+    let localObserver: ResizeObserver | null = null
     let unsubData: (() => void) | null = null
     let unsubExit: (() => void) | null = null
     let handleResize: (() => void) | null = null
@@ -43,6 +44,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
       const term = new Terminal({
         cursorBlink: true,
         fontSize: 14,
+        lineHeight: 1.08,
         fontFamily: TERMINAL_FONT_FAMILY,
         theme: {
           background: '#1e1e1e',
@@ -139,6 +141,18 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
         measureAndFit()
       }
       window.addEventListener('resize', handleResize)
+      if (typeof ResizeObserver !== 'undefined' && terminalRef.current) {
+        localObserver = new ResizeObserver(() => {
+          if (fitRafRef.current !== null) {
+            cancelAnimationFrame(fitRafRef.current)
+          }
+          fitRafRef.current = requestAnimationFrame(() => {
+            fitRafRef.current = null
+            measureAndFit()
+          })
+        })
+        localObserver.observe(terminalRef.current)
+      }
     }, 0)
 
     return () => {
@@ -151,6 +165,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
       if (handleResize) {
         window.removeEventListener('resize', handleResize)
       }
+      localObserver?.disconnect()
       localDataSubscription?.dispose()
       localResizeSubscription?.dispose()
       unsubData?.()
