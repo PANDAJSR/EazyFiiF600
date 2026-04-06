@@ -9,6 +9,7 @@
 
 ## 文件清单
 - `10-coding-constraints.md`：编码与工具调用硬约束。
+- `11-patch-drone-program-args.md`：`PatchDroneProgram` 参数、索引与常见误调用速查。
 - `20-subject-completion-rules.md`：完成科目相关判定与复检流程。
 - `30-programming-patterns.md`：编程策略与常用写法。
 - `40-drone-domain-basics.md`：飞机/道具/赛制基础知识。
@@ -18,6 +19,7 @@
 
 ## 推荐关键词
 - 编码：`PatchDroneProgram`、`op`、`fields`、`EazyFii_MoveToCoordAutoDelay`
+- 参数：`insert_blocks_at`、`replace_range`、`update_fields`、`1-based index`
 - 完成科目：`复检`、`GetTrajectoryIssuesDetailed`、`机头朝向`、`闭合`
 - 编程：`绕竖杆`、`TurnTo`、`atan2`、`安全距离`
 - 飞机知识：`科目`、`绕杆`、`穿圈`、`8字`、`灯光`

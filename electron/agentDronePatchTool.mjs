@@ -1,3 +1,5 @@
+import { PATCH_DRONE_PROGRAM_PROPERTIES } from './agentDronePatchToolSchema.mjs'
+
 let agentBlockIdSeq = 1
 
 const blockOutput = (block, index) => ({
@@ -305,17 +307,6 @@ const normalizeInsertOrder = (operations) => {
 }
 
 export const PATCH_DRONE_PROGRAM_TOOL_NAME = 'PatchDroneProgram'
-
-export const PATCH_DRONE_PROGRAM_PROPERTIES = {
-  droneId: { type: 'string', description: '无人机唯一 id，优先推荐。' },
-  droneName: { type: 'string', description: '无人机名称（可能重复）。' },
-  operations: {
-    type: 'array',
-    description:
-      '差量操作数组。支持 append_block / insert_after / insert / insert_blocks_at / replace_range / update_fields / delete_block / move_block。',
-    items: { type: 'object' },
-  },
-}
 
 export const patchDroneProgram = ({ project, rawArguments, droneId, droneName, candidates }) => {
   if (candidates.length !== 1) {
