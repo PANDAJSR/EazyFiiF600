@@ -1,6 +1,7 @@
 import { Collapse, Space, Tag, Typography } from 'antd'
 import type { ReactNode } from 'react'
 import type { AgentToolName } from '../../types/agent'
+import AgentMarkdown from './AgentMarkdown'
 
 export type ToolCallBadge = {
   toolCallId: string
@@ -95,9 +96,9 @@ const renderMarker = (marker: ToolCallBadge, index: number) => {
 export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProps) {
   if (!markers.length) {
     return (
-      <Typography.Paragraph style={{ marginTop: 8, marginBottom: 6, whiteSpace: 'pre-wrap' }}>
-        {text}
-      </Typography.Paragraph>
+      <div style={{ marginTop: 8, marginBottom: 6 }}>
+        <AgentMarkdown text={text} />
+      </div>
     )
   }
 
@@ -118,12 +119,7 @@ export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProp
       const segment = text.slice(cursor, markerOffset)
       if (segment) {
         timelineNodes.push(
-          <Typography.Paragraph
-            key={`text_${cursor}_${markerOffset}_${index}`}
-            style={{ margin: 0, whiteSpace: 'pre-wrap' }}
-          >
-            {segment}
-          </Typography.Paragraph>,
+          <AgentMarkdown key={`text_${cursor}_${markerOffset}_${index}`} text={segment} />,
         )
       }
     }
@@ -134,9 +130,7 @@ export default function ToolCallTimeline({ text, markers }: ToolCallTimelineProp
   if (cursor < text.length || timelineNodes.length === 0) {
     const tailText = text.slice(cursor)
     timelineNodes.push(
-      <Typography.Paragraph key={`text_tail_${cursor}`} style={{ margin: 0, whiteSpace: 'pre-wrap' }}>
-        {tailText}
-      </Typography.Paragraph>,
+      <AgentMarkdown key={`text_tail_${cursor}`} text={tailText} />,
     )
   }
 
