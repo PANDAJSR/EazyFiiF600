@@ -137,7 +137,7 @@ export const runResponsesTurn = async ({
       tools,
       reasoning: enableReasoning
         ? {
-            summary: 'detailed',
+            summary: 'auto',
           }
         : undefined,
       tool_choice: requireToolForMutation && !didPatchDroneProgram ? 'required' : 'auto',
@@ -147,8 +147,13 @@ export const runResponsesTurn = async ({
 
     let response = null
     let reasoningEventCount = 0
+    const streamEventTypeCounts = new Map()
     for await (const event of stream) {
       ensureNotAborted()
+      if (typeof event?.type === 'string') {
+        const prevCount = streamEventTypeCounts.get(event.type) ?? 0
+        streamEventTypeCounts.set(event.type, prevCount + 1)
+      }
       if (enableReasoning && typeof event?.type === 'string' && event.type.includes('reasoning')) {
         reasoningEventCount += 1
         console.info('[agent][turns][responses] reasoning stream event', {
@@ -180,6 +185,8 @@ export const runResponsesTurn = async ({
         requestId,
         round: round + 1,
         model,
+        streamEventTypes: Array.from(streamEventTypeCounts.entries()),
+        responseReasoning: response?.reasoning ?? null,
       })
     }
 
