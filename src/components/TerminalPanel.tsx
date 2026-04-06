@@ -66,6 +66,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
 
     terminalCreate({ id: TERMINAL_ID, cols, rows })
       .then((result) => {
+        console.log('[TerminalPanel] terminalCreate result:', result)
         if (!result) {
           setError('无法创建终端：非桌面环境')
           return
@@ -78,16 +79,19 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
         setConnected(true)
       })
       .catch((err) => {
+        console.error('[TerminalPanel] terminalCreate error:', err)
         setError(`终端创建失败: ${err.message}`)
       })
 
     const unsubData = onTerminalData((event) => {
+      console.log('[TerminalPanel] onTerminalData:', event.id, TERMINAL_ID)
       if (event.id === TERMINAL_ID && terminalInstanceRef.current) {
         terminalInstanceRef.current.write(event.data)
       }
     })
 
     const unsubExit = onTerminalExit((event) => {
+      console.log('[TerminalPanel] onTerminalExit:', event)
       if (event.id === TERMINAL_ID && terminalInstanceRef.current) {
         terminalInstanceRef.current.write('\r\n[终端已关闭]\r\n')
         connectedRef.current = false
@@ -97,12 +101,14 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
 
     term.onData((data) => {
       if (connectedRef.current) {
+        console.log('[TerminalPanel] term.onData, writing to terminal')
         terminalWrite({ id: TERMINAL_ID, data })
       }
     })
 
     term.onResize(({ cols: newCols, rows: newRows }) => {
       if (connectedRef.current) {
+        console.log('[TerminalPanel] term.onResize:', newCols, newRows)
         terminalResize({ id: TERMINAL_ID, cols: newCols, rows: newRows })
       }
     })

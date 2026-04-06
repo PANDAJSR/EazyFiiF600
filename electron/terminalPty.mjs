@@ -4,12 +4,15 @@ import os from 'node:os'
 const terminals = new Map()
 
 export const createTerminal = (id, cols, rows) => {
+  console.log(`[terminalPty] createTerminal called: id=${id}, cols=${cols}, rows=${rows}`)
   if (terminals.has(id)) {
+    console.log(`[terminalPty] Terminal ${id} already exists`)
     return { ok: true, error: null }
   }
 
   const shell = os.platform() === 'win32' ? 'powershell.exe' : process.env.SHELL || 'bash'
   const cwd = process.env.HOME || os.homedir()
+  console.log(`[terminalPty] Spawning shell: ${shell}, cwd: ${cwd}, platform: ${os.platform()}`)
 
   try {
     const term = pty.spawn(shell, [], {
@@ -18,6 +21,7 @@ export const createTerminal = (id, cols, rows) => {
       cwd,
       env: process.env,
     })
+    console.log(`[terminalPty] pty.spawn succeeded for ${id}`)
 
     terminals.set(id, term)
 
@@ -43,6 +47,7 @@ export const createTerminal = (id, cols, rows) => {
     return { ok: true, error: null }
   } catch (error) {
     const errMsg = error instanceof Error ? error.message : String(error)
+    console.error(`[terminalPty] pty.spawn failed: ${errMsg}`)
     return { ok: false, error: errMsg }
   }
 }
