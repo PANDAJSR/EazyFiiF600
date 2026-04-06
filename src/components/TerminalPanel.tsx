@@ -11,6 +11,7 @@ type TerminalPanelProps = {
 }
 
 const TERMINAL_ID = 'main-terminal'
+const TERMINAL_FONT_FAMILY = '"SourceCodePro+Powerline+Awesome Regular", "SourceCodePro+Powerline+Awesome", "Source Code Pro for Powerline", "SauceCodePro Nerd Font", "MesloLGS NF", "MesloLGS Nerd Font", "CaskaydiaCove Nerd Font", "FiraCode Nerd Font", "JetBrainsMono Nerd Font", "Hack Nerd Font", "Symbols Nerd Font Mono", "Noto Sans Mono CJK SC", ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace'
 
 function TerminalPanel({ onClose }: TerminalPanelProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
@@ -42,7 +43,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
       const term = new Terminal({
         cursorBlink: true,
         fontSize: 14,
-        fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
+        fontFamily: TERMINAL_FONT_FAMILY,
         theme: {
           background: '#1e1e1e',
           foreground: '#cccccc',
