@@ -433,7 +433,7 @@ function AgentChatPanel({
                 {envStoragePath && <Typography.Text type="secondary">保存位置: {envStoragePath}</Typography.Text>}
                 <Input.TextArea
                   value={envText}
-                  placeholder={'NANO_PROVIDER=azure\nAZURE_OPENAI_ENDPOINT=https://xxx.openai.azure.com/\nAZURE_OPENAI_API_KEY=...'}
+                  placeholder={'NANO_PROVIDER=openai\nOPENAI_BASE_URL=http://127.0.0.1:1234/v1\nOPENAI_API_KEY=dummy\nNANO_MODEL=glm-4.7-flash-mlx'}
                   autoSize={{ minRows: 5, maxRows: 12 }}
                   onChange={(event) => setEnvText(event.target.value)}
                 />
