@@ -132,6 +132,7 @@ function AgentChatPanel({
   const { panelPosition, startDragPanel } = useFloatingAgentPosition()
   const activeRequestIdRef = useRef<string | null>(null)
   const activeAssistantMessageIdRef = useRef<string | null>(null)
+  const reasoningDeltaCountRef = useRef(0)
 
   useEffect(() => {
     if (!isDesktopRuntime()) {
@@ -150,7 +151,7 @@ function AgentChatPanel({
       setEnvText(serializeEnvValues(typed.values))
       setEnvStoragePath(typed.storagePath)
     })()
-  }, [onProjectContextPatched])
+  }, [enableReasoning, onProjectContextPatched])
 
 
   const appendMessage = (message: ChatMessage) => {
@@ -199,10 +200,24 @@ function AgentChatPanel({
       }
 
       if (event.type === 'reasoning-delta') {
+        reasoningDeltaCountRef.current += 1
+        console.info('[agent-ui] reasoning delta', {
+          requestId: event.requestId,
+          blockId: event.blockId,
+          deltaLength: event.delta.length,
+          textOffset: event.textOffset,
+          count: reasoningDeltaCountRef.current,
+        })
         patchMessageById(assistantMessageId, (message) => ({
           ...message,
           reasoningBadges: upsertReasoningBadge(message.reasoningBadges, event),
         }))
+      }
+
+      if (event.type === 'end' && enableReasoning && reasoningDeltaCountRef.current === 0) {
+        console.warn('[agent-ui] no reasoning-delta received for this request', {
+          requestId: event.requestId,
+        })
       }
 
       if (event.type === 'error') {
@@ -214,7 +229,7 @@ function AgentChatPanel({
     return () => {
       unsubscribe?.()
     }
-  }, [onProjectContextPatched])
+  }, [enableReasoning, onProjectContextPatched])
 
   const clearConversation = async () => {
     setMessages([{ id: newMessageId(), role: 'system', text: '会话已重置。你可以继续提问。' }])
@@ -249,6 +264,7 @@ function AgentChatPanel({
     }
 
     setSending(true)
+    reasoningDeltaCountRef.current = 0
     const requestId = newMessageId()
     const assistantMessageId = newMessageId()
     activeRequestIdRef.current = requestId
@@ -273,6 +289,14 @@ function AgentChatPanel({
       if (!typedResult.ok) {
         patchMessageById(assistantMessageId, { text: `Agent 错误: ${typedResult.error}` })
         return
+      }
+      if (enableReasoning && reasoningDeltaCountRef.current === 0) {
+        console.warn('[agent-ui] request completed without reasoning stream', {
+          requestId,
+          provider: typedResult.provider,
+          model: typedResult.model,
+          transportMode: typedResult.transportMode,
+        })
       }
 
       patchMessageById(assistantMessageId, (messageItem) => ({

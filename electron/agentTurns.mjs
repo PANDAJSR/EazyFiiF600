@@ -49,17 +49,36 @@ const readReasoningDelta = (event) => {
     return null
   }
   const eventType = typeof event.type === 'string' ? event.type : ''
-  if (!eventType.includes('reasoning')) {
-    return null
-  }
-  if (typeof event.delta === 'string' && event.delta) {
+  const hasReasoningType = eventType.includes('reasoning')
+  if (hasReasoningType && typeof event.delta === 'string' && event.delta) {
     return event.delta
   }
-  if (typeof event.text === 'string' && event.text) {
+  if (hasReasoningType && typeof event.text === 'string' && event.text) {
     return event.text
   }
-  if (typeof event.summary === 'string' && event.summary) {
+  if (hasReasoningType && typeof event.summary === 'string' && event.summary) {
     return event.summary
+  }
+  const item = event.item
+  if (item?.type === 'reasoning' && Array.isArray(item.summary)) {
+    const summaryTexts = item.summary
+      .map((entry) => (typeof entry?.text === 'string' ? entry.text : ''))
+      .filter(Boolean)
+    if (summaryTexts.length > 0) {
+      return summaryTexts.join('\n')
+    }
+  }
+  const outputs = Array.isArray(event.response?.output) ? event.response.output : []
+  for (const output of outputs) {
+    if (output?.type !== 'reasoning' || !Array.isArray(output.summary)) {
+      continue
+    }
+    const summaryTexts = output.summary
+      .map((entry) => (typeof entry?.text === 'string' ? entry.text : ''))
+      .filter(Boolean)
+    if (summaryTexts.length > 0) {
+      return summaryTexts.join('\n')
+    }
   }
   return null
 }
@@ -127,14 +146,24 @@ export const runResponsesTurn = async ({
     })
 
     let response = null
+    let reasoningEventCount = 0
     for await (const event of stream) {
       ensureNotAborted()
+      if (enableReasoning && typeof event?.type === 'string' && event.type.includes('reasoning')) {
+        reasoningEventCount += 1
+        console.info('[agent][turns][responses] reasoning stream event', {
+          requestId,
+          round: round + 1,
+          type: event.type,
+        })
+      }
       if (event.type === 'response.output_text.delta' && event.delta) {
         lastAnswer += event.delta
         onEvent?.({ type: 'text-delta', delta: event.delta })
       }
       const reasoningDelta = readReasoningDelta(event)
       if (enableReasoning && reasoningDelta) {
+        reasoningEventCount += 1
         onEvent?.({
           type: 'reasoning-delta',
           blockId: readReasoningBlockId(event),
@@ -145,6 +174,13 @@ export const runResponsesTurn = async ({
       if (event.type === 'response.completed') {
         response = event.response
       }
+    }
+    if (enableReasoning && reasoningEventCount === 0) {
+      console.warn('[agent][turns][responses] no reasoning events in this round', {
+        requestId,
+        round: round + 1,
+        model,
+      })
     }
 
     if (!response) {
