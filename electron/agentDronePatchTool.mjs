@@ -307,6 +307,7 @@ const normalizeInsertOrder = (operations) => {
 }
 
 export const PATCH_DRONE_PROGRAM_TOOL_NAME = 'PatchDroneProgram'
+export { PATCH_DRONE_PROGRAM_PROPERTIES }
 
 export const patchDroneProgram = ({ project, rawArguments, droneId, droneName, candidates }) => {
   if (candidates.length !== 1) {
