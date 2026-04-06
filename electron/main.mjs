@@ -2,6 +2,8 @@ import { app, BrowserWindow, dialog, ipcMain } from 'electron'
 import path from 'node:path'
 import fs from 'node:fs/promises'
 import { existsSync } from 'node:fs'
+import http from 'node:http'
+import os from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { chatWithAgent, getAgentStatus, resetAgentSession, stopAgentRequest } from './agentService.mjs'
 import { createAgentEnvStore } from './agentEnvStore.mjs'
@@ -19,6 +21,192 @@ const __dirname = path.dirname(__filename)
 const agentEnvFile = path.resolve(__dirname, '../.agent-env.json')
 const agentEnvStore = createAgentEnvStore(agentEnvFile)
 const trajectoryIssuesWaiters = new Map()
+
+const AGENT_PORT_FILE = '.eazyfii-agent-port'
+const getAgentPortFilePath = () => path.join(os.homedir(), AGENT_PORT_FILE)
+
+let agentHttpServer = null
+let currentProjectContext = null
+
+const writeAgentPortFile = async (port) => {
+  const portFilePath = getAgentPortFilePath()
+  try {
+    await fs.writeFile(portFilePath, String(port), 'utf8')
+    console.info(`[agent][http] Port file written: ${portFilePath} = ${port}`)
+  } catch (error) {
+    console.error(`[agent][http] Failed to write port file: ${error.message}`)
+  }
+}
+
+const startAgentHttpServer = () => {
+  if (agentHttpServer) {
+    return
+  }
+
+  agentHttpServer = http.createServer(async (req, res) => {
+    if (req.method !== 'POST' || req.url !== '/agent') {
+      res.writeHead(404, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ ok: false, error: 'Not found' }))
+      return
+    }
+
+    let body = ''
+    req.on('data', (chunk) => {
+      body += chunk
+    })
+    req.on('end', async () => {
+      try {
+        const payload = JSON.parse(body)
+        const { method, params = {}, id = null } = payload
+        const result = await handleAgentHttpRequest(method, params)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: true, result, id }))
+      } catch (error) {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ ok: false, error: String(error), id: null }))
+      }
+    })
+  })
+
+  agentHttpServer.listen(0, '127.0.0.1', () => {
+    const port = agentHttpServer.address().port
+    console.info(`[agent][http] Server listening on port ${port}`)
+    writeAgentPortFile(port)
+  })
+
+  agentHttpServer.on('error', (err) => {
+    console.error(`[agent][http] Server error: ${err.message}`)
+  })
+}
+
+const stopAgentHttpServer = async () => {
+  if (agentHttpServer) {
+    agentHttpServer.close()
+    agentHttpServer = null
+    try {
+      await fs.unlink(getAgentPortFilePath())
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+const handleAgentHttpRequest = async (method, params) => {
+  switch (method) {
+    case 'chat': {
+      const { message, reset, enableReasoning } = params
+      const result = await chatWithAgent({
+        message,
+        reset: Boolean(reset),
+        enableReasoning: Boolean(enableReasoning),
+        envOverrides: agentEnvStore.get(),
+        projectContext: currentProjectContext,
+        onEvent: () => {},
+      })
+      if (result?.projectContext) {
+        currentProjectContext = result.projectContext
+      }
+      return result
+    }
+    case 'getStatus':
+      return getAgentStatus()
+    case 'stop':
+      stopAgentRequest(params?.requestId)
+      return { ok: true }
+    case 'getEnv':
+      return {
+        values: agentEnvStore.get(),
+        allowedKeys: agentEnvStore.allowedKeys,
+        storagePath: agentEnvFile,
+      }
+    case 'setEnv': {
+      const { values } = params
+      const next = await agentEnvStore.setMany(values)
+      return {
+        values: next,
+        allowedKeys: agentEnvStore.allowedKeys,
+        storagePath: agentEnvFile,
+      }
+    }
+    case 'listDrones': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'ListProjectDrones',
+        rawArguments: '{}',
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'getDroneBlocks': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'GetDroneBlocks',
+        rawArguments: JSON.stringify(params),
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'patchDrone': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const { droneId, droneName, operations } = params
+      const result = executeProjectToolCall({
+        name: 'PatchDroneProgram',
+        rawArguments: JSON.stringify({ droneId, droneName, operations }),
+        projectContext: currentProjectContext,
+      })
+      const parsed = JSON.parse(result.output)
+      if (result?.nextProjectContext) {
+        currentProjectContext = result.nextProjectContext
+      }
+      return parsed
+    }
+    case 'getRodConfig': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'GetRodConfig',
+        rawArguments: '{}',
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'getBlockCatalog': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'GetBlockCatalog',
+        rawArguments: '{}',
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'getTrajectoryIssues': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'GetTrajectoryIssuesDetailed',
+        rawArguments: '{}',
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'getTrajectoryDebug': {
+      const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
+      const result = executeProjectToolCall({
+        name: 'GetTrajectoryDebugSnapshot',
+        rawArguments: JSON.stringify(params),
+        projectContext: currentProjectContext,
+      })
+      return JSON.parse(result.output)
+    }
+    case 'setProjectContext': {
+      currentProjectContext = params?.projectContext || null
+      return { ok: true, hasProjectContext: currentProjectContext !== null }
+    }
+    case 'getProjectContext': {
+      return currentProjectContext
+    }
+    default:
+      throw new Error(`Unknown method: ${method}`)
+  }
+}
 
 ipcMain.on('agent:trajectory-issues:response', (event, payload) => {
   const token = typeof payload?.token === 'string' ? payload.token : ''
@@ -231,6 +419,9 @@ ipcMain.handle('agent:chat', async (_event, payload) => {
       transportMode: result?.transportMode,
       traces: Array.isArray(result?.traces) ? result.traces.length : 0,
     })
+    if (result?.projectContext) {
+      currentProjectContext = result.projectContext
+    }
     return { ok: true, ...result }
   } catch (error) {
     const errMessage = error instanceof Error ? error.message : String(error)
@@ -312,13 +503,20 @@ ipcMain.handle('terminal:destroy', (_event, { id }) => {
   return destroyTerminal(id)
 })
 
+ipcMain.handle('agent:update-project-context', (_event, projectContext) => {
+  currentProjectContext = projectContext
+  return { ok: true }
+})
+
 app.whenReady().then(async () => {
   await agentEnvStore.load()
   await createWindow()
+  startAgentHttpServer()
 })
 
 app.on('window-all-closed', () => {
   resetAgentSession()
+  stopAgentHttpServer()
   if (process.platform !== 'darwin') {
     app.quit()
   }
