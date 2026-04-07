@@ -4,6 +4,7 @@ import { existsSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 
 const terminals = new Map()
+const terminalWindows = new Set()
 
 const POSSIBLE_SHELLS = {
   darwin: ['/bin/zsh', '/bin/bash', '/usr/local/bin/bash'],
@@ -119,14 +120,13 @@ export const destroyTerminal = (id) => {
 }
 
 export const registerTerminalWindow = (window) => {
-  if (!globalThis.getTerminalWindows) {
-    globalThis.getTerminalWindows = () => new Set()
-  }
-  globalThis.getTerminalWindows().add(window)
+  terminalWindows.add(window)
+  globalThis.getTerminalWindows = () => terminalWindows
 }
 
 export const unregisterTerminalWindow = (window) => {
+  terminalWindows.delete(window)
   if (globalThis.getTerminalWindows) {
-    globalThis.getTerminalWindows().delete(window)
+    globalThis.getTerminalWindows = () => terminalWindows
   }
 }

@@ -16,6 +16,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
   const terminalRef = useRef<HTMLDivElement>(null)
   const terminalInstanceRef = useRef<Terminal | null>(null)
   const fitAddonRef = useRef<FitAddon | null>(null)
+  const activeTerminalRef = useRef<Terminal | null>(null)
   const [connected, setConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { panelPosition, startDragPanel } = useFloatingTerminalPosition()
@@ -23,111 +24,132 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
   const connectedRef = useRef(false)
 
   useEffect(() => {
-    if (!isDesktopRuntime() || !terminalRef.current) {
+    if (!isDesktopRuntime()) {
       return
     }
 
-    const term = new Terminal({
-      cursorBlink: true,
-      fontSize: 14,
-      fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
-      theme: {
-        background: '#1e1e1e',
-        foreground: '#cccccc',
-        cursor: '#ffffff',
-        selection: 'rgba(255, 255, 255, 0.3)',
-      },
-      rows: 24,
-      cols: 80,
-    })
+    let disposed = false
+    let frameId = 0
+    let removeWindowResize: (() => void) | null = null
+    let unsubData: (() => void) | null = null
+    let unsubExit: (() => void) | null = null
 
-    const fitAddon = new FitAddon()
-    fitAddonRef.current = fitAddon
-    term.loadAddon(fitAddon)
-    term.open(terminalRef.current)
+    const initializeTerminal = () => {
+      if (disposed || !terminalRef.current || terminalInstanceRef.current) {
+        return
+      }
 
-    const measureAndFit = () => {
-      if (fitAddonRef.current && terminalRef.current?.offsetParent !== null) {
+      const term = new Terminal({
+        cursorBlink: true,
+        fontSize: 14,
+        fontFamily: '"SourceCodePro+Powerline+Awesome...", ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
+        theme: {
+          background: '#1e1e1e',
+          foreground: '#cccccc',
+          cursor: '#ffffff',
+          selection: 'rgba(255, 255, 255, 0.3)',
+        },
+        rows: 24,
+        cols: 80,
+      })
+
+      const fitAddon = new FitAddon()
+      fitAddonRef.current = fitAddon
+      terminalInstanceRef.current = term
+      activeTerminalRef.current = term
+
+      term.loadAddon(fitAddon)
+      term.open(terminalRef.current)
+
+      const measureAndFit = () => {
+        if (disposed || activeTerminalRef.current !== term || terminalRef.current?.offsetParent === null) {
+          return
+        }
         try {
-          fitAddonRef.current.fit()
+          fitAddon.fit()
         } catch {
+          // Ignore xterm measurement errors during transient layout.
         }
       }
+
+      measureAndFit()
+
+      terminalCreate({ id: TERMINAL_ID, cols: term.cols, rows: term.rows })
+        .then((result) => {
+          if (disposed || activeTerminalRef.current !== term) {
+            return
+          }
+          if (!result) {
+            setError('无法创建终端：非桌面环境')
+            return
+          }
+          if (!result.ok) {
+            setError(`终端创建失败: ${result.error}`)
+            return
+          }
+          connectedRef.current = true
+          setConnected(true)
+          void terminalResize({ id: TERMINAL_ID, cols: term.cols, rows: term.rows })
+        })
+        .catch((err) => {
+          if (disposed || activeTerminalRef.current !== term) {
+            return
+          }
+          setError(`终端创建失败: ${err.message}`)
+        })
+
+      unsubData = onTerminalData((event) => {
+        if (event.id === TERMINAL_ID && activeTerminalRef.current === term) {
+          term.write(event.data)
+        }
+      })
+
+      unsubExit = onTerminalExit((event) => {
+        if (event.id === TERMINAL_ID && activeTerminalRef.current === term) {
+          term.write('\r\n[终端已关闭]\r\n')
+          connectedRef.current = false
+          setConnected(false)
+        }
+      })
+
+      term.onData((data) => {
+        if (connectedRef.current && activeTerminalRef.current === term) {
+          void terminalWrite({ id: TERMINAL_ID, data })
+        }
+      })
+
+      term.onResize(({ cols: newCols, rows: newRows }) => {
+        if (connectedRef.current && activeTerminalRef.current === term) {
+          void terminalResize({ id: TERMINAL_ID, cols: newCols, rows: newRows })
+        }
+      })
+
+      const handleResize = () => {
+        measureAndFit()
+      }
+      window.addEventListener('resize', handleResize)
+      removeWindowResize = () => window.removeEventListener('resize', handleResize)
     }
 
-    requestAnimationFrame(() => {
-      measureAndFit()
-    })
-
-    terminalInstanceRef.current = term
-
-    const cols = term.cols
-    const rows = term.rows
-
-    terminalCreate({ id: TERMINAL_ID, cols, rows })
-      .then((result) => {
-        console.log('[TerminalPanel] terminalCreate result:', result)
-        if (!result) {
-          setError('无法创建终端：非桌面环境')
-          return
-        }
-        if (!result.ok) {
-          setError(`终端创建失败: ${result.error}`)
-          return
-        }
-        connectedRef.current = true
-        setConnected(true)
-      })
-      .catch((err) => {
-        console.error('[TerminalPanel] terminalCreate error:', err)
-        setError(`终端创建失败: ${err.message}`)
-      })
-
-    const unsubData = onTerminalData((event) => {
-      console.log('[TerminalPanel] onTerminalData:', event.id, TERMINAL_ID)
-      if (event.id === TERMINAL_ID && terminalInstanceRef.current) {
-        terminalInstanceRef.current.write(event.data)
-      }
-    })
-
-    const unsubExit = onTerminalExit((event) => {
-      console.log('[TerminalPanel] onTerminalExit:', event)
-      if (event.id === TERMINAL_ID && terminalInstanceRef.current) {
-        terminalInstanceRef.current.write('\r\n[终端已关闭]\r\n')
-        connectedRef.current = false
-        setConnected(false)
-      }
-    })
-
-    term.onData((data) => {
-      if (connectedRef.current) {
-        console.log('[TerminalPanel] term.onData, writing to terminal')
-        terminalWrite({ id: TERMINAL_ID, data })
-      }
-    })
-
-    term.onResize(({ cols: newCols, rows: newRows }) => {
-      if (connectedRef.current) {
-        console.log('[TerminalPanel] term.onResize:', newCols, newRows)
-        terminalResize({ id: TERMINAL_ID, cols: newCols, rows: newRows })
-      }
-    })
-
-    const handleResize = () => {
-      measureAndFit()
-    }
-
-    window.addEventListener('resize', handleResize)
+    frameId = requestAnimationFrame(initializeTerminal)
 
     return () => {
-      window.removeEventListener('resize', handleResize)
+      disposed = true
+      if (frameId) {
+        cancelAnimationFrame(frameId)
+      }
+      removeWindowResize?.()
       unsubData?.()
       unsubExit?.()
-      terminalDestroy({ id: TERMINAL_ID }).catch(() => {})
+      connectedRef.current = false
+      setConnected(false)
+      void terminalDestroy({ id: TERMINAL_ID })
       if (terminalInstanceRef.current) {
         terminalInstanceRef.current.dispose()
         terminalInstanceRef.current = null
       }
+      fitAddonRef.current = null
+      activeTerminalRef.current = null
     }
   }, [])
 
