@@ -1,5 +1,7 @@
 # 积木类型参考
 
+## 基础控制积木
+
 | 类型 | 说明 | 字段 |
 |------|------|------|
 | `block_inittime` | 时间开始 | `time` |
@@ -7,12 +9,87 @@
 | `Goertek_VerticalSpeed` | 垂直速度 | `VV`, `AV` |
 | `Goertek_UnLock` | 解锁 | - |
 | `block_delay` | 延时 | `time` |
+
+## 飞行控制积木
+
+| 类型 | 说明 | 字段 |
+|------|------|------|
 | `Goertek_TakeOff2` | 起飞 | `alt` |
-| `EazyFii_MoveToCoordAutoDelay` | 智能平移 | `X`, `Y`, `Z`, `time` |
-| `Goertek_MoveToCoord2` | 平移到（异步） | `X`, `Y`, `Z` |
+| `EazyFii_MoveToCoordAutoDelay` | 智能平移（默认使用） | `X`, `Y`, `Z`, `time` |
+| `Goertek_MoveToCoord2` | 平移到（异步，仅明确要求时使用） | `X`, `Y`, `Z` |
 | `Goertek_Move` | 相对平移（异步） | `X`, `Y`, `Z` |
-| `Goertek_TurnTo` | 转向（绝对） | `turnDirection`, `angle` |
-| `Goertek_Turn` | 转动（相对） | `turnDirection`, `angle` |
+| `Goertek_TurnTo` | 转向（绝对朝向） | `turnDirection`, `angle` |
+| `Goertek_Turn` | 转动（相对旋转） | `turnDirection`, `angle` |
+| `Goertek_Land` | 降落 | - |
+
+## 灯光控制积木
+
+| 类型 | 说明 | 字段 |
+|------|------|------|
 | `Goertek_LEDTurnOnAllSingleColor4` | 设置电机灯光 | `motor`, `color1` |
 | `Goertek_LEDTurnOnAllSingleColor2` | 设置全部灯光 | `color1` |
-| `Goertek_Land` | 降落 | - |
+
+## 字段值说明
+
+### 坐标与时间
+
+- `X`、`Y`、`Z`：非空字符串数字，如 `"120"`、`"100"`
+- `time`：非空字符串数字，如 `"800"`、`"1000"`（毫秒）
+- `alt`/`VH`/`VV`/`AH`/`AV`：速度/高度参数
+
+### 灯光颜色
+
+- 颜色值为十六进制 RGB，如 `"#00FF00"`（绿色）、`"#FF0000"`（红色）、`"#0000FF"`（蓝色）
+
+### turnDirection
+
+- `'r'` 或 `'l'`，表示右转或左转
+
+### angle
+
+- `Goertek_TurnTo`：`angle` 是绝对目标朝向角（世界坐标系）
+- `Goertek_Turn`：`angle` 是相对当前机头的旋转量
+
+### motor
+
+- `"1"` 或 `"2"`，表示1号或2号电机
+
+## 积木草稿 block 结构
+
+```json
+{
+  "type": "EazyFii_MoveToCoordAutoDelay",
+  "fields": { "X": "120", "Y": "120", "Z": "100", "time": "800" },
+  "comment": "可选注释"
+}
+```
+
+## 科目1积木写法示例
+
+```json
+{ "type": "Goertek_LEDTurnOnAllSingleColor4", "fields": { "motor": "1", "color1": "#00FF00" } }
+{ "type": "block_delay", "fields": { "time": "100" } }
+{ "type": "Goertek_LEDTurnOnAllSingleColor4", "fields": { "motor": "2", "color1": "#00FF00" } }
+{ "type": "block_delay", "fields": { "time": "100" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "120", "Z": "100", "time": "800" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "200", "Z": "100", "time": "800" } }
+{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "90" } }
+{ "type": "block_delay", "fields": { "time": "1000" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "200", "Y": "200", "Z": "100", "time": "800" } }
+{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "180" } }
+{ "type": "block_delay", "fields": { "time": "1000" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "200", "Y": "120", "Z": "100", "time": "800" } }
+{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "270" } }
+{ "type": "block_delay", "fields": { "time": "1000" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "120", "Z": "100", "time": "800" } }
+```
+
+## 科目2积木写法示例
+
+```json
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "40", "Z": "130", "time": "800" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "120", "Z": "130", "time": "800" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "120", "Z": "170", "time": "800" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "40", "Z": "170", "time": "800" } }
+{ "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "40", "Z": "130", "time": "800" } }
+```
