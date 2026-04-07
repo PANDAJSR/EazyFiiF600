@@ -1,3 +1,8 @@
+---
+name: eazyfii-skill
+description: EazyFii 无人机积木编程 Agent 接口，支持 STDIN/STDOU 通信
+---
+
 # EazyFii Skill - 无人机积木编程 Agent 接口
 
 ## 概述
