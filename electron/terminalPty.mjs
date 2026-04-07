@@ -43,7 +43,9 @@ export const createTerminal = (id, cols, rows) => {
   const platform = os.platform()
   const shell = platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || findAvailableShell())
   const shellArgs = getShellArgs(platform, shell || '')
-  const cwd = process.env.HOME || os.homedir() || '/tmp'
+  const homeDir = process.env.HOME || os.homedir() || '/tmp'
+  const preferredCwd = `${homeDir}/EazyFiiWorkspace`
+  const cwd = existsSync(preferredCwd) ? preferredCwd : homeDir
   const env = {
     ...process.env,
     TERM: process.env.TERM || 'xterm-256color',
