@@ -24,6 +24,8 @@ const trajectoryIssuesWaiters = new Map()
 
 const AGENT_PORT_FILE = '.eazyfii-agent-port'
 const getAgentPortFilePath = () => path.join(os.homedir(), AGENT_PORT_FILE)
+const WORKSPACE_SKILLS_DIR = path.join(os.homedir(), 'EazyFiiWorkspace', '.agents', 'skills')
+const PROJECT_SKILL_DIR = path.resolve(__dirname, '../eazyfii-skill')
 
 let agentHttpServer = null
 let currentProjectContext = null
@@ -205,6 +207,19 @@ const handleAgentHttpRequest = async (method, params) => {
     }
     default:
       throw new Error(`Unknown method: ${method}`)
+  }
+}
+
+const syncEazyfiiSkillToWorkspace = async () => {
+  try {
+    const targetDir = path.join(WORKSPACE_SKILLS_DIR, 'eazyfii-skill')
+    await fs.mkdir(WORKSPACE_SKILLS_DIR, { recursive: true })
+    await fs.rm(targetDir, { recursive: true, force: true })
+    await fs.cp(PROJECT_SKILL_DIR, targetDir, { recursive: true, force: true })
+    console.info(`[agent][skills] Synced skill to ${targetDir}`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    console.error(`[agent][skills] Failed to sync eazyfii-skill: ${message}`)
   }
 }
 
@@ -510,6 +525,7 @@ ipcMain.handle('agent:update-project-context', (_event, projectContext) => {
 
 app.whenReady().then(async () => {
   await agentEnvStore.load()
+  await syncEazyfiiSkillToWorkspace()
   await createWindow()
   startAgentHttpServer()
 })
