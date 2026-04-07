@@ -1,6 +1,7 @@
 import * as pty from 'node-pty'
 import os from 'node:os'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
+import path from 'node:path'
 
 const terminals = new Map()
 const terminalWindows = new Set()
@@ -44,7 +45,14 @@ export const createTerminal = (id, cols, rows) => {
   const shell = platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || findAvailableShell())
   const shellArgs = getShellArgs(platform, shell || '')
   const homeDir = process.env.HOME || os.homedir() || '/tmp'
-  const preferredCwd = `${homeDir}/EazyFiiWorkspace`
+  const preferredCwd = path.join(homeDir, 'EazyFiiWorkspace')
+  if (!existsSync(preferredCwd)) {
+    try {
+      mkdirSync(preferredCwd, { recursive: true })
+    } catch (error) {
+      console.error(`[terminalPty] Failed to create workspace dir: ${preferredCwd}`, error)
+    }
+  }
   const cwd = existsSync(preferredCwd) ? preferredCwd : homeDir
   const env = {
     ...process.env,
