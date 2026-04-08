@@ -102,6 +102,12 @@
 
 对无人机程序进行差量修改。
 
+**调用前必读：**
+1. 先调用 `listDrones` 确认目标无人机（优先用 `droneId`）
+2. 调用 `getDroneBlocks` 读取当前积木，拿到真实 `block.id` 与顺序
+3. 组装 `operations` 后调用 `patchDrone`
+4. 写入后调用 `getTrajectoryIssues` 复检
+
 **参数：**
 ```json
 {
@@ -118,15 +124,34 @@
 }
 ```
 
-**支持的操作类型：**
-- `append_block` - 追加积木
-- `insert_after` - 在指定积木后插入
-- `insert` - 在指定位置插入
-- `insert_blocks_at` - 在指定位置插入多个连续积木
-- `replace_range` - 替换范围内的积木
-- `update_fields` - 更新积木字段
-- `delete_block` - 删除积木
-- `move_block` - 移动积木位置
+**索引规则：**
+- `index` / `startIndex` / `endIndex` / `toIndex` 全部是 **1-based**。
+- `replace_range` 是闭区间：`startIndex` 到 `endIndex` 都会被替换。
+
+**op 与必填字段：**
+
+| op | 必填参数 | 说明 |
+|---|---|---|
+| `append_block` | `block` | 追加到末尾 |
+| `insert_after` | `afterBlockId` + `block` | 在指定积木后插入 |
+| `insert` | `index` + `block` | 在指定位置插入（1-based） |
+| `insert_blocks_at` | `index` + `blocks` | 在指定位置插入多个积木 |
+| `replace_range` | `startIndex` + `endIndex` + `blocks` | 替换闭区间范围内的积木 |
+| `update_fields` | `blockId` + `fields` | 更新积木字段（仅覆盖给出的键） |
+| `delete_block` | `blockId` | 删除指定积木 |
+| `move_block` | `blockId` + `toIndex` | 移动积木到指定位置 |
+
+**block 结构：**
+- `type`：必填，积木类型名
+- `fields`：新增/替换时必填，对象值应为字符串
+- `id`：可选，不传时会自动生成
+- `comment`：可选
+
+**易错点：**
+- 不要把多个"同一 index 的 insert"拆开；连续片段优先用 `insert_blocks_at`
+- 长片段替换优先 `replace_range`，不要用多次 `delete_block + insert`
+- `update_fields` 仅会覆盖给出的字段键，不会自动补全缺失键
+- 新增积木只写 `type` 不写 `fields`，会导致 `ok=false`
 
 ---
 
