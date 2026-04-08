@@ -164,7 +164,6 @@ const handleAgentHttpRequest = async (method, params) => {
       if (result?.nextProjectContext) {
         if (mainWindowRef && !mainWindowRef.isDestroyed()) {
           mainWindowRef.webContents.send('agent:stream', {
-            requestId: '__skill_patch__',
             type: 'project-context-patched',
             projectContext: result.nextProjectContext,
           })

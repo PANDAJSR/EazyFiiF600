@@ -175,6 +175,11 @@ function AgentChatPanel({
       return
     }
     const unsubscribe = onAgentStream((event: AgentStreamEvent) => {
+      if (event.type === 'project-context-patched') {
+        onProjectContextPatched?.(event.projectContext)
+        return
+      }
+
       const activeRequestId = activeRequestIdRef.current
       const assistantMessageId = activeAssistantMessageIdRef.current
       if (!activeRequestId || !assistantMessageId || event.requestId !== activeRequestId) {
@@ -186,11 +191,6 @@ function AgentChatPanel({
           ...message,
           text: `${message.text}${event.delta}`,
         }))
-      }
-
-      if (event.type === 'project-context-patched') {
-        onProjectContextPatched?.(event.projectContext)
-        return
       }
 
       if (event.type === 'tool-call') {

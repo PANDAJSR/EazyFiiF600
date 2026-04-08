@@ -35,13 +35,14 @@ const hasContinuationPromise = (text) => {
   )
 }
 
-const emitProjectContextPatched = ({ onEvent, nextProjectContext }) => {
+const emitProjectContextPatched = ({ onEvent, nextProjectContext, requestId }) => {
   if (!onEvent || !nextProjectContext) {
     return
   }
   onEvent({
     type: 'project-context-patched',
     projectContext: nextProjectContext,
+    requestId,
   })
 }
 
@@ -332,7 +333,7 @@ export const runResponsesTurn = async ({
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
           if (call.name === 'PatchDroneProgram') {
-            emitProjectContextPatched({ onEvent, nextProjectContext })
+            emitProjectContextPatched({ onEvent, nextProjectContext, requestId })
           }
         }
         onEvent?.({
@@ -562,7 +563,7 @@ export const runChatTurn = async ({
           state.projectContext = nextProjectContext
           projectContext = nextProjectContext
           if (toolCall.function.name === 'PatchDroneProgram') {
-            emitProjectContextPatched({ onEvent, nextProjectContext })
+            emitProjectContextPatched({ onEvent, nextProjectContext, requestId })
           }
         }
         onEvent?.({
