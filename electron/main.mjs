@@ -162,6 +162,13 @@ const handleAgentHttpRequest = async (method, params) => {
       const parsed = JSON.parse(result.output)
       // Return both the result and updated context for renderer to sync
       if (result?.nextProjectContext) {
+        if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          mainWindowRef.webContents.send('agent:stream', {
+            requestId: '__skill_patch__',
+            type: 'project-context-patched',
+            projectContext: result.nextProjectContext,
+          })
+        }
         return { ...parsed, nextProjectContext: result.nextProjectContext }
       }
       return parsed

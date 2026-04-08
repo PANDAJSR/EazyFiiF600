@@ -190,6 +190,7 @@ function AgentChatPanel({
 
       if (event.type === 'project-context-patched') {
         onProjectContextPatched?.(event.projectContext)
+        return
       }
 
       if (event.type === 'tool-call') {
