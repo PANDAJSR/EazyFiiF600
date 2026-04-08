@@ -27,13 +27,12 @@ echo '{"method":"listDrones","params":{}}' | node eazyfii-tool.mjs
 # 2. 获取无人机积木
 echo '{"method":"getDroneBlocks","params":{"droneId":"drone_1"}}' | node eazyfii-tool.mjs
 
-# 3. 修改积木程序（插入起飞和绕杆动作）
+# 3. 修改积木程序（插入起飞和平移动作）
 echo '{"method":"patchDrone","params":{"droneId":"drone_1","operations":[
   {"op":"append_block","block":{"type":"Goertek_UnLock","fields":{}}},
   {"op":"append_block","block":{"type":"Goertek_TakeOff2","fields":{"alt":"100"}}},
   {"op":"append_block","block":{"type":"EazyFii_MoveToCoordAutoDelay","fields":{"X":"120","Y":"120","Z":"100","time":"800"}}},
-  {"op":"append_block","block":{"type":"Goertek_TurnTo","fields":{"turnDirection":"r","angle":"90"}}},
-  {"op":"append_block","block":{"type":"block_delay","fields":{"time":"1000"}}}
+  {"op":"append_block","block":{"type":"EazyFii_MoveToCoordAutoDelay","fields":{"X":"200","Y":"200","Z":"100","time":"800"}}}
 ]}}' | node eazyfii-tool.mjs
 
 # 4. 复检轨迹问题

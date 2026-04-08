@@ -18,9 +18,25 @@
 | `EazyFii_MoveToCoordAutoDelay` | 智能平移（默认使用） | `X`, `Y`, `Z`, `time` |
 | `Goertek_MoveToCoord2` | 平移到（异步，仅明确要求时使用） | `X`, `Y`, `Z` |
 | `Goertek_Move` | 相对平移（异步） | `X`, `Y`, `Z` |
-| `Goertek_TurnTo` | 转向（绝对朝向） | `turnDirection`, `angle` |
-| `Goertek_Turn` | 转动（相对旋转） | `turnDirection`, `angle` |
+| `Goertek_TurnTo` | **转向**（绝对朝向） | `turnDirection`, `angle` |
+| `Goertek_Turn` | **转动**（相对旋转） | `turnDirection`, `angle` |
 | `Goertek_Land` | 降落 | - |
+
+### 转向与转动积木的区别
+
+**重要**：飞机平移时通常不需要手动控制转向，因为：
+
+- `EazyFii_MoveToCoordAutoDelay` 等平移积木会**自动计算并调整机头朝向**，使其朝向目标坐标方向
+- 手动转向只在**科目一等明确要求特定朝向**的场景下才需要使用
+
+| 积木 | 作用 | 使用场景 |
+|------|------|----------|
+| `Goertek_TurnTo` | **转向**：将机头对准到指定的绝对角度（世界坐标系） | 科目一等需要特定机头朝向的场景 |
+| `Goertek_Turn` | **转动**：相对于当前机头旋转指定角度 | 绕杆、原地转向等需要相对旋转的场景 |
+
+**示例**：
+- 转向 90°：`Goertek_TurnTo` 的 `angle` 为 `90`，表示机头朝向世界坐标的 90° 方向
+- 转动 90°：`Goertek_Turn` 的 `angle` 为 `90`，表示从当前机头向右转 90°
 
 ## 灯光控制积木
 
@@ -66,6 +82,8 @@
 
 ## 科目1积木写法示例
 
+> **说明**：科目1需要特定机头朝向，因此示例中包含转向积木 `Goertek_TurnTo`。
+
 ```json
 { "type": "Goertek_LEDTurnOnAllSingleColor4", "fields": { "motor": "1", "color1": "#00FF00" } }
 { "type": "block_delay", "fields": { "time": "100" } }
@@ -85,6 +103,8 @@
 ```
 
 ## 科目2积木写法示例
+
+> **说明**：科目2只需平移飞行，平移积木会自动调整机头朝向，无需使用转向积木。
 
 ```json
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "280", "Y": "40", "Z": "130", "time": "800" } }

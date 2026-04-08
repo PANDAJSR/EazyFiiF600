@@ -16,3 +16,6 @@
 ## 提交流程约束
 - 每次修改代码内容后，都必须提交并推送。
 - Commit 消息必须使用中文，并遵循 Conventional Commits 规范。
+
+## 缩写约定
+- `cp`：指 commit 并 push 的操作。
