@@ -29,6 +29,8 @@ const PROJECT_SKILL_DIR = path.resolve(__dirname, '../eazyfii-skill')
 
 let agentHttpServer = null
 let currentProjectContext = null
+let mainWindowRef = null
+const projectContextWaiters = new Map()
 
 const writeAgentPortFile = async (port) => {
   const portFilePath = getAgentPortFilePath()
@@ -97,17 +99,15 @@ const handleAgentHttpRequest = async (method, params) => {
   switch (method) {
     case 'chat': {
       const { message, reset, enableReasoning } = params
+      const projectContext = await requestProjectContextFromRenderer()
       const result = await chatWithAgent({
         message,
         reset: Boolean(reset),
         enableReasoning: Boolean(enableReasoning),
         envOverrides: agentEnvStore.get(),
-        projectContext: currentProjectContext,
+        projectContext,
         onEvent: () => {},
       })
-      if (result?.projectContext) {
-        currentProjectContext = result.projectContext
-      }
       return result
     }
     case 'getStatus':
@@ -131,79 +131,87 @@ const handleAgentHttpRequest = async (method, params) => {
       }
     }
     case 'listDrones': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'ListProjectDrones',
         rawArguments: '{}',
-        projectContext: currentProjectContext,
+        projectContext,
       })
       return JSON.parse(result.output)
     }
     case 'getDroneBlocks': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'GetDroneBlocks',
         rawArguments: JSON.stringify(params),
-        projectContext: currentProjectContext,
+        projectContext,
       })
       return JSON.parse(result.output)
     }
     case 'patchDrone': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
       const { droneId, droneName, operations } = params
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'PatchDroneProgram',
         rawArguments: JSON.stringify({ droneId, droneName, operations }),
-        projectContext: currentProjectContext,
+        projectContext,
       })
       const parsed = JSON.parse(result.output)
+      // Return both the result and updated context for renderer to sync
       if (result?.nextProjectContext) {
-        currentProjectContext = result.nextProjectContext
+        return { ...parsed, nextProjectContext: result.nextProjectContext }
       }
       return parsed
     }
     case 'getRodConfig': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'GetRodConfig',
         rawArguments: '{}',
-        projectContext: currentProjectContext,
+        projectContext,
       })
       return JSON.parse(result.output)
     }
     case 'getBlockCatalog': {
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'GetBlockCatalog',
         rawArguments: '{}',
-        projectContext: currentProjectContext,
+        projectContext: null,
       })
       return JSON.parse(result.output)
     }
     case 'getTrajectoryIssues': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'GetTrajectoryIssuesDetailed',
         rawArguments: '{}',
-        projectContext: currentProjectContext,
+        projectContext,
       })
       return JSON.parse(result.output)
     }
     case 'getTrajectoryDebug': {
+      const projectContext = await requestProjectContextFromRenderer()
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
-      const result = executeProjectToolCall({
+      const result = await executeProjectToolCall({
         name: 'GetTrajectoryDebugSnapshot',
         rawArguments: JSON.stringify(params),
-        projectContext: currentProjectContext,
+        projectContext,
       })
       return JSON.parse(result.output)
     }
     case 'setProjectContext': {
-      currentProjectContext = params?.projectContext || null
-      return { ok: true, hasProjectContext: currentProjectContext !== null }
+      // For backwards compatibility, but now a no-op since we request from renderer
+      return { ok: true, hasProjectContext: true }
     }
     case 'getProjectContext': {
-      return currentProjectContext
+      // Request current state from renderer
+      return await requestProjectContextFromRenderer()
     }
     default:
       throw new Error(`Unknown method: ${method}`)
@@ -238,6 +246,41 @@ ipcMain.on('agent:trajectory-issues:response', (event, payload) => {
   clearTimeout(waiter.timeout)
   trajectoryIssuesWaiters.delete(token)
   waiter.resolve(payload?.trajectoryIssueContext)
+})
+
+ipcMain.on('agent:project-context:response', (event, payload) => {
+  const token = typeof payload?.token === 'string' ? payload.token : ''
+  if (!token) {
+    return
+  }
+  const waiter = projectContextWaiters.get(token)
+  if (!waiter) {
+    return
+  }
+  if (event.sender.id !== waiter.senderId) {
+    return
+  }
+  clearTimeout(waiter.timeout)
+  projectContextWaiters.delete(token)
+  waiter.resolve(payload?.projectContext ?? null)
+})
+
+const requestProjectContextFromRenderer = () => new Promise((resolve) => {
+  if (!mainWindowRef || mainWindowRef.isDestroyed()) {
+    resolve(null)
+    return
+  }
+  const token = `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`
+  const timeout = setTimeout(() => {
+    projectContextWaiters.delete(token)
+    resolve(null)
+  }, 5000)
+  projectContextWaiters.set(token, {
+    senderId: mainWindowRef.id,
+    timeout,
+    resolve,
+  })
+  mainWindowRef.webContents.send('agent:project-context:request', { token })
 })
 
 const requestTrajectoryIssuesFromRenderer = (sender, requestId) => new Promise((resolve) => {
@@ -287,10 +330,12 @@ const createWindow = async () => {
     },
   })
 
+  mainWindowRef = mainWindow
   registerTerminalWindow(mainWindow)
 
   mainWindow.on('closed', () => {
     unregisterTerminalWindow(mainWindow)
+    mainWindowRef = null
   })
 
   const devUrl = process.env.VITE_DEV_SERVER_URL

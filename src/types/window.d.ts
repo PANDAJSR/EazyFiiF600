@@ -22,6 +22,7 @@ import type {
   DesktopTerminalDataEvent,
   DesktopTerminalExitEvent,
   DesktopTerminalResult,
+  DesktopUpdateAgentProjectContextResult,
 } from './desktop'
 
 type DesktopApi = {
@@ -35,8 +36,11 @@ type DesktopApi = {
   getAgentEnv: () => Promise<DesktopAgentEnvResult>
   setAgentEnv: (payload: DesktopAgentSetEnvPayload) => Promise<DesktopAgentEnvResult>
   stopAgentRequest: (payload?: { requestId?: string }) => Promise<DesktopAgentStopResult>
+  updateAgentProjectContext: (projectContext: unknown) => Promise<DesktopUpdateAgentProjectContextResult>
   sendAgentTrajectoryIssuesResponse: (payload: DesktopTrajectoryIssuesResponsePayload) => void
   onAgentTrajectoryIssuesRequest: (handler: (payload: DesktopTrajectoryIssuesRequestPayload) => void) => () => void
+  onAgentProjectContextRequest: (handler: (payload: { token: string }) => void) => () => void
+  sendAgentProjectContextResponse: (payload: { token: string; projectContext: unknown }) => void
   onAgentStream: (handler: (event: DesktopAgentStreamEvent) => void) => () => void
   terminalCreate: (payload: DesktopTerminalCreatePayload) => Promise<DesktopTerminalResult>
   terminalWrite: (payload: DesktopTerminalWritePayload) => Promise<DesktopTerminalResult>

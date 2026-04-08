@@ -34,106 +34,11 @@
 }
 ```
 
+---
+
 ## 可用方法
 
-### 1. chat - 与 Agent 对话
-
-发送消息给内置 Agent 进行无人机编程。
-
-**参数：**
-```json
-{
-  "message": "绕竖杆一圈",
-  "reset": false,
-  "enableReasoning": false
-}
-```
-
-**返回：**
-```json
-{
-  "ok": true,
-  "result": {
-    "reply": "我已经为您规划了科目1的绕杆轨迹...",
-    "traces": [
-      {
-        "phase": "start",
-        "tool": "Bash",
-        "command": "...",
-        "timeoutSec": 30
-      }
-    ],
-    "provider": "openai",
-    "model": "gpt-4o-mini",
-    "transportMode": "chat"
-  }
-}
-```
-
-### 2. getStatus - 获取 Agent 状态
-
-查询内置 Agent 的当前运行状态。
-
-**返回：**
-```json
-{
-  "ok": true,
-  "result": {
-    "busy": false,
-    "phase": "idle",
-    "detail": "空闲",
-    "startedAt": null,
-    "updatedAt": 1743993600000,
-    "requestCount": 5,
-    "lastError": null
-  }
-}
-```
-
-### 3. stop - 停止当前请求
-
-停止正在进行的 Agent 请求。
-
-**参数：**
-```json
-{
-  "requestId": "可选的请求ID"
-}
-```
-
-### 4. getEnv - 获取环境变量
-
-获取 Agent 可用的环境变量。
-
-**返回：**
-```json
-{
-  "ok": true,
-  "result": {
-    "values": {
-      "OPENAI_API_KEY": "sk-...",
-      "NANO_MODEL": "gpt-4o-mini"
-    },
-    "allowedKeys": ["OPENAI_API_KEY", "NANO_MODEL", ...],
-    "storagePath": "/path/to/.agent-env.json"
-  }
-}
-```
-
-### 5. setEnv - 设置环境变量
-
-修改 Agent 环境变量。
-
-**参数：**
-```json
-{
-  "values": {
-    "NANO_MODEL": "gpt-4o"
-  }
-}
-```
-
-### 6. listDrones - 列出无人机
+### 1. listDrones - 列出无人机
 
 获取当前工程中的所有无人机。
 
@@ -155,7 +60,9 @@
 }
 ```
 
-### 7. getDroneBlocks - 获取无人机积木
+---
+
+### 2. getDroneBlocks - 获取无人机积木
 
 获取特定无人机的所有积木。
 
@@ -173,7 +80,25 @@
 }
 ```
 
-### 8. patchDrone - 修改无人机程序
+**返回：**
+```json
+{
+  "ok": true,
+  "result": {
+    "blocks": [
+      {
+        "index": 1,
+        "type": "Goertek_UnLock",
+        "fields": {}
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 3. patchDrone - 修改无人机程序
 
 对无人机程序进行差量修改。
 
@@ -203,7 +128,9 @@
 - `delete_block` - 删除积木
 - `move_block` - 移动积木位置
 
-### 9. getRodConfig - 获取杆子配置
+---
+
+### 4. getRodConfig - 获取杆子配置
 
 获取当前工程的杆子配置信息。
 
@@ -223,7 +150,9 @@
 }
 ```
 
-### 10. getBlockCatalog - 获取积木目录
+---
+
+### 5. getBlockCatalog - 获取积木目录
 
 获取当前工程支持的所有积木类型。
 
@@ -249,11 +178,40 @@
 }
 ```
 
-### 11. getTrajectoryIssues - 获取轨迹问题
+---
+
+### 6. getTrajectoryIssues - 获取轨迹问题
 
 获取当前工程所有无人机的轨迹问题详情。
 
-### 12. getTrajectoryDebug - 获取轨迹调试快照
+**返回：**
+```json
+{
+  "ok": true,
+  "result": {
+    "issues": [
+      {
+        "droneId": "drone_1",
+        "problems": [
+          {
+            "index": 3,
+            "type": "heading_mismatch",
+            "message": "机头朝向后路径方向不一致",
+            "from": { "x": 0, "y": 0 },
+            "to": { "x": 120, "y": 120 },
+            "headingDeg": 45,
+            "moveDirectionDeg": 90
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+---
+
+### 7. getTrajectoryDebug - 获取轨迹调试快照
 
 获取逐段轨迹调试信息。
 
@@ -261,5 +219,25 @@
 ```json
 {
   "droneId": "drone_1"
+}
+```
+
+**返回：**
+```json
+{
+  "ok": true,
+  "result": {
+    "segments": [
+      {
+        "index": 1,
+        "from": { "x": 0, "y": 0, "z": 0 },
+        "to": { "x": 100, "y": 100, "z": 100 },
+        "headingDeg": 45,
+        "moveDirectionDeg": 45,
+        "motorLights": "green",
+        "bodyLights": "off"
+      }
+    ]
+  }
 }
 ```

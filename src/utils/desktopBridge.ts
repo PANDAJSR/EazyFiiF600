@@ -20,6 +20,7 @@ import type {
   DesktopTerminalDataEvent,
   DesktopTerminalExitEvent,
   DesktopTerminalResult,
+  DesktopUpdateAgentProjectContextResult,
 } from '../types/desktop'
 
 export const isDesktopRuntime = () => Boolean(window.eazyFiiDesktop)
@@ -107,6 +108,15 @@ export const stopAgentRequest = async (requestId?: string): Promise<DesktopAgent
   return window.eazyFiiDesktop.stopAgentRequest(requestId ? { requestId } : undefined)
 }
 
+export const updateAgentProjectContext = async (
+  projectContext: unknown,
+): Promise<DesktopUpdateAgentProjectContextResult | null> => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.updateAgentProjectContext(projectContext)
+}
+
 export const sendAgentTrajectoryIssuesResponse = (
   payload: DesktopTrajectoryIssuesResponsePayload,
 ): void => {
@@ -123,6 +133,24 @@ export const onAgentTrajectoryIssuesRequest = (
     return null
   }
   return window.eazyFiiDesktop.onAgentTrajectoryIssuesRequest(handler)
+}
+
+export const onAgentProjectContextRequest = (
+  handler: (payload: { token: string }) => void,
+): (() => void) | null => {
+  if (!window.eazyFiiDesktop) {
+    return null
+  }
+  return window.eazyFiiDesktop.onAgentProjectContextRequest(handler)
+}
+
+export const sendAgentProjectContextResponse = (
+  payload: { token: string; projectContext: unknown },
+): void => {
+  if (!window.eazyFiiDesktop) {
+    return
+  }
+  window.eazyFiiDesktop.sendAgentProjectContextResponse(payload)
 }
 
 export const onAgentStream = (

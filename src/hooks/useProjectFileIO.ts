@@ -4,7 +4,7 @@ import type { Dispatch, RefObject, SetStateAction } from 'react'
 import type { ParseResult } from '../types/fii'
 import { parseFiiFromFiles } from '../utils/fiiParser'
 import { applySavedEdits, saveResultEdits } from '../utils/blockEditsStorage'
-import { isDesktopRuntime, isElectronShell } from '../utils/desktopBridge'
+import { isDesktopRuntime, isElectronShell, updateAgentProjectContext } from '../utils/desktopBridge'
 import { openDomDirectoryPicker } from '../utils/domFilePicker'
 import { openDesktopProject, saveDesktopProject } from '../utils/desktopProjectIO'
 import {
@@ -64,6 +64,7 @@ export const useProjectFileIO = ({
       setSelectedBlockId(undefined)
       setHighlightPulse(0)
       setHasUnsavedChanges(false)
+      await updateAgentProjectContext(merged)
       if (merged.warnings.length) {
         message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
       } else {
@@ -83,6 +84,7 @@ export const useProjectFileIO = ({
     setResult,
     setSelectedBlockId,
     setSelectedDroneId,
+    updateAgentProjectContext,
   ])
 
   const handleOpenDirectory = useCallback(async () => {
@@ -112,6 +114,7 @@ export const useProjectFileIO = ({
         setSelectedBlockId(undefined)
         setHighlightPulse(0)
         setHasUnsavedChanges(false)
+        await updateAgentProjectContext(merged)
         if (merged.warnings.length) {
           message.warning(`读取完成，存在 ${merged.warnings.length} 条提示`)
         } else {
@@ -136,6 +139,7 @@ export const useProjectFileIO = ({
     setResult,
     setSelectedBlockId,
     setSelectedDroneId,
+    updateAgentProjectContext,
   ])
 
   const handleSaveEdits = useCallback(async () => {

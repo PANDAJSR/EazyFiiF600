@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('eazyFiiDesktop', {
   writeTextFile: (payload) => ipcRenderer.invoke('desktop:write-text-file', payload),
   agentChat: (payload) => ipcRenderer.invoke('agent:chat', payload),
   stopAgentRequest: (payload) => ipcRenderer.invoke('agent:stop', payload),
+  updateAgentProjectContext: (projectContext) => ipcRenderer.invoke('agent:update-project-context', projectContext),
   getAgentStatus: () => ipcRenderer.invoke('agent:get-status'),
   getAgentEnv: () => ipcRenderer.invoke('agent:get-env'),
   setAgentEnv: (payload) => ipcRenderer.invoke('agent:set-env', payload),
@@ -17,6 +18,12 @@ contextBridge.exposeInMainWorld('eazyFiiDesktop', {
     ipcRenderer.on('agent:trajectory-issues:request', listener)
     return () => ipcRenderer.removeListener('agent:trajectory-issues:request', listener)
   },
+  onAgentProjectContextRequest: (handler) => {
+    const listener = (_event, payload) => handler(payload)
+    ipcRenderer.on('agent:project-context:request', listener)
+    return () => ipcRenderer.removeListener('agent:project-context:request', listener)
+  },
+  sendAgentProjectContextResponse: (payload) => ipcRenderer.send('agent:project-context:response', payload),
   onAgentStream: (handler) => {
     const listener = (_event, payload) => handler(payload)
     ipcRenderer.on('agent:stream', listener)

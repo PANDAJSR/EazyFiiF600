@@ -96,3 +96,5 @@ export type DesktopTerminalExitEvent = {
 }
 
 export type DesktopTerminalResult = { ok: true } | { ok: false; error: string }
+
+export type DesktopUpdateAgentProjectContextResult = { ok: true } | { ok: false; error: string }
