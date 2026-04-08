@@ -24,10 +24,7 @@ const trajectoryIssuesWaiters = new Map()
 
 const AGENT_PORT_FILE = '.eazyfii-agent-port'
 const getAgentPortFilePath = () => path.join(os.homedir(), AGENT_PORT_FILE)
-const WORKSPACE_SKILLS_DIRS = [
-  path.join(os.homedir(), 'EazyFiiWorkspace', '.agents', 'skills'),
-  path.join(os.homedir(), 'EazyFiiWorkspace', '.agent', 'skills'),
-]
+const WORKSPACE_SKILLS_DIR = path.join(os.homedir(), 'EazyFiiWorkspace', '.agents', 'skills')
 const PROJECT_SKILL_DIR = path.resolve(__dirname, '../eazyfii-skill')
 
 let agentHttpServer = null
@@ -215,13 +212,11 @@ const handleAgentHttpRequest = async (method, params) => {
 
 const syncEazyfiiSkillToWorkspace = async () => {
   try {
-    for (const skillsDir of WORKSPACE_SKILLS_DIRS) {
-      const targetDir = path.join(skillsDir, 'eazyfii-skill')
-      await fs.mkdir(skillsDir, { recursive: true })
-      await fs.rm(targetDir, { recursive: true, force: true })
-      await fs.cp(PROJECT_SKILL_DIR, targetDir, { recursive: true, force: true })
-      console.info(`[agent][skills] Synced skill to ${targetDir}`)
-    }
+    const targetDir = path.join(WORKSPACE_SKILLS_DIR, 'eazyfii-skill')
+    await fs.mkdir(WORKSPACE_SKILLS_DIR, { recursive: true })
+    await fs.rm(targetDir, { recursive: true, force: true })
+    await fs.cp(PROJECT_SKILL_DIR, targetDir, { recursive: true, force: true })
+    console.info(`[agent][skills] Synced skill to ${targetDir}`)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     console.error(`[agent][skills] Failed to sync eazyfii-skill: ${message}`)
