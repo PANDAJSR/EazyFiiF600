@@ -70,6 +70,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
           try {
             fitAddonRef.current.fit()
           } catch {
+            // Ignore transient measurement errors while layout stabilizes.
           }
         }
       }
