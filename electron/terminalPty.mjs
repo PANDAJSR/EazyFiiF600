@@ -1,6 +1,6 @@
 import * as pty from 'node-pty'
 import os from 'node:os'
-import { existsSync } from 'node:fs'
+import { existsSync, mkdirSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 
 const terminals = new Map()
@@ -32,7 +32,19 @@ export const createTerminal = (id, cols, rows) => {
 
   const platform = os.platform()
   const shell = platform === 'win32' ? 'powershell.exe' : (process.env.SHELL || findAvailableShell())
-  const cwd = process.env.HOME || os.homedir() || '/tmp'
+  const homeDir = process.env.HOME || os.homedir() || '/tmp'
+  const workspaceDir = `${homeDir}/EazyFiiWorkspace`
+  let cwd = homeDir
+  try {
+    if (!existsSync(workspaceDir)) {
+      mkdirSync(workspaceDir, { recursive: true })
+    }
+    cwd = workspaceDir
+  } catch (error) {
+    const errMsg = error instanceof Error ? error.message : String(error)
+    console.warn(`[terminalPty] Failed to prepare workspace dir, fallback to home: ${errMsg}`)
+    cwd = homeDir
+  }
 
   if (!shell) {
     const errMsg = `No available shell found for platform ${platform}`
