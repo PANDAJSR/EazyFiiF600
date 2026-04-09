@@ -67,6 +67,7 @@ echo '{"method":"patchDrone","params":{"droneId":"drone_1","operations":[{"op":"
 ### 科目说明
 - [科目说明](./eazyfii-subjects.md) - 科目规则、完成条件、编程策略
 - [科目3D结构](./eazyfii-subjects-3d.md) - 科目道具在3D空间的结构描述
+- [科目尺寸规格](./subject-dimensions.md) - 各科目道具的标准尺寸参数（竖杆高度、圈直径、离地高度等）
 
 ### 使用示例
 - [完整示例](./eazyfii-examples.md) - 常用场景的完整代码示例
