@@ -71,11 +71,12 @@ echo '{"method":"patchDrone","params":{"droneId":"drone_1","operations":[{"op":"
 ### 使用示例
 - [完整示例](./eazyfii-examples.md) - 常用场景的完整代码示例
 - [科目1示例](./subject1-example.md) - 绕竖杆科目的详细示例（含坐标、转向、延时参考）
+- [科目2示例](./subject2-example.md) - 过圆环科目的详细示例（含坐标、转向、延时参考）
 
 ## 注意事项
 
 1. **先打开项目**：调用项目相关工具前，请确保 EazyFii 应用已打开目标项目
-2. **先参考科目示例**：涉及到科目完成时，务必先参考对应科目的示例文档（如 [subject1-example.md](./subject1-example.md)），了解坐标设置、转向逻辑、延时要求等关键细节。注意示例仅供参考，实际坐标需根据现场情况调整
+2. **先参考科目示例**：涉及到科目完成时，务必先参考对应科目的示例文档（科目1参考 [subject1-example.md](./subject1-example.md)，科目2参考 [subject2-example.md](./subject2-example.md)），了解坐标设置、转向逻辑、延时要求等关键细节。注意示例仅供参考，实际坐标需根据现场情况调整
 3. **复检很重要**：修改程序后必须复检，不能只改一次就结束
 4. **索引从1开始**：PatchDroneProgram 的索引是 1-based
 5. **字段必须是字符串**：所有积木字段值必须是字符串类型，如 `"120"` 而不是 `120`
