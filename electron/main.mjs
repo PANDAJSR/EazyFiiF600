@@ -152,6 +152,11 @@ const handleAgentHttpRequest = async (method, params) => {
     }
     case 'patchDrone': {
       const projectContext = await requestProjectContextFromRenderer()
+      console.info('[agent][main] patchDrone received', {
+        hasProjectContext: !!projectContext,
+        droneId: params?.droneId,
+        operationsCount: Array.isArray(params?.operations) ? params.operations.length : 0,
+      })
       const { executeProjectToolCall } = await import('./agentProjectTools.mjs')
       const { droneId, droneName, operations } = params
       const result = await executeProjectToolCall({
@@ -160,9 +165,17 @@ const handleAgentHttpRequest = async (method, params) => {
         projectContext,
       })
       const parsed = JSON.parse(result.output)
+      console.info('[agent][main] patchDrone result', {
+        hasNextProjectContext: !!result?.nextProjectContext,
+        outputOk: parsed?.ok,
+        windowExists: !!(mainWindowRef && !mainWindowRef.isDestroyed()),
+      })
       // Return both the result and updated context for renderer to sync
       if (result?.nextProjectContext) {
         if (mainWindowRef && !mainWindowRef.isDestroyed()) {
+          console.info('[agent][main] patchDrone sending project-context-patched to renderer', {
+            programCount: result.nextProjectContext.programs?.length,
+          })
           mainWindowRef.webContents.send('agent:stream', {
             type: 'project-context-patched',
             projectContext: result.nextProjectContext,

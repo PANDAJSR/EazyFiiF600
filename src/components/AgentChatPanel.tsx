@@ -176,6 +176,10 @@ function AgentChatPanel({
     }
     const unsubscribe = onAgentStream((event: AgentStreamEvent) => {
       if (event.type === 'project-context-patched') {
+        console.info('[agent-ui] project-context-patched event received', {
+          hasProjectContext: !!event.projectContext,
+          programCount: event.projectContext?.programs?.length,
+        })
         onProjectContextPatched?.(event.projectContext)
         return
       }
@@ -183,6 +187,12 @@ function AgentChatPanel({
       const activeRequestId = activeRequestIdRef.current
       const assistantMessageId = activeAssistantMessageIdRef.current
       if (!activeRequestId || !assistantMessageId || event.requestId !== activeRequestId) {
+        console.info('[agent-ui] event filtered out', {
+          eventType: event.type,
+          eventRequestId: event.requestId,
+          activeRequestId,
+          hasAssistantMessageId: !!assistantMessageId,
+        })
         return
       }
 

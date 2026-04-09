@@ -407,6 +407,10 @@ function App() {
         rodConfigContext={agentRodConfigContext}
         trajectoryIssueContext={trajectoryIssueContext}
         onProjectContextPatched={(next) => {
+          console.info('[app] onProjectContextPatched called', {
+            hasNext: !!next,
+            programCount: next?.programs?.length,
+          })
           setResult(next)
           setHasUnsavedChanges(true)
         }}
