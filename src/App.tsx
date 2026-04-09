@@ -16,7 +16,7 @@ import usePathDrawingHotkey from './components/usePathDrawingHotkey'
 import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
-import { isDesktopRuntime, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
+import { isDesktopRuntime, onAgentStream, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
 import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
@@ -251,6 +251,24 @@ function App() {
       unsubscribe?.()
     }
   }, [result, agentRodConfigContext, trajectoryIssueContext])
+  useEffect(() => {
+    if (!isDesktopRuntime()) {
+      return
+    }
+    const unsubscribe = onAgentStream((event) => {
+      if (event.type === 'project-context-patched') {
+        console.info('[app] project-context-patched event received', {
+          hasProjectContext: !!event.projectContext,
+          programCount: event.projectContext?.programs?.length,
+        })
+        setResult(event.projectContext)
+        setHasUnsavedChanges(true)
+      }
+    })
+    return () => {
+      unsubscribe?.()
+    }
+  }, [])
   const handleReorderBlocks = useCallback((nextBlocks: ParseResult['programs'][number]['blocks']) => {
     setResult((prev) => replaceSelectedProgramBlocks(prev, selectedDroneId, nextBlocks))
     setHasUnsavedChanges(true)
