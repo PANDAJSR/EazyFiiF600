@@ -10,6 +10,7 @@ import { checkSubject7PassThreeRingsWithColorChanges } from './subject7Issues'
 import { checkSubject8PassHighLowRings } from './subject8Issues'
 import { checkSubject9VerticalFigureEightAroundDifferentHeightCrossbars } from './subject9Issues'
 import type { XYZ } from './trajectoryUtils'
+import { checkRodCollisionIssues } from './collisionDetection'
 
 const ASYNC_MOVE_BLOCK_TYPE = 'Goertek_MoveToCoord2'
 const RELATIVE_MOVE_BLOCK_TYPE = 'Goertek_Move'
@@ -414,5 +415,6 @@ export const buildTrajectoryIssues = (
   }
 
   issues.push(...findAsyncMoveDelayIssues(startPos, blocks))
+  issues.push(...checkRodCollisionIssues(rodConfig, startPos, blocks))
   return issues
 }
