@@ -1,6 +1,6 @@
 import type { ParseResult, ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE, normalizeAutoDelayBlocks } from './autoDelayBlocks'
-import { clampAsyncMoveFieldValue, clampAsyncMoveX, clampAsyncMoveY, MIN_ABSOLUTE_MOVE_Z } from './moveBlockConstraints'
+import { clampAsyncMoveFieldValue, clampAsyncMoveX, clampAsyncMoveY, clampAutoDelayFieldValue, MIN_ABSOLUTE_MOVE_Z } from './moveBlockConstraints'
 
 type MovePointPayload = {
   blockId: string
@@ -88,16 +88,25 @@ export const normalizeBlockFieldOnBlur = (
       if (block.id !== blockId) {
         return block
       }
-      if (block.type !== 'Goertek_MoveToCoord2') {
-        return block
+      if (block.type === 'Goertek_MoveToCoord2') {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            [fieldKey]: clampAsyncMoveFieldValue(fieldKey, value),
+          },
+        }
       }
-      return {
-        ...block,
-        fields: {
-          ...block.fields,
-          [fieldKey]: clampAsyncMoveFieldValue(fieldKey, value),
-        },
+      if (block.type === AUTO_DELAY_BLOCK_TYPE) {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            [fieldKey]: clampAutoDelayFieldValue(fieldKey, value),
+          },
+        }
       }
+      return block
     }),
   )
 }
