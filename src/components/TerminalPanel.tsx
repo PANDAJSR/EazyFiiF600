@@ -50,7 +50,7 @@ function TerminalPanel({ onClose }: TerminalPanelProps) {
           background: '#1e1e1e',
           foreground: '#cccccc',
           cursor: '#ffffff',
-          selection: 'rgba(255, 255, 255, 0.3)',
+          selectionBackground: 'rgba(255, 255, 255, 0.3)',
         },
         rows: 24,
         cols: 80,
