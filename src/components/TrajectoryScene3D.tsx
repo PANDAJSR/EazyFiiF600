@@ -67,6 +67,7 @@ function TrajectoryScene3D({
     if (!container || !visits.length) {
       return
     }
+    console.log('[TrajectoryScene3D] useEffect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#fafdff')
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 12000)
@@ -403,6 +404,7 @@ function TrajectoryScene3D({
     if (!state || !visits.length || !state.pathGeometry || !state.startMarker || !state.endMarker) {
       return
     }
+    console.log('[TrajectoryScene3D] visits effect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
     state.pathGeometry.setFromPoints(pathPoints)
     const startPoint = pathPoints[0]

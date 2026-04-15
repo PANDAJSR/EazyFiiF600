@@ -34,10 +34,18 @@ function TrajectoryPlane({
   backgroundTrajectories = [],
   activeTrajectoryColor = '#1b6ed6',
 }: Props) {
-  const visits = useMemo(() => buildPathVisits(startPos, blocks), [blocks, startPos])
+  const visits = useMemo(() => {
+    const result = buildPathVisits(startPos, blocks)
+    console.log('[TrajectoryPlane] visits recomputed, blocks length:', blocks.length, 'visits length:', result.length)
+    return result
+  }, [blocks, startPos])
   const backgroundVisits = useMemo(() => backgroundTrajectories.map((item) => ({ ...item, visits: buildPathVisits(item.startPos, item.blocks) })), [backgroundTrajectories])
   const allRenderedVisits = useMemo(() => [...visits, ...backgroundVisits.flatMap((item) => item.visits)], [backgroundVisits, visits])
-  const bounds = useMemo(() => calcTrajectoryBounds(allRenderedVisits), [allRenderedVisits])
+  const bounds = useMemo(() => {
+    const result = calcTrajectoryBounds(allRenderedVisits)
+    console.log('[TrajectoryPlane] bounds recomputed, span:', result.span)
+    return result
+  }, [allRenderedVisits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
   const margin = { top: 16, right: 16, bottom: 44, left: 44 }
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right

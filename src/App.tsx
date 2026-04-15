@@ -99,6 +99,7 @@ function App() {
     onFocused: () => setPendingFocusTarget(undefined),
   })
   const handleLocateBlock = useCallback((blockId: string) => {
+    console.log('[App] handleLocateBlock called, blockId:', blockId)
     setHighlightedBlockId(blockId)
     setSelectedBlockId(blockId)
     setHighlightPulse((prev) => prev + 1)
