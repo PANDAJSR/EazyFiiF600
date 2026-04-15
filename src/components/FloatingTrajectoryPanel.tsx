@@ -407,6 +407,7 @@ function FloatingTrajectoryPanel({
               startPos={startPos}
               blocks={blocks}
               pathDrawingMode={pathDrawingMode && viewMode === '2d'}
+              selectedBlockId={selectedBlockId}
               onDrawPathPoint={onDrawPathPoint}
               onLocateBlock={onLocateBlock}
               onMovePoint={onMovePoint}
