@@ -2,6 +2,9 @@ import { Empty } from 'antd'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { Line2 } from 'three/examples/jsm/lines/Line2.js'
+import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
+import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { RodConfig } from './trajectory/rodConfig'
 import { renderSubjectRods, renderTakeoffZoneOnGround } from './trajectory/trajectoryScene3dRods'
 import { SNAP_STEP, snapToStep } from './trajectory/trajectoryPlaneUtils'
@@ -15,7 +18,7 @@ import {
   type MovePointPayload,
   type PickCandidate,
 } from './trajectory/trajectoryScene3dUtils'
-import type { TrajectoryBounds, Visit } from './trajectory/trajectoryUtils'
+import type { LightColorSegment, TrajectoryBounds, Visit } from './trajectory/trajectoryUtils'
 import { GRID_STEP } from './trajectory/trajectoryUtils'
 type Props = {
   visits: Visit[]
@@ -25,6 +28,7 @@ type Props = {
   onMovePoint?: (payload: MovePointPayload) => void
   backgroundTrajectories?: Array<{ droneId: string; color: string; visits: Visit[] }>
   activeTrajectoryColor?: string
+  lightColorSegments?: LightColorSegment[]
 }
 function TrajectoryScene3D({
   visits,
@@ -34,6 +38,7 @@ function TrajectoryScene3D({
   onMovePoint,
   backgroundTrajectories = [],
   activeTrajectoryColor = '#1b6ed6',
+  lightColorSegments = [],
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneStateRef = useRef<{
@@ -42,8 +47,7 @@ function TrajectoryScene3D({
     renderer: THREE.WebGLRenderer | null
     controls: OrbitControls | null
     disposers: Array<() => void>
-    pathLine: THREE.Line | null
-    pathGeometry: THREE.BufferGeometry | null
+    pathLines: Line2[]
     startMarker: THREE.Mesh | null
     endMarker: THREE.Mesh | null
     hoverMesh: THREE.Mesh | null
@@ -133,14 +137,70 @@ function TrajectoryScene3D({
     renderTakeoffZoneOnGround(scene, rodConfig, disposers)
     renderSubjectRods(scene, rodConfig, disposers)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
-    const pathGeometry = new THREE.BufferGeometry().setFromPoints(pathPoints)
-    const pathMaterial = new THREE.LineBasicMaterial({ color: activeTrajectoryColor })
-    const pathLine = new THREE.Line(pathGeometry, pathMaterial)
-    scene.add(pathLine)
-    disposers.push(() => {
-      pathGeometry.dispose()
-      pathMaterial.dispose()
+    const pathLineWidth = Math.max(bounds.span * 0.0015, 3)
+    const pathMaterial = new LineMaterial({
+      color: activeTrajectoryColor,
+      linewidth: pathLineWidth,
+      resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
     })
+    const pathLines: Line2[] = []
+
+    if (lightColorSegments.length > 0) {
+      lightColorSegments.forEach((segment) => {
+        if (segment.startVisitIndex >= visits.length || segment.endVisitIndex >= visits.length) {
+          return
+        }
+        const startVisit = visits[segment.startVisitIndex]
+        const endVisit = visits[segment.endVisitIndex]
+
+        if (segment.startRatio !== undefined && segment.endRatio !== undefined) {
+          const midX = startVisit.x + (endVisit.x - startVisit.x) * segment.startRatio
+          const midY = startVisit.y + (endVisit.y - startVisit.y) * segment.startRatio
+          const midZ = startVisit.z + (endVisit.z - startVisit.z) * segment.startRatio
+
+          const midX2 = startVisit.x + (endVisit.x - startVisit.x) * segment.endRatio
+          const midY2 = startVisit.y + (endVisit.y - startVisit.y) * segment.endRatio
+          const midZ2 = startVisit.z + (endVisit.z - startVisit.z) * segment.endRatio
+
+          const geometry1 = new LineGeometry()
+          geometry1.setPositions([startVisit.x, startVisit.y, startVisit.z, midX, midY, midZ])
+          const line1 = new Line2(geometry1, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
+          scene.add(line1)
+          pathLines.push(line1)
+          disposers.push(() => { geometry1.dispose() })
+
+          const geometry2 = new LineGeometry()
+          geometry2.setPositions([midX, midY, midZ, midX2, midY2, midZ2])
+          const line2 = new Line2(geometry2, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
+          scene.add(line2)
+          pathLines.push(line2)
+          disposers.push(() => { geometry2.dispose() })
+
+          const geometry3 = new LineGeometry()
+          geometry3.setPositions([midX2, midY2, midZ2, endVisit.x, endVisit.y, endVisit.z])
+          const line3 = new Line2(geometry3, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
+          scene.add(line3)
+          pathLines.push(line3)
+          disposers.push(() => { geometry3.dispose() })
+        } else {
+          const geometry = new LineGeometry()
+          geometry.setPositions([startVisit.x, startVisit.y, startVisit.z, endVisit.x, endVisit.y, endVisit.z])
+          const line = new Line2(geometry, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
+          scene.add(line)
+          pathLines.push(line)
+          disposers.push(() => { geometry.dispose() })
+        }
+      })
+    } else {
+      const geometry = new LineGeometry()
+      geometry.setFromPoints(pathPoints)
+      const line = new Line2(geometry, pathMaterial)
+      scene.add(line)
+      pathLines.push(line)
+      disposers.push(() => { geometry.dispose() })
+    }
+    disposers.push(() => { pathMaterial.dispose() })
+
     backgroundTrajectories.forEach((item) => {
       if (!item.visits.length) {
         return
@@ -197,8 +257,7 @@ function TrajectoryScene3D({
       renderer,
       controls,
       disposers,
-      pathLine,
-      pathGeometry,
+      pathLines,
       startMarker,
       endMarker,
       hoverMesh,
@@ -397,16 +456,17 @@ function TrajectoryScene3D({
     backgroundTrajectories,
     activeTrajectoryColor,
     rodConfig,
+    visits,
+    lightColorSegments,
   ])
 
   useEffect(() => {
     const state = sceneStateRef.current
-    if (!state || !visits.length || !state.pathGeometry || !state.startMarker || !state.endMarker) {
+    if (!state || !visits.length || !state.startMarker || !state.endMarker) {
       return
     }
     console.log('[TrajectoryScene3D] visits effect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
-    state.pathGeometry.setFromPoints(pathPoints)
     const startPoint = pathPoints[0]
     const endPoint = pathPoints[pathPoints.length - 1]
     state.startMarker.position.copy(startPoint)

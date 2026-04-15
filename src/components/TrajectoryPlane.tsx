@@ -1,4 +1,4 @@
-import { Empty } from 'antd'
+import { Empty, Segmented } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
 import TrajectoryScene3D from './TrajectoryScene3D'
@@ -6,7 +6,7 @@ import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import type { RodConfig } from './trajectory/rodConfig'
 import type { MovePointPayload } from './trajectory/trajectoryScene3dUtils'
 import { buildRodMarkers, buildTakeoffZone } from './trajectory/trajectoryPlaneDecorations'
-import { buildPathVisits, buildTicks, calcTrajectoryBounds, type TrajectoryBounds, type XYZ, type Visit } from './trajectory/trajectoryUtils'
+import { buildLightColorSegments, buildPathVisits, buildTicks, calcTrajectoryBounds, type TrajectoryBounds, type XYZ, type Visit } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, isCountedVisit, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
 import TrajectoryPlaneOverlay, { type PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
 type Props = {
@@ -21,6 +21,8 @@ type Props = {
   backgroundTrajectories?: TrajectoryDisplay[]
   activeTrajectoryColor?: string
 }
+
+type PathLineColorMode = 'fixed' | 'light'
 const VIEWBOX_WIDTH = 680, VIEWBOX_HEIGHT = 620
 function TrajectoryPlane({
   startPos,
@@ -47,6 +49,7 @@ function TrajectoryPlane({
     return result
   }, [allRenderedVisits])
   const summarizedPoints = useMemo(() => summarizePoints(visits), [visits])
+  const lightColorSegments = useMemo(() => buildLightColorSegments(blocks, visits), [blocks, visits])
   const margin = { top: 16, right: 16, bottom: 44, left: 44 }
   const innerWidth = VIEWBOX_WIDTH - margin.left - margin.right
   const innerHeight = VIEWBOX_HEIGHT - margin.top - margin.bottom
@@ -60,6 +63,7 @@ function TrajectoryPlane({
   const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
   const [dragPreview, setDragPreview] = useState<PreviewPoint>()
   const [drawPreview, setDrawPreview] = useState<PreviewPoint>()
+  const [pathLineColorMode, setPathLineColorMode] = useState<PathLineColorMode>('fixed')
   const panelRef = useRef<HTMLDivElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
@@ -176,6 +180,18 @@ function TrajectoryPlane({
     return (
       <div className="trajectory-card">
         <div className="trajectory-meta">{meta}</div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+          <span style={{ fontSize: 12, color: '#666' }}>路径线颜色：</span>
+          <Segmented<PathLineColorMode>
+            size="small"
+            value={pathLineColorMode}
+            onChange={(value) => setPathLineColorMode(value)}
+            options={[
+              { label: '固定颜色', value: 'fixed' },
+              { label: '灯光颜色', value: 'light' },
+            ]}
+          />
+        </div>
         <TrajectoryScene3D
           visits={visits}
           bounds={bounds}
@@ -184,6 +200,7 @@ function TrajectoryPlane({
           onMovePoint={onMovePoint}
           backgroundTrajectories={backgroundVisits}
           activeTrajectoryColor={activeTrajectoryColor}
+          lightColorSegments={pathLineColorMode === 'light' ? lightColorSegments : []}
         />
       </div>
     )
