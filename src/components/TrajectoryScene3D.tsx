@@ -64,13 +64,14 @@ function TrajectoryScene3D({
   )
 
   useEffect(() => {
+    console.log('[TrajectoryScene3D] Effect RUN, container:', !!containerRef.current, 'sceneState:', !!sceneStateRef.current)
     const container = containerRef.current
     if (!container || !visits.length) {
+      console.log('[TrajectoryScene3D] Effect SKIP - no container or visits')
       return
     }
     console.log('[TrajectoryScene3D] useEffect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
 
-    // Check if we already have scene objects (skip full re-init)
     if (sceneStateRef.current?.scene && sceneStateRef.current?.camera && sceneStateRef.current?.renderer) {
       console.log('[TrajectoryScene3D] Re-render - preserving existing scene objects')
       return
@@ -380,6 +381,7 @@ function TrajectoryScene3D({
     }
     render()
     return () => {
+      console.log('[TrajectoryScene3D] CLEANUP - component unmounting')
       window.cancelAnimationFrame(animationFrameId)
       resizeObserver.disconnect()
       controls.dispose()
@@ -417,7 +419,9 @@ function TrajectoryScene3D({
 
   useEffect(() => {
     const state = sceneStateRef.current
+    console.log('[TrajectoryScene3D] visitsEffect RUN, state:', !!state, 'visits:', visits.length)
     if (!state || !visits.length || !state.pathGeometry || !state.startMarker || !state.endMarker) {
+      console.log('[TrajectoryScene3D] visitsEffect SKIP')
       return
     }
     console.log('[TrajectoryScene3D] visits effect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
