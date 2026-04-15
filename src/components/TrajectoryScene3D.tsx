@@ -51,6 +51,7 @@ function TrajectoryScene3D({
     dragCandidatesRef: { current: DragCandidate[] }
     activeTrajectoryColorRef: { current: string }
     pointOffsetZ: number
+    isFirstMount: boolean
   } | null>(null)
 
   const center = useMemo(
@@ -68,6 +69,14 @@ function TrajectoryScene3D({
       return
     }
     console.log('[TrajectoryScene3D] useEffect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
+
+    // Check if we already have scene objects (skip full re-init)
+    if (sceneStateRef.current?.scene && sceneStateRef.current?.camera && sceneStateRef.current?.renderer) {
+      console.log('[TrajectoryScene3D] Re-render - preserving existing scene objects')
+      return
+    }
+
+    console.log('[TrajectoryScene3D] First mount - creating new scene objects')
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#fafdff')
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 12000)
@@ -206,6 +215,13 @@ function TrajectoryScene3D({
       dragCandidatesRef: { current: dragCandidates },
       activeTrajectoryColorRef: { current: activeTrajectoryColor },
       pointOffsetZ,
+      isFirstMount: sceneStateRef.current === null,
+    }
+
+    if (sceneStateRef.current.isFirstMount) {
+      console.log('[TrajectoryScene3D] First mount - initializing camera')
+    } else {
+      console.log('[TrajectoryScene3D] Re-render - preserving camera position')
     }
 
     let hoveredCandidate: PickCandidate | null = null
