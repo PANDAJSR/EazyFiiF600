@@ -36,6 +36,23 @@ function TrajectoryScene3D({
   activeTrajectoryColor = '#1b6ed6',
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const sceneStateRef = useRef<{
+    scene: THREE.Scene | null
+    camera: THREE.PerspectiveCamera | null
+    renderer: THREE.WebGLRenderer | null
+    controls: OrbitControls | null
+    disposers: Array<() => void>
+    pathLine: THREE.Line | null
+    pathGeometry: THREE.BufferGeometry | null
+    startMarker: THREE.Mesh | null
+    endMarker: THREE.Mesh | null
+    hoverMesh: THREE.Mesh | null
+    pickCandidatesRef: { current: PickCandidate[] }
+    dragCandidatesRef: { current: DragCandidate[] }
+    activeTrajectoryColorRef: { current: string }
+    pointOffsetZ: number
+  } | null>(null)
+
   const center = useMemo(
     () => ({
       x: bounds.minX + bounds.span / 2,
@@ -44,6 +61,7 @@ function TrajectoryScene3D({
     }),
     [bounds.maxZ, bounds.minX, bounds.minY, bounds.minZ, bounds.span],
   )
+
   useEffect(() => {
     const container = containerRef.current
     if (!container || !visits.length) {
@@ -171,6 +189,24 @@ function TrajectoryScene3D({
       pointGeometry.dispose()
       hoverPointMaterial.dispose()
     })
+
+    sceneStateRef.current = {
+      scene,
+      camera,
+      renderer,
+      controls,
+      disposers,
+      pathLine,
+      pathGeometry,
+      startMarker,
+      endMarker,
+      hoverMesh,
+      pickCandidatesRef: { current: pickCandidates },
+      dragCandidatesRef: { current: dragCandidates },
+      activeTrajectoryColorRef: { current: activeTrajectoryColor },
+      pointOffsetZ,
+    }
+
     let hoveredCandidate: PickCandidate | null = null
     let draggingCandidate: DragCandidate | null = null
     let hasDragDelta = false
@@ -182,9 +218,9 @@ function TrajectoryScene3D({
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
     const dragPlaneHit = new THREE.Vector3()
     const pickCandidateAtPointer = (event: PointerEvent) =>
-      pickNearestAtPointer(event, pickCandidates, camera, renderer.domElement)
+      pickNearestAtPointer(event, sceneStateRef.current!.pickCandidatesRef.current, camera, renderer.domElement)
     const pickDragCandidateAtPointer = (event: PointerEvent) =>
-      pickNearestAtPointer(event, dragCandidates, camera, renderer.domElement)
+      pickNearestAtPointer(event, sceneStateRef.current!.dragCandidatesRef.current, camera, renderer.domElement)
     const setHoveredCandidate = (candidate: PickCandidate | null) => {
       hoveredCandidate = candidate
       if (!candidate) {
@@ -194,7 +230,7 @@ function TrajectoryScene3D({
       }
       hoverMesh.visible = true
       hoverMesh.position.copy(candidate.position)
-      const draggable = dragCandidates.some((item) => item.blockId === candidate.blockId)
+      const draggable = sceneStateRef.current!.dragCandidatesRef.current.some((item) => item.blockId === candidate.blockId)
       renderer.domElement.style.cursor = draggable ? 'grab' : 'pointer'
     }
     const resetHovered = () => {
@@ -360,8 +396,25 @@ function TrajectoryScene3D({
     backgroundTrajectories,
     activeTrajectoryColor,
     rodConfig,
-    visits,
   ])
+
+  useEffect(() => {
+    const state = sceneStateRef.current
+    if (!state || !visits.length || !state.pathGeometry || !state.startMarker || !state.endMarker) {
+      return
+    }
+    const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
+    state.pathGeometry.setFromPoints(pathPoints)
+    const startPoint = pathPoints[0]
+    const endPoint = pathPoints[pathPoints.length - 1]
+    state.startMarker.position.copy(startPoint)
+    state.endMarker.position.copy(endPoint)
+    const newPointOffsetZ = Math.max(bounds.span * 0.0008, 0.2)
+    state.pickCandidatesRef.current = buildPickCandidates(visits, newPointOffsetZ)
+    state.dragCandidatesRef.current = buildDragCandidates(visits, newPointOffsetZ)
+    state.pointOffsetZ = newPointOffsetZ
+  }, [visits, bounds.span])
+
   if (!visits.length) {
     return <Empty description="暂无可绘制轨迹" />
   }
