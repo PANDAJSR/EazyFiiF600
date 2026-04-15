@@ -42,6 +42,7 @@ function App() {
   const [pathDrawingMode, setPathDrawingMode] = useState(false)
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
   const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
+  const [manualSaveSignal, setManualSaveSignal] = useState(0)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -356,7 +357,7 @@ function App() {
                 </Button>
               )}
               {hasUnsavedChanges && <Typography.Text type="warning">有未保存修改</Typography.Text>}
-              <Button type="primary" onClick={() => void handleSaveEdits()} disabled={loading}>
+              <Button type="primary" onClick={() => { setManualSaveSignal((prev) => prev + 1); void handleSaveEdits() }} disabled={loading}>
                 保存修改
               </Button>
             </Space>
@@ -396,6 +397,7 @@ function App() {
             backgroundTrajectories={backgroundTrajectories.filter((item) => item.droneId !== selectedDroneId)}
             activeTrajectoryColor={selectedTrajectoryColor}
             onRodConfigChange={setAgentRodConfigContext}
+            manualSaveSignal={manualSaveSignal}
           />
         </Layout.Content>
       </Layout>

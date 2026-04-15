@@ -36,6 +36,7 @@ type Props = {
   backgroundTrajectories?: TrajectoryDisplay[]
   activeTrajectoryColor?: string
   onRodConfigChange?: (config: RodConfig) => void
+  manualSaveSignal?: number
 }
 
 type ViewMode = '2d' | '3d' | 'rod'
@@ -139,6 +140,7 @@ function FloatingTrajectoryPanel({
   backgroundTrajectories = [],
   activeTrajectoryColor = '#1b6ed6',
   onRodConfigChange,
+  manualSaveSignal = 0,
 }: Props) {
   const [rect, setRect] = useState<Rect>(getInitialRect)
   const [dockedRight, setDockedRight] = useState(false)
@@ -206,6 +208,23 @@ function FloatingTrajectoryPanel({
       }
     }
   }, [openedDirectoryPath, rodConfig])
+
+  useEffect(() => {
+    if (!openedDirectoryPath || manualSaveSignal === 0) {
+      return
+    }
+
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current)
+      saveTimerRef.current = null
+    }
+
+    void saveRodConfigToDirectory(openedDirectoryPath, rodConfig).then((success) => {
+      if (!success) {
+        console.warn('[rod-config] manual save failed to write eazyfii_config.json')
+      }
+    })
+  }, [manualSaveSignal, openedDirectoryPath, rodConfig])
 
   useEffect(() => {
     const onWindowResize = () => {
