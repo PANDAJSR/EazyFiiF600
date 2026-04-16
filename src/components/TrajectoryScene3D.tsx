@@ -51,8 +51,12 @@ function TrajectoryScene3D({
     dragCandidatesRef: { current: DragCandidate[] }
     activeTrajectoryColorRef: { current: string }
     pointOffsetZ: number
-    isFirstMount: boolean
   } | null>(null)
+  // 用于保存和恢复相机视角
+  const cameraStateRef = useRef<{
+    position?: THREE.Vector3
+    target?: THREE.Vector3
+  }>({})
 
   const center = useMemo(
     () => ({
@@ -70,14 +74,7 @@ function TrajectoryScene3D({
       console.log('[TrajectoryScene3D] Effect SKIP - no container or visits')
       return
     }
-    console.log('[TrajectoryScene3D] useEffect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span)
-
-    if (sceneStateRef.current?.scene && sceneStateRef.current?.camera && sceneStateRef.current?.renderer) {
-      console.log('[TrajectoryScene3D] Re-render - preserving existing scene objects')
-      return
-    }
-
-    console.log('[TrajectoryScene3D] First mount - creating new scene objects')
+    console.log('[TrajectoryScene3D] useEffect triggered, visits.length:', visits.length, 'bounds.span:', bounds.span, 'hasCameraState:', !!cameraStateRef.current.position)
     const scene = new THREE.Scene()
     scene.background = new THREE.Color('#fafdff')
     const camera = new THREE.PerspectiveCamera(50, 1, 1, 12000)
@@ -216,13 +213,16 @@ function TrajectoryScene3D({
       dragCandidatesRef: { current: dragCandidates },
       activeTrajectoryColorRef: { current: activeTrajectoryColor },
       pointOffsetZ,
-      isFirstMount: sceneStateRef.current === null,
     }
 
-    if (sceneStateRef.current.isFirstMount) {
+    const isFirstMount = cameraStateRef.current.position === undefined
+    if (isFirstMount) {
       console.log('[TrajectoryScene3D] First mount - initializing camera')
     } else {
-      console.log('[TrajectoryScene3D] Re-render - preserving camera position')
+      console.log('[TrajectoryScene3D] Re-render - restoring camera position')
+      camera.position.copy(cameraStateRef.current.position!)
+      controls.target.copy(cameraStateRef.current.target!)
+      controls.update()
     }
 
     let hoveredCandidate: PickCandidate | null = null
@@ -382,6 +382,10 @@ function TrajectoryScene3D({
     render()
     return () => {
       console.log('[TrajectoryScene3D] CLEANUP - component unmounting')
+      // 保存相机状态
+      cameraStateRef.current.position = camera.position.clone()
+      cameraStateRef.current.target = controls.target.clone()
+      console.log('[TrajectoryScene3D] Camera state saved:', cameraStateRef.current.position.x, cameraStateRef.current.position.y, cameraStateRef.current.position.z)
       window.cancelAnimationFrame(animationFrameId)
       resizeObserver.disconnect()
       controls.dispose()
@@ -398,6 +402,7 @@ function TrajectoryScene3D({
       if (renderer.domElement.parentElement === container) {
         container.removeChild(renderer.domElement)
       }
+      sceneStateRef.current = null
     }
   }, [
     bounds.maxX,
