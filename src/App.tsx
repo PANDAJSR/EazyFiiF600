@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
 import DroneSidebar from './components/DroneSidebar'
-import AgentChatFloatingController from './components/AgentChatFloatingController'
-import TerminalFloatingController from './components/TerminalFloatingController'
+// import AgentChatFloatingController from './components/AgentChatFloatingController'
+// import TerminalFloatingController from './components/TerminalFloatingController'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
@@ -430,7 +430,8 @@ function App() {
         onCancel={() => setDroneDialogOpen(false)}
         onConfirm={handleConfirmDroneDialog}
       />
-      <AgentChatFloatingController
+      {/* AI 按钮已隐藏 */}
+      {/* <AgentChatFloatingController
         projectContext={result}
         rodConfigContext={agentRodConfigContext}
         trajectoryIssueContext={trajectoryIssueContext}
@@ -442,8 +443,9 @@ function App() {
           setResult(next)
           setHasUnsavedChanges(true)
         }}
-      />
-      <TerminalFloatingController />
+      /> */}
+      {/* 终端按钮已隐藏 */}
+      {/* <TerminalFloatingController /> */}
     </ConfigProvider>
   )
 }
