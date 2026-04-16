@@ -115,9 +115,14 @@ const clampRectToViewport = (next: Rect): Rect => {
   return clamped
 }
 
+const SIDER_WIDTH = 340
+
 const getDockedRightRect = (currentWidth: number): Rect => {
-  const maxWidth = Math.max(MIN_WIDTH, window.innerWidth - PANEL_MARGIN * 2)
-  const width = clamp(currentWidth, MIN_WIDTH, maxWidth)
+  const contentWidth = window.innerWidth - SIDER_WIDTH
+  const halfContentWidth = Math.floor(contentWidth / 2)
+  const maxWidth = Math.max(MIN_WIDTH, contentWidth - PANEL_MARGIN)
+  const targetWidth = currentWidth === DEFAULT_WIDTH ? halfContentWidth : currentWidth
+  const width = clamp(targetWidth, MIN_WIDTH, maxWidth)
 
   return {
     x: window.innerWidth - width,
@@ -142,8 +147,8 @@ function FloatingTrajectoryPanel({
   onRodConfigChange,
   manualSaveSignal = 0,
 }: Props) {
-  const [rect, setRect] = useState<Rect>(getInitialRect)
-  const [dockedRight, setDockedRight] = useState(false)
+  const [dockedRight, setDockedRight] = useState(true)
+  const [rect, setRect] = useState<Rect>(() => getDockedRightRect(DEFAULT_WIDTH))
   const [viewMode, setViewMode] = useState<ViewMode>('2d')
   const [rodConfig, setRodConfig] = useState<RodConfig>(() => createDefaultRodConfig())
   const dragRef = useRef<DragState | null>(null)
