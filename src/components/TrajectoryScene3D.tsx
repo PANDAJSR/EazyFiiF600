@@ -153,14 +153,19 @@ function TrajectoryScene3D({
       resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
     })
     const pathLines: Line2[] = []
+    console.log('[TrajectoryScene3D] lightColorSegments:', lightColorSegments)
+    console.log('[TrajectoryScene3D] visits:', visits.map((v, i) => ({ index: i, x: v.x, y: v.y, z: v.z, blockId: v.blockId })))
 
     if (lightColorSegments.length > 0) {
-      lightColorSegments.forEach((segment) => {
+      lightColorSegments.forEach((segment, index) => {
+        console.log(`[TrajectoryScene3D] rendering segment ${index}:`, segment)
         if (segment.startVisitIndex >= visits.length || segment.endVisitIndex >= visits.length) {
+          console.log(`[TrajectoryScene3D] segment ${index} skipped: index out of range`)
           return
         }
         const startVisit = visits[segment.startVisitIndex]
         const endVisit = visits[segment.endVisitIndex]
+        console.log(`[TrajectoryScene3D] segment ${index}: startVisit=[${startVisit.x},${startVisit.y},${startVisit.z}], endVisit=[${endVisit.x},${endVisit.y},${endVisit.z}]`)
 
         if (segment.startRatio !== undefined && segment.endRatio !== undefined) {
           const midX = startVisit.x + (endVisit.x - startVisit.x) * segment.startRatio
@@ -170,6 +175,9 @@ function TrajectoryScene3D({
           const midX2 = startVisit.x + (endVisit.x - startVisit.x) * segment.endRatio
           const midY2 = startVisit.y + (endVisit.y - startVisit.y) * segment.endRatio
           const midZ2 = startVisit.z + (endVisit.z - startVisit.z) * segment.endRatio
+
+          console.log(`[TrajectoryScene3D] segment ${index} with ratio: startRatio=${segment.startRatio}, endRatio=${segment.endRatio}`)
+          console.log(`[TrajectoryScene3D] segment ${index}: drawing colored part from [${midX},${midY},${midZ}] to [${midX2},${midY2},${midZ2}]`)
 
           const geometry1 = new LineGeometry()
           geometry1.setPositions([startVisit.x, startVisit.y, startVisit.z, midX, midY, midZ])
@@ -192,6 +200,7 @@ function TrajectoryScene3D({
           pathLines.push(line3)
           disposers.push(() => { geometry3.dispose() })
         } else {
+          console.log(`[TrajectoryScene3D] segment ${index}: drawing full line from start to end with color ${segment.color}`)
           const geometry = new LineGeometry()
           geometry.setPositions([startVisit.x, startVisit.y, startVisit.z, endVisit.x, endVisit.y, endVisit.z])
           const line = new Line2(geometry, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
