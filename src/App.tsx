@@ -47,6 +47,7 @@ function App() {
   const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
   const [manualSaveSignal, setManualSaveSignal] = useState(0)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
+  const [settingsChangeSignal, setSettingsChangeSignal] = useState(0)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -58,7 +59,7 @@ function App() {
   const trajectoryIssueContext = useMemo(() => {
     const safetySettings = loadSafetySettings()
     return buildTrajectoryIssueContext(result, agentRodConfigContext, safetySettings.safetyDistance)
-  }, [agentRodConfigContext, result])
+  }, [agentRodConfigContext, result, settingsChangeSignal])
   const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
   const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
   const {
@@ -443,6 +444,7 @@ function App() {
             activeTrajectoryColor={selectedTrajectoryColor}
             onRodConfigChange={setAgentRodConfigContext}
             manualSaveSignal={manualSaveSignal}
+            settingsChangeSignal={settingsChangeSignal}
           />
         </Layout.Content>
       </Layout>
@@ -486,6 +488,7 @@ function App() {
       <SettingsModal
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
+        onSettingsChange={() => setSettingsChangeSignal((prev) => prev + 1)}
       />
     </ConfigProvider>
   )

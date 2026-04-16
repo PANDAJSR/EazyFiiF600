@@ -38,6 +38,7 @@ type Props = {
   activeTrajectoryColor?: string
   onRodConfigChange?: (config: RodConfig) => void
   manualSaveSignal?: number
+  settingsChangeSignal?: number
 }
 
 type ViewMode = '2d' | '3d' | 'rod'
@@ -147,6 +148,7 @@ function FloatingTrajectoryPanel({
   activeTrajectoryColor = '#1b6ed6',
   onRodConfigChange,
   manualSaveSignal = 0,
+  settingsChangeSignal = 0,
 }: Props) {
   const [dockedRight, setDockedRight] = useState(true)
   const [rect, setRect] = useState<Rect>(() => getDockedRightRect(DEFAULT_WIDTH))
@@ -304,7 +306,7 @@ function FloatingTrajectoryPanel({
   const issueWarnings = useMemo(() => {
     const safetySettings = loadSafetySettings()
     return buildTrajectoryIssues(startPos, blocks, rodConfig, safetySettings.safetyDistance)
-  }, [blocks, rodConfig, startPos])
+  }, [blocks, rodConfig, startPos, settingsChangeSignal])
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (dockedRight) {
