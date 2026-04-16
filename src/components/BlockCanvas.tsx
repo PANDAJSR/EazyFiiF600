@@ -10,9 +10,12 @@ import BlockInsertPicker from './BlockInsertPicker'
 import type { InsertableBlockDefinition } from './blockInsertCatalog'
 import BlockLine from './BlockLine'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
+import { calculateBlockEndState } from '../utils/blockEndState'
+import type { DroneState } from '../utils/blockEndState'
 
 type Props = {
   droneName?: string
+  startPos?: { x: string; y: string; z: string }
   blocks: ParsedBlock[]
   highlightedBlockId?: string
   selectedBlockId?: string
@@ -32,6 +35,7 @@ type Props = {
 
 function BlockCanvas({
   droneName,
+  startPos,
   blocks,
   highlightedBlockId,
   selectedBlockId,
@@ -81,6 +85,20 @@ function BlockCanvas({
     })
     return rowMap
   }, [rows])
+
+  const endStateMap = useMemo(() => {
+    const map = new Map<string, DroneState>()
+    if (!startPos) {
+      return map
+    }
+    blocks.forEach((block) => {
+      const state = calculateBlockEndState(startPos, blocks, block.id)
+      if (state) {
+        map.set(block.id, state)
+      }
+    })
+    return map
+  }, [startPos, blocks])
 
   const moveDragFollow = (x: number, y: number) => {
     const follow = dragFollowRef.current
@@ -290,6 +308,8 @@ function BlockCanvas({
         <BlockLine
           block={block}
           editable
+          isSelected={selectedBlockId === block.id}
+          endState={endStateMap.get(block.id)}
           onFieldChange={onFieldChange}
           onFieldBlur={onFieldBlur}
           onInputKeyDown={handleInputKeyDown}

@@ -366,9 +366,51 @@
 .block-line {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 12px;
   min-width: max-content;
   white-space: nowrap;
+}
+
+.block-main-content {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.block-end-state {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(0, 0, 0, 0.1);
+  margin-left: 4px;
+}
+
+.block-end-state-coord {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.block-end-state-orientation {
+  color: rgba(0, 0, 0, 0.5);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.block-end-state-lights {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.block-end-state-light-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
 }
 
 .block-title {

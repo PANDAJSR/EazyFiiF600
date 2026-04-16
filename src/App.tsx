@@ -367,6 +367,7 @@ function App() {
             <section className="content-panel">
               <BlockCanvas
                 droneName={selectedProgram?.drone.name}
+                startPos={selectedProgram?.drone.startPos}
                 blocks={selectedProgram?.blocks ?? []}
                 highlightedBlockId={highlightedBlockId}
                 selectedBlockId={selectedBlockId}
