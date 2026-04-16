@@ -24,6 +24,7 @@ import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
 import { buildTrajectoryIssueContext } from './components/trajectory/trajectoryIssueContext'
+import { loadSafetySettings } from './components/SettingsModal'
 type PendingFocusTarget = {
   blockId: string
   fieldKey?: string
@@ -54,7 +55,10 @@ function App() {
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
   )
-  const trajectoryIssueContext = useMemo(() => buildTrajectoryIssueContext(result, agentRodConfigContext), [agentRodConfigContext, result])
+  const trajectoryIssueContext = useMemo(() => {
+    const safetySettings = loadSafetySettings()
+    return buildTrajectoryIssueContext(result, agentRodConfigContext, safetySettings.safetyDistance)
+  }, [agentRodConfigContext, result])
   const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
   const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
   const {

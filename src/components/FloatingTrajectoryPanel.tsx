@@ -9,6 +9,7 @@ import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 import { loadRodConfigFromDirectory, saveRodConfigToDirectory } from './trajectory/rodConfigStorage'
 import { buildTrajectoryIssues } from './trajectory/trajectoryIssues'
+import { loadSafetySettings } from './SettingsModal'
 
 type XYZ = {
   x: string
@@ -300,10 +301,10 @@ function FloatingTrajectoryPanel({
     }
   }, [])
 
-  const issueWarnings = useMemo(
-    () => buildTrajectoryIssues(startPos, blocks, rodConfig),
-    [blocks, rodConfig, startPos],
-  )
+  const issueWarnings = useMemo(() => {
+    const safetySettings = loadSafetySettings()
+    return buildTrajectoryIssues(startPos, blocks, rodConfig, safetySettings.safetyDistance)
+  }, [blocks, rodConfig, startPos])
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (dockedRight) {
