@@ -17,7 +17,7 @@ import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
 import { isDesktopRuntime, onAgentStream, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
-import { duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
@@ -189,6 +189,11 @@ function App() {
     setResult((prev) => splitAutoDelayBlockById(prev, selectedDroneId, blockId))
     setHasUnsavedChanges(true)
     message.success('已拆散为两个积木')
+  }, [selectedDroneId])
+  const handleConvertTurnBlock = useCallback((blockId: string) => {
+    setResult((prev) => convertTurnBlockById(prev, selectedDroneId, blockId))
+    setHasUnsavedChanges(true)
+    message.success('已转换积木类型')
   }, [selectedDroneId])
   useEffect(() => {
     if (!selectedDroneId) {
@@ -377,6 +382,7 @@ function App() {
                 onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
                 onDuplicateBlock={handleDuplicateBlock}
                 onSplitAutoDelayBlock={handleSplitAutoDelayBlock}
+                onConvertTurnBlock={handleConvertTurnBlock}
                 onDeleteBlock={handleDeleteBlock}
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}

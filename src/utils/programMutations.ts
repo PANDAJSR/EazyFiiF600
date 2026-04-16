@@ -314,3 +314,30 @@ export const insertFirstBlockWhenEmpty = (
     blocks.length ? blocks : [firstBlock],
   )
 }
+
+export const convertTurnBlockById = (
+  result: ParseResult,
+  selectedDroneId: string | undefined,
+  blockId: string,
+): ParseResult => {
+  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) =>
+    blocks.map((block) => {
+      if (block.id !== blockId) {
+        return block
+      }
+      if (block.type === 'Goertek_Turn') {
+        return {
+          ...block,
+          type: 'Goertek_TurnTo',
+        }
+      }
+      if (block.type === 'Goertek_TurnTo') {
+        return {
+          ...block,
+          type: 'Goertek_Turn',
+        }
+      }
+      return block
+    }),
+  )
+}

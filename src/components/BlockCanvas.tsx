@@ -26,6 +26,7 @@ type Props = {
   onDeleteBlock?: (blockId: string) => void
   onDuplicateBlock?: (blockId: string) => void
   onSplitAutoDelayBlock?: (blockId: string) => void
+  onConvertTurnBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
   insertPickerItems?: InsertableBlockDefinition[]
@@ -46,6 +47,7 @@ function BlockCanvas({
   onDeleteBlock,
   onDuplicateBlock,
   onSplitAutoDelayBlock,
+  onConvertTurnBlock,
   onReorderBlocks,
   insertPickerOpen,
   insertPickerItems,
@@ -212,6 +214,10 @@ function BlockCanvas({
     if (block.type === AUTO_DELAY_BLOCK_TYPE && onSplitAutoDelayBlock) {
       menuItems.push({ key: 'split', label: '拆散成两个积木' })
     }
+    if ((block.type === 'Goertek_Turn' || block.type === 'Goertek_TurnTo') && onConvertTurnBlock) {
+      const isTurn = block.type === 'Goertek_Turn'
+      menuItems.push({ key: 'convert', label: isTurn ? '转换为转向' : '转换为转动' })
+    }
     menuItems.push({ key: 'delete', label: '删除', danger: true })
 
     const handleCardMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
@@ -227,6 +233,10 @@ function BlockCanvas({
       }
       if (key === 'split') {
         onSplitAutoDelayBlock?.(block.id)
+        return
+      }
+      if (key === 'convert') {
+        onConvertTurnBlock?.(block.id)
       }
     }
 
