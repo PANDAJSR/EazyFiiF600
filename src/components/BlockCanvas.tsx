@@ -308,8 +308,6 @@ function BlockCanvas({
         <BlockLine
           block={block}
           editable
-          isSelected={selectedBlockId === block.id}
-          endState={endStateMap.get(block.id)}
           onFieldChange={onFieldChange}
           onFieldBlur={onFieldBlur}
           onInputKeyDown={handleInputKeyDown}
@@ -338,10 +336,31 @@ function BlockCanvas({
     )
   }
 
+  const renderBlockEndState = (blockId: string) => {
+    const state = endStateMap.get(blockId)
+    if (!state) {
+      return null
+    }
+    return (
+      <div className="block-row-end-state">
+        <span className="block-end-state-coord">
+          XYZ({state.position.x}, {state.position.y}, {state.position.z})
+        </span>
+        <span className="block-end-state-orientation">朝向{state.orientation}°</span>
+        <span className="block-end-state-lights">
+          {state.lights.map((color, idx) => (
+            <span key={idx} className="block-end-state-light-dot" style={{ backgroundColor: color }} />
+          ))}
+        </span>
+      </div>
+    )
+  }
+
   const renderRows = (renderRowsList: ParsedBlock[][], rowClassName: string, startRowIndex = 0) => {
     return renderRowsList.map((row, rowOffset) => {
       const rowIndex = startRowIndex + rowOffset
       const rowId = row[0].id
+      const selectedBlockInRow = row.find((block) => block.id === selectedBlockId)
 
       return (
         <div
@@ -352,22 +371,25 @@ function BlockCanvas({
               : rowClassName
           }
         >
-          {row.map((block, blockIndex) => {
-            const classNames = ['block-card']
-            if (blockIndex === 0 && rowIndex > 0) {
-              classNames.push('block-card-stack-top')
-            }
-            if (blockIndex === 0 && rowIndex < rows.length - 1) {
-              classNames.push('block-card-stack-bottom')
-            }
-            if (row.length > 1 && blockIndex === 0) {
-              classNames.push('block-card-join-right')
-            }
-            if (row.length > 1 && blockIndex === row.length - 1) {
-              classNames.push('block-card-join-left')
-            }
-            return renderBlockCard(block, classNames)
-          })}
+          <div className="block-row-blocks">
+            {row.map((block, blockIndex) => {
+              const classNames = ['block-card']
+              if (blockIndex === 0 && rowIndex > 0) {
+                classNames.push('block-card-stack-top')
+              }
+              if (blockIndex === 0 && rowIndex < rows.length - 1) {
+                classNames.push('block-card-stack-bottom')
+              }
+              if (row.length > 1 && blockIndex === 0) {
+                classNames.push('block-card-join-right')
+              }
+              if (row.length > 1 && blockIndex === row.length - 1) {
+                classNames.push('block-card-join-left')
+              }
+              return renderBlockCard(block, classNames)
+            })}
+          </div>
+          {selectedBlockInRow && renderBlockEndState(selectedBlockInRow.id)}
         </div>
       )
     })
