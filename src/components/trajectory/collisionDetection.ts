@@ -16,8 +16,8 @@ const SUBJECT7_RING_HEIGHTS = [100, 125, 150]
 const SUBJECT8_HIGH_RING_CENTER_HEIGHT = 150
 const SUBJECT8_LOW_RING_CENTER_HEIGHT = 110
 
-// 碰撞阈值（10cm安全距离）
-const COLLISION_THRESHOLD = 10
+// 默认碰撞阈值（10cm安全距离）
+const DEFAULT_COLLISION_THRESHOLD = 10
 
 // 3D向量类型
 type Vector3 = { x: number; y: number; z: number }
@@ -555,7 +555,9 @@ export const checkRodCollisionIssues = (
   rodConfig: RodConfig,
   startPos: XYZ,
   blocks: ParsedBlock[],
+  safetyDistance?: number,
 ): TrajectoryIssue[] => {
+  const collisionThreshold = safetyDistance ?? DEFAULT_COLLISION_THRESHOLD
   const issues: TrajectoryIssue[] = []
   const visits = buildPathVisits(startPos, blocks)
 
@@ -582,7 +584,7 @@ export const checkRodCollisionIssues = (
     for (const obstacle of obstacles) {
       const distance = segmentToObstacleDistance(segment, obstacle)
 
-      if (distance < COLLISION_THRESHOLD) {
+      if (distance < collisionThreshold) {
         const blockId = end.blockId
         const segmentIndex = i + 1
 
@@ -607,7 +609,7 @@ export const checkRodCollisionIssues = (
         issues.push({
           key: `collision-${segmentIndex}-${obstacle.type}-${i}`,
           blockId,
-          message: `撞杆检测：第${segmentIndex}段路径距离${obstacleDesc}仅${distance.toFixed(1)}cm，小于安全距离${COLLISION_THRESHOLD}cm`,
+          message: `撞杆检测：第${segmentIndex}段路径距离${obstacleDesc}仅${distance.toFixed(1)}cm，小于安全距离${collisionThreshold}cm`,
         })
       }
     }
