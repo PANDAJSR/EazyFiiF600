@@ -61,10 +61,11 @@ const toIssueDetail = (issue: { key: string; message: string; blockId?: string }
 export const buildTrajectoryIssueContext = (
   projectContext: ParseResult,
   rodConfigInput: RodConfig | unknown,
+  safetyDistance?: number,
 ): TrajectoryIssueContext => {
   const rodConfig = normalizeRodConfig(rodConfigInput)
   const drones = projectContext.programs.map((program) => {
-    const issues = buildTrajectoryIssues(program.drone.startPos, program.blocks, rodConfig)
+    const issues = buildTrajectoryIssues(program.drone.startPos, program.blocks, rodConfig, safetyDistance)
     const details = issues.map((issue) => toIssueDetail(issue, program.blocks))
 
     return {

@@ -215,6 +215,7 @@ export const buildTrajectoryIssues = (
   startPos: XYZ,
   blocks: ParsedBlock[],
   rodConfig: RodConfig,
+  safetyDistance?: number,
 ): TrajectoryIssue[] => {
   const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
@@ -415,6 +416,6 @@ export const buildTrajectoryIssues = (
   }
 
   issues.push(...findAsyncMoveDelayIssues(startPos, blocks))
-  issues.push(...checkRodCollisionIssues(rodConfig, startPos, blocks))
+  issues.push(...checkRodCollisionIssues(rodConfig, startPos, blocks, safetyDistance))
   return issues
 }
