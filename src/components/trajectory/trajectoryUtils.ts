@@ -251,23 +251,6 @@ export const buildLightColorSegments = (
     }
   })
 
-  const getDelayForVisit = (visitIndex: number): number => {
-    const visit = visits[visitIndex]
-    if (!visit.blockId) {
-      return 0
-    }
-    const blockIndex = blockIndexById.get(visit.blockId)
-    if (blockIndex === undefined) {
-      return 0
-    }
-    const block = blocks[blockIndex]
-    if (block.type !== AUTO_DELAY_BLOCK_TYPE) {
-      return 0
-    }
-    const timeField = toNumber(block.fields.time)
-    return timeField ?? 0
-  }
-
   const segments: LightColorSegment[] = []
   let currentColor = '#ffffff'
 
@@ -308,7 +291,19 @@ export const buildLightColorSegments = (
       continue
     }
 
-    const totalDelay = getDelayForVisit(nextVisitIdx)
+    // 计算在同一段平移区间内（startBlockIndex 到 endBlockIndex）所有延时块的时间总和
+    const calcDelayBetween = (fromBlockIndex: number, toBlockIndex: number): number => {
+      let total = 0
+      for (let i = fromBlockIndex; i < toBlockIndex; i += 1) {
+        if (blocks[i].type === AUTO_DELAY_BLOCK_TYPE) {
+          total += toNumber(blocks[i].fields.time) ?? 0
+        }
+      }
+      return total
+    }
+
+    // 计算整个区间的总延时
+    const totalDelay = calcDelayBetween(startBlockIndex, endBlockIndex)
     let accumulatedDelay = 0
 
     for (let i = 0; i < changes.length; i += 1) {
@@ -318,19 +313,8 @@ export const buildLightColorSegments = (
       const nextChange = changes[i + 1]
       const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : endBlockIndex
 
-      const changeBlock = blocks[change.blockIndex]
-      const changeBlockTime = toNumber(changeBlock.fields.time) ?? 0
-
-      let segmentDelay = changeBlockTime
-      if (nextChange && totalDelay > 0) {
-        const blockSpan = segmentEndBlockIndex - change.blockIndex
-        const endBlock = blocks[segmentEndBlockIndex]
-        const endBlockTime = toNumber(endBlock?.fields.time) ?? 0
-        const totalBlockSpan = endBlockIndex - startBlockIndex
-        if (totalBlockSpan > 0) {
-          segmentDelay = (endBlockTime * blockSpan) / totalBlockSpan
-        }
-      }
+      // 计算从当前变灯块到下一个变灯块（或endBlock）之间的延时
+      const segmentDelay = calcDelayBetween(change.blockIndex, segmentEndBlockIndex)
 
       const startRatio = totalDelay > 0 ? accumulatedDelay / totalDelay : 0
       accumulatedDelay += segmentDelay
