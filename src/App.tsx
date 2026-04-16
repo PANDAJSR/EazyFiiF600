@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Button, ConfigProvider, Layout, Modal, Space, message, Typography } from 'antd'
+import { Alert, Button, ConfigProvider, Dropdown, Layout, Modal, Space, message, Typography } from 'antd'
+import { FolderOpenOutlined, FileOutlined, DownOutlined, SaveOutlined } from '@ant-design/icons'
 import DroneSidebar from './components/DroneSidebar'
 // import AgentChatFloatingController from './components/AgentChatFloatingController'
 // import TerminalFloatingController from './components/TerminalFloatingController'
@@ -313,14 +314,42 @@ function App() {
     <ConfigProvider>
       <Layout className="app-root">
         <Layout.Sider width={340} className="app-sider">
-          <div className="brand-title">Fii 动作查看器</div>
-          <div className="sider-actions">
-            <Button type="primary" onClick={() => void handleOpenDirectory()} loading={loading} block>
-              选择文件夹
-            </Button>
-            <Button onClick={() => filesPickerRef.current?.click()} disabled={loading} block>
-              选择多个文件
-            </Button>
+          <div className="brand-header">
+            <div className="brand-title">Fii 动作查看器</div>
+            <Space size="small">
+              <Dropdown.Button
+                type="primary"
+                icon={<DownOutlined />}
+                loading={loading}
+                menu={{
+                  items: [
+                    {
+                      key: 'folder',
+                      label: '打开文件夹',
+                      icon: <FolderOpenOutlined />,
+                      onClick: () => void handleOpenDirectory(),
+                    },
+                    {
+                      key: 'file',
+                      label: '打开 fii 文件',
+                      icon: <FileOutlined />,
+                      onClick: () => filesPickerRef.current?.click(),
+                    },
+                  ],
+                }}
+                onClick={() => void handleOpenDirectory()}
+              >
+                打开
+              </Dropdown.Button>
+              <Button
+                type="primary"
+                icon={<SaveOutlined />}
+                onClick={() => { setManualSaveSignal((prev) => prev + 1); void handleSaveEdits() }}
+                disabled={loading}
+              >
+                保存
+              </Button>
+            </Space>
           </div>
           {!!result.sourceName && (
             <Typography.Text type="secondary" className="source-tip">
@@ -363,9 +392,6 @@ function App() {
                 </Button>
               )}
               {hasUnsavedChanges && <Typography.Text type="warning">有未保存修改</Typography.Text>}
-              <Button type="primary" onClick={() => { setManualSaveSignal((prev) => prev + 1); void handleSaveEdits() }} disabled={loading}>
-                保存修改
-              </Button>
             </Space>
           </div>
           <div className="content-grid">

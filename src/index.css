@@ -32,11 +32,19 @@ body {
   overflow: hidden;
 }
 
+.brand-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 16px 4px;
+  gap: 12px;
+}
+
 .brand-title {
-  padding: 20px 16px 4px;
   font-size: 18px;
   font-weight: 700;
   color: #133456;
+  flex-shrink: 0;
 }
 
 .sider-actions {
