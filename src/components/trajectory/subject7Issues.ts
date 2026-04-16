@@ -134,6 +134,13 @@ const findMinimalBottomToTopPath = (events: RingCrossEvent[]): RingPathWindow | 
   return best
 }
 
+const MOVE_BLOCK_TYPES = new Set([
+  'Goertek_MoveToCoord2',
+  'Goertek_Move',
+  'Goertek_TakeOff2',
+  'Goertek_Land',
+])
+
 const countDistinctAllLightColorsInRange = (
   blocks: ParsedBlock[],
   blockIndexById: Map<string, number>,
@@ -147,6 +154,7 @@ const countDistinctAllLightColorsInRange = (
   }
 
   const colors = new Set<string>()
+
   for (let index = startBlockIndex; index <= endBlockIndex; index += 1) {
     const block = blocks[index]
     if (block.type !== ALL_LIGHT_BLOCK_TYPE) {
@@ -157,6 +165,21 @@ const countDistinctAllLightColorsInRange = (
       colors.add(normalizedColor)
     }
   }
+
+  for (let index = endBlockIndex + 1; index < blocks.length; index += 1) {
+    const block = blocks[index]
+    if (MOVE_BLOCK_TYPES.has(block.type)) {
+      break
+    }
+    if (block.type !== ALL_LIGHT_BLOCK_TYPE) {
+      continue
+    }
+    const normalizedColor = normalizeColorText(block.fields.color1)
+    if (normalizedColor) {
+      colors.add(normalizedColor)
+    }
+  }
+
   return colors.size
 }
 
