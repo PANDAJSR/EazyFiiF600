@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Alert, Button, ConfigProvider, Dropdown, Layout, Modal, Space, message, Typography } from 'antd'
-import { FolderOpenOutlined, FileOutlined, DownOutlined, SaveOutlined } from '@ant-design/icons'
+import { FolderOpenOutlined, FileOutlined, DownOutlined, SaveOutlined, SettingOutlined } from '@ant-design/icons'
 import DroneSidebar from './components/DroneSidebar'
 // import AgentChatFloatingController from './components/AgentChatFloatingController'
 // import TerminalFloatingController from './components/TerminalFloatingController'
 import BlockCanvas from './components/BlockCanvas'
 import FloatingTrajectoryPanel from './components/FloatingTrajectoryPanel'
 import DroneStartPosModal from './components/DroneStartPosModal'
+import SettingsModal from './components/SettingsModal'
 import type { ParseResult } from './types/fii'
 import type { RodConfig } from './components/trajectory/rodConfig'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
@@ -44,6 +45,7 @@ function App() {
   const [pathInsertAfterBlockId, setPathInsertAfterBlockId] = useState<string>()
   const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
   const [manualSaveSignal, setManualSaveSignal] = useState(0)
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -316,7 +318,7 @@ function App() {
         <Layout.Sider width={340} className="app-sider">
           <div className="brand-header">
             <div className="brand-title">Fii 动作查看器</div>
-            <Space size="small">
+            <Space size={4}>
               <Dropdown.Button
                 type="primary"
                 icon={<DownOutlined />}
@@ -349,6 +351,11 @@ function App() {
               >
                 保存
               </Button>
+              <Button
+                type="default"
+                icon={<SettingOutlined />}
+                onClick={() => setSettingsModalOpen(true)}
+              />
             </Space>
           </div>
           {!!result.sourceName && (
@@ -472,6 +479,10 @@ function App() {
       /> */}
       {/* 终端按钮已隐藏 */}
       {/* <TerminalFloatingController /> */}
+      <SettingsModal
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+      />
     </ConfigProvider>
   )
 }
