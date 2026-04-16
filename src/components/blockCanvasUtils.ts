@@ -126,7 +126,7 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
       }
     case 'Goertek_MoveToCoord2':
       return {
-        title: '平移到（异步）',
+        title: '异步平移',
         values: [
           token('X'),
           token(f.X ?? '-', true, false, 'X'),
@@ -141,7 +141,7 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
       }
     case 'Goertek_Move':
       return {
-        title: '相对平移（异步）',
+        title: '异步相对平移',
         values: [
           token('X'),
           token(f.X ?? '-', true, false, 'X'),

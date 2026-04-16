@@ -13,8 +13,8 @@ export const BLOCK_CATALOG_SNAPSHOT = {
       fields: { X: '0', Y: '0', Z: '100', time: '800' },
       keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
     },
-    { type: 'Goertek_MoveToCoord2', label: '平移到（异步）', fields: { X: '0', Y: '0', Z: '100' }, keywords: ['平移', '坐标', 'move to', 'x', 'y', 'z'] },
-    { type: 'Goertek_Move', label: '相对平移（异步）', fields: { X: '0', Y: '0', Z: '0' }, keywords: ['相对', '平移', 'move', 'x', 'y', 'z'] },
+    { type: 'Goertek_MoveToCoord2', label: '异步平移', fields: { X: '0', Y: '0', Z: '100' }, keywords: ['平移', '坐标', 'move to', 'x', 'y', 'z'] },
+    { type: 'Goertek_Move', label: '异步相对平移', fields: { X: '0', Y: '0', Z: '0' }, keywords: ['相对', '平移', 'move', 'x', 'y', 'z'] },
     { type: 'Goertek_TurnTo', label: '转向', fields: { turnDirection: 'r', angle: '90' }, keywords: ['转向', '转动', 'turn', 'angle'] },
     { type: 'Goertek_Turn', label: '转动', fields: { turnDirection: 'r', angle: '90' }, keywords: ['转向', '转动', 'turn', 'angle'] },
     {

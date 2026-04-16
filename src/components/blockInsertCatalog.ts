@@ -53,13 +53,13 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
   },
   {
     type: 'Goertek_MoveToCoord2',
-    label: '平移到（异步）',
+    label: '异步平移',
     keywords: ['平移', '坐标', 'move to', 'x', 'y', 'z'],
     fields: { X: '0', Y: '0', Z: '100' },
   },
   {
     type: 'Goertek_Move',
-    label: '相对平移（异步）',
+    label: '异步相对平移',
     keywords: ['相对', '平移', 'move', 'x', 'y', 'z'],
     fields: { X: '0', Y: '0', Z: '0' },
   },

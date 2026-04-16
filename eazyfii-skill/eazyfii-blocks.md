@@ -16,8 +16,8 @@
 |------|------|------|
 | `Goertek_TakeOff2` | 起飞 | `alt` |
 | `EazyFii_MoveToCoordAutoDelay` | 智能平移（默认使用） | `X`, `Y`, `Z`, `time` |
-| `Goertek_MoveToCoord2` | 平移到（异步，仅明确要求时使用） | `X`, `Y`, `Z` |
-| `Goertek_Move` | 相对平移（异步） | `X`, `Y`, `Z` |
+| `Goertek_MoveToCoord2` | 异步平移（仅明确要求时使用） | `X`, `Y`, `Z` |
+| `Goertek_Move` | 异步相对平移 | `X`, `Y`, `Z` |
 | `Goertek_TurnTo` | **转向**（绝对朝向） | `turnDirection`, `angle` |
 | `Goertek_Turn` | **转动**（相对旋转） | `turnDirection`, `angle` |
 | `Goertek_Land` | 降落 | - |
