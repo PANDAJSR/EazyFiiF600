@@ -13,6 +13,7 @@ type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
   pathDrawingMode?: boolean
+  selectedBlockId?: string
   onDrawPathPoint?: (x: number, y: number) => void
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
@@ -26,6 +27,7 @@ function TrajectoryPlane({
   startPos,
   blocks,
   pathDrawingMode = false,
+  selectedBlockId,
   onDrawPathPoint,
   onLocateBlock,
   onMovePoint,
@@ -180,6 +182,7 @@ function TrajectoryPlane({
           visits={visits}
           bounds={bounds}
           rodConfig={rodConfig}
+          selectedBlockId={selectedBlockId}
           onLocateBlock={onLocateBlock}
           onMovePoint={onMovePoint}
           backgroundTrajectories={backgroundVisits}
@@ -315,6 +318,7 @@ function TrajectoryPlane({
           {summarizedPoints.map((point) => {
             const key = `${point.x},${point.y}`
             const isActive = activePointKey === key
+            const isSelected = selectedBlockId ? point.visits.some((v) => v.blockId === selectedBlockId) : false
             const editableVisits = point.visits.filter(
               (visit): visit is Visit & { blockId: string; blockType: MovePointPayload['blockType'] } =>
                 !!visit.blockId && !!visit.blockType && EDITABLE_BLOCK_TYPES.has(visit.blockType),
@@ -372,7 +376,9 @@ function TrajectoryPlane({
                   className={
                     isActive
                       ? `trajectory-point trajectory-point-active ${canDrag ? 'trajectory-point-draggable' : ''}`
-                      : `trajectory-point ${canDrag ? 'trajectory-point-draggable' : ''}`
+                      : isSelected
+                        ? `trajectory-point trajectory-point-selected ${canDrag ? 'trajectory-point-draggable' : ''}`
+                        : `trajectory-point ${canDrag ? 'trajectory-point-draggable' : ''}`
                   }
                 />
                 {point.count > 1 && (

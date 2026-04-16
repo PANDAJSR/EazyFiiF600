@@ -21,6 +21,7 @@ type Props = {
   visits: Visit[]
   bounds: TrajectoryBounds
   rodConfig?: RodConfig
+  selectedBlockId?: string
   onLocateBlock?: (blockId: string) => void
   onMovePoint?: (payload: MovePointPayload) => void
   backgroundTrajectories?: Array<{ droneId: string; color: string; visits: Visit[] }>
@@ -30,6 +31,7 @@ function TrajectoryScene3D({
   visits,
   bounds,
   rodConfig,
+  selectedBlockId,
   onLocateBlock,
   onMovePoint,
   backgroundTrajectories = [],
@@ -193,10 +195,37 @@ function TrajectoryScene3D({
     scene.add(hoverMesh)
     const pickCandidates = buildPickCandidates(visits, pointOffsetZ)
     const dragCandidates = buildDragCandidates(visits, pointOffsetZ)
+    const selectedPointMaterial = new THREE.MeshStandardMaterial({
+      color: '#ffd700',
+      emissive: '#ff8c00',
+      emissiveIntensity: 0.6,
+      metalness: 0.1,
+      roughness: 0.3,
+    })
+    const selectedMesh = new THREE.Mesh(pointGeometry.clone(), selectedPointMaterial)
+    selectedMesh.visible = false
+    selectedMesh.scale.setScalar(pointScale * 1.3)
+    scene.add(selectedMesh)
     disposers.push(() => {
       pointGeometry.dispose()
       hoverPointMaterial.dispose()
+      selectedPointMaterial.dispose()
     })
+
+    const updateSelectedMesh = () => {
+      if (!selectedBlockId) {
+        selectedMesh.visible = false
+        return
+      }
+      const candidate = pickCandidates.find((c) => c.blockId === selectedBlockId)
+      if (candidate) {
+        selectedMesh.visible = true
+        selectedMesh.position.copy(candidate.position)
+      } else {
+        selectedMesh.visible = false
+      }
+    }
+    updateSelectedMesh()
 
     sceneStateRef.current = {
       scene,
@@ -420,6 +449,8 @@ function TrajectoryScene3D({
     backgroundTrajectories,
     activeTrajectoryColor,
     rodConfig,
+    visits,
+    selectedBlockId,
   ])
 
   useEffect(() => {
