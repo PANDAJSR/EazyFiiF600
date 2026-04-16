@@ -295,7 +295,7 @@ export const buildLightColorSegments = (
     const calcDelayBetween = (fromBlockIndex: number, toBlockIndex: number): number => {
       let total = 0
       for (let i = fromBlockIndex; i < toBlockIndex; i += 1) {
-        if (blocks[i].type === AUTO_DELAY_BLOCK_TYPE) {
+        if (blocks[i].type === AUTO_DELAY_BLOCK_TYPE || blocks[i].type === 'block_delay') {
           total += toNumber(blocks[i].fields.time) ?? 0
         }
       }
