@@ -153,60 +153,64 @@ function TrajectoryScene3D({
       resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
     })
     const pathLines: Line2[] = []
-    console.log('[TrajectoryScene3D] lightColorSegments:', lightColorSegments)
-    console.log('[TrajectoryScene3D] visits:', visits.map((v, i) => ({ index: i, x: v.x, y: v.y, z: v.z, blockId: v.blockId })))
 
     if (lightColorSegments.length > 0) {
-      lightColorSegments.forEach((segment, index) => {
-        console.log(`[TrajectoryScene3D] rendering segment ${index}:`, segment)
-        if (segment.startVisitIndex >= visits.length || segment.endVisitIndex >= visits.length) {
-          console.log(`[TrajectoryScene3D] segment ${index} skipped: index out of range`)
+      const segmentGroups = new Map<string, typeof lightColorSegments>()
+      lightColorSegments.forEach((segment) => {
+        const key = `${segment.startVisitIndex}-${segment.endVisitIndex}`
+        if (!segmentGroups.has(key)) {
+          segmentGroups.set(key, [])
+        }
+        segmentGroups.get(key)!.push(segment)
+      })
+
+      segmentGroups.forEach((segments, key) => {
+        const [startIdx, endIdx] = key.split('-').map(Number)
+        if (startIdx >= visits.length || endIdx >= visits.length) {
           return
         }
-        const startVisit = visits[segment.startVisitIndex]
-        const endVisit = visits[segment.endVisitIndex]
-        console.log(`[TrajectoryScene3D] segment ${index}: startVisit=[${startVisit.x},${startVisit.y},${startVisit.z}], endVisit=[${endVisit.x},${endVisit.y},${endVisit.z}]`)
+        const startVisit = visits[startIdx]
+        const endVisit = visits[endIdx]
 
-        if (segment.startRatio !== undefined && segment.endRatio !== undefined) {
-          const midX = startVisit.x + (endVisit.x - startVisit.x) * segment.startRatio
-          const midY = startVisit.y + (endVisit.y - startVisit.y) * segment.startRatio
-          const midZ = startVisit.z + (endVisit.z - startVisit.z) * segment.startRatio
+        const hasRatios = segments.some((s) => s.startRatio !== undefined && s.endRatio !== undefined)
 
-          const midX2 = startVisit.x + (endVisit.x - startVisit.x) * segment.endRatio
-          const midY2 = startVisit.y + (endVisit.y - startVisit.y) * segment.endRatio
-          const midZ2 = startVisit.z + (endVisit.z - startVisit.z) * segment.endRatio
-
-          console.log(`[TrajectoryScene3D] segment ${index} with ratio: startRatio=${segment.startRatio}, endRatio=${segment.endRatio}`)
-          console.log(`[TrajectoryScene3D] segment ${index}: drawing colored part from [${midX},${midY},${midZ}] to [${midX2},${midY2},${midZ2}]`)
-
-          const geometry1 = new LineGeometry()
-          geometry1.setPositions([startVisit.x, startVisit.y, startVisit.z, midX, midY, midZ])
-          const line1 = new Line2(geometry1, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
-          scene.add(line1)
-          pathLines.push(line1)
-          disposers.push(() => { geometry1.dispose() })
-
-          const geometry2 = new LineGeometry()
-          geometry2.setPositions([midX, midY, midZ, midX2, midY2, midZ2])
-          const line2 = new Line2(geometry2, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
-          scene.add(line2)
-          pathLines.push(line2)
-          disposers.push(() => { geometry2.dispose() })
-
-          const geometry3 = new LineGeometry()
-          geometry3.setPositions([midX2, midY2, midZ2, endVisit.x, endVisit.y, endVisit.z])
-          const line3 = new Line2(geometry3, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
-          scene.add(line3)
-          pathLines.push(line3)
-          disposers.push(() => { geometry3.dispose() })
-        } else {
-          console.log(`[TrajectoryScene3D] segment ${index}: drawing full line from start to end with color ${segment.color}`)
+        if (!hasRatios || segments.length === 1) {
+          const segment = segments[0]
           const geometry = new LineGeometry()
           geometry.setPositions([startVisit.x, startVisit.y, startVisit.z, endVisit.x, endVisit.y, endVisit.z])
-          const line = new Line2(geometry, new LineMaterial({ color: segment.color, linewidth: pathLineWidth, resolution: new THREE.Vector2(container.clientWidth, container.clientHeight) }))
+          const line = new Line2(geometry, new LineMaterial({
+            color: segment.color,
+            linewidth: pathLineWidth,
+            resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
+          }))
           scene.add(line)
           pathLines.push(line)
           disposers.push(() => { geometry.dispose() })
+        } else {
+          segments.forEach((segment) => {
+            if (segment.startRatio === undefined || segment.endRatio === undefined) {
+              return
+            }
+
+            const startX = startVisit.x + (endVisit.x - startVisit.x) * segment.startRatio
+            const startY = startVisit.y + (endVisit.y - startVisit.y) * segment.startRatio
+            const startZ = startVisit.z + (endVisit.z - startVisit.z) * segment.startRatio
+
+            const endX = startVisit.x + (endVisit.x - startVisit.x) * segment.endRatio
+            const endY = startVisit.y + (endVisit.y - startVisit.y) * segment.endRatio
+            const endZ = startVisit.z + (endVisit.z - startVisit.z) * segment.endRatio
+
+            const geometry = new LineGeometry()
+            geometry.setPositions([startX, startY, startZ, endX, endY, endZ])
+            const line = new Line2(geometry, new LineMaterial({
+              color: segment.color,
+              linewidth: pathLineWidth,
+              resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
+            }))
+            scene.add(line)
+            pathLines.push(line)
+            disposers.push(() => { geometry.dispose() })
+          })
         }
       })
     } else {
