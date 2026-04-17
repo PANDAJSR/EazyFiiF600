@@ -307,20 +307,20 @@ export const buildLightColorSegments = (
     }
 
     // 查找在当前移动块之后（即到达目标点后停留期间）的灯光变化
-    let searchEndIndex = startBlockIndex
-    for (let i = startBlockIndex + 1; i < blocks.length; i += 1) {
-      if (blockIndexToVisitIndex.has(i) && blockIndexToVisitIndex.get(i)! > visitIdx) {
-        searchEndIndex = i - 1
+    let searchStartIndex = startBlockIndex
+    for (let i = startBlockIndex - 1; i >= 0; i -= 1) {
+      if (blockIndexToVisitIndex.has(i)) {
+        searchStartIndex = i + 1
         break
       }
-      if (i === blocks.length - 1) {
-        searchEndIndex = i
+      if (i === 0) {
+        searchStartIndex = 0
       }
     }
 
-    console.log(`  -> Searching for light changes between blocks[${startBlockIndex + 1}] to blocks[${searchEndIndex}]`)
+    console.log(`  -> Searching for light changes between blocks[${searchStartIndex}] to blocks[${startBlockIndex - 1}]`)
 
-    const changes = findLightColorChangeBlocksBetweenIndices(blocks, startBlockIndex + 1, searchEndIndex)
+    const changes = findLightColorChangeBlocksBetweenIndices(blocks, searchStartIndex, startBlockIndex - 1)
 
     console.log(`  -> Found ${changes.length} light changes:`, changes.map(c => ({ blockIdx: c.blockIndex, color: c.color })))
 
@@ -333,7 +333,7 @@ export const buildLightColorSegments = (
       continue
     }
 
-    const totalDelay = calcDelayBetween(startBlockIndex + 1, searchEndIndex + 1)
+    const totalDelay = calcDelayBetween(searchStartIndex, startBlockIndex)
     let accumulatedDelay = 0
 
     console.log(`  -> totalDelay=${totalDelay}ms, will create ${changes.length} color segments`)
@@ -343,7 +343,7 @@ export const buildLightColorSegments = (
       currentColor = change.color
 
       const nextChange = changes[i + 1]
-      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : searchEndIndex + 1
+      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : startBlockIndex
 
       const segmentDelay = calcDelayBetween(change.blockIndex, segmentEndBlockIndex)
 
