@@ -295,18 +295,18 @@ export const buildLightColorSegments = (
       continue
     }
 
-    let searchEndIndex = startBlockIndex
-    for (let i = startBlockIndex + 1; i < blocks.length; i += 1) {
-      if (blockIndexToVisitIndex.has(i) && blockIndexToVisitIndex.get(i)! > visitIdx) {
-        searchEndIndex = i - 1
+    let searchStartIndex = startBlockIndex
+    for (let i = startBlockIndex - 1; i >= 0; i -= 1) {
+      if (blockIndexToVisitIndex.has(i)) {
+        searchStartIndex = i + 1
         break
       }
-      if (i === blocks.length - 1) {
-        searchEndIndex = i
+      if (i === 0) {
+        searchStartIndex = 0
       }
     }
 
-    const changes = findLightColorChangeBlocksBetweenIndices(blocks, startBlockIndex + 1, searchEndIndex)
+    const changes = findLightColorChangeBlocksBetweenIndices(blocks, searchStartIndex, startBlockIndex - 1)
 
     if (changes.length === 0) {
       segments.push({
@@ -317,7 +317,7 @@ export const buildLightColorSegments = (
       continue
     }
 
-    const totalDelay = calcDelayBetween(startBlockIndex + 1, searchEndIndex + 1)
+    const totalDelay = calcDelayBetween(searchStartIndex, startBlockIndex)
     let accumulatedDelay = 0
 
     for (let i = 0; i < changes.length; i += 1) {
@@ -325,7 +325,7 @@ export const buildLightColorSegments = (
       currentColor = change.color
 
       const nextChange = changes[i + 1]
-      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : searchEndIndex + 1
+      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : startBlockIndex
 
       const segmentDelay = calcDelayBetween(change.blockIndex, segmentEndBlockIndex)
 
