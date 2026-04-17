@@ -237,6 +237,8 @@ export const buildLightColorSegments = (
   blocks: ParsedBlock[],
   visits: Visit[],
 ): LightColorSegment[] => {
+  console.log('[buildLightColorSegments] blocks.length:', blocks.length, 'visits.length:', visits.length)
+
   if (!blocks.length || !visits.length) {
     return []
   }
@@ -256,6 +258,10 @@ export const buildLightColorSegments = (
     }
   })
 
+  console.log('[buildLightColorSegments] blocks map (first 10):', blocks.slice(0, 10).map((b, i) => ({ idx: i, type: b.type, id: b.id })))
+  console.log('[buildLightColorSegments] visits:', visits.map((v, i) => ({ idx: i, pos: `[${v.x},${v.y},${v.z}]`, blockId: v.blockId })))
+  console.log('[buildLightColorSegments] blockIndexToVisitIndex:', [...blockIndexToVisitIndex.entries()])
+
   const calcDelayBetween = (fromBlockIndex: number, toBlockIndex: number): number => {
     let total = 0
     for (let i = fromBlockIndex; i < toBlockIndex; i += 1) {
@@ -274,7 +280,10 @@ export const buildLightColorSegments = (
     const startVisit = visits[visitIdx]
     const endVisit = visits[nextVisitIdx]
 
+    console.log(`\n[buildLightColorSegments] Processing visitIdx=${visitIdx}: startVisit.pos=${startVisit.blockId ? `[${startVisit.x},${startVisit.y},${startVisit.z}]` : 'START'} -> endVisit.pos=[${endVisit.x},${endVisit.y},${endVisit.z}]`)
+
     if (!startVisit.blockId || !endVisit.blockId) {
+      console.log(`  -> No blockId, using currentColor: ${currentColor}`)
       segments.push({
         startVisitIndex: visitIdx,
         endVisitIndex: nextVisitIdx,
@@ -286,6 +295,8 @@ export const buildLightColorSegments = (
     const startBlockIndex = blockIndexById.get(startVisit.blockId)
     const endBlockIndex = blockIndexById.get(endVisit.blockId)
 
+    console.log(`  -> startBlockIndex=${startBlockIndex}, endBlockIndex=${endBlockIndex}`)
+
     if (startBlockIndex === undefined || endBlockIndex === undefined) {
       segments.push({
         startVisitIndex: visitIdx,
@@ -295,18 +306,23 @@ export const buildLightColorSegments = (
       continue
     }
 
-    let searchStartIndex = startBlockIndex
-    for (let i = startBlockIndex - 1; i >= 0; i -= 1) {
-      if (blockIndexToVisitIndex.has(i)) {
-        searchStartIndex = i + 1
+    // 查找在当前移动块之后（即到达目标点后停留期间）的灯光变化
+    let searchEndIndex = startBlockIndex
+    for (let i = startBlockIndex + 1; i < blocks.length; i += 1) {
+      if (blockIndexToVisitIndex.has(i) && blockIndexToVisitIndex.get(i)! > visitIdx) {
+        searchEndIndex = i - 1
         break
       }
-      if (i === 0) {
-        searchStartIndex = 0
+      if (i === blocks.length - 1) {
+        searchEndIndex = i
       }
     }
 
-    const changes = findLightColorChangeBlocksBetweenIndices(blocks, searchStartIndex, startBlockIndex - 1)
+    console.log(`  -> Searching for light changes between blocks[${startBlockIndex + 1}] to blocks[${searchEndIndex}]`)
+
+    const changes = findLightColorChangeBlocksBetweenIndices(blocks, startBlockIndex + 1, searchEndIndex)
+
+    console.log(`  -> Found ${changes.length} light changes:`, changes.map(c => ({ blockIdx: c.blockIndex, color: c.color })))
 
     if (changes.length === 0) {
       segments.push({
@@ -317,15 +333,17 @@ export const buildLightColorSegments = (
       continue
     }
 
-    const totalDelay = calcDelayBetween(searchStartIndex, startBlockIndex)
+    const totalDelay = calcDelayBetween(startBlockIndex + 1, searchEndIndex + 1)
     let accumulatedDelay = 0
+
+    console.log(`  -> totalDelay=${totalDelay}ms, will create ${changes.length} color segments`)
 
     for (let i = 0; i < changes.length; i += 1) {
       const change = changes[i]
       currentColor = change.color
 
       const nextChange = changes[i + 1]
-      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : startBlockIndex
+      const segmentEndBlockIndex = nextChange ? nextChange.blockIndex : searchEndIndex + 1
 
       const segmentDelay = calcDelayBetween(change.blockIndex, segmentEndBlockIndex)
 
@@ -333,19 +351,26 @@ export const buildLightColorSegments = (
       accumulatedDelay += segmentDelay
       const endRatio = totalDelay > 0 ? accumulatedDelay / totalDelay : 1
 
-      segments.push({
+      const segment = {
         startVisitIndex: visitIdx,
         endVisitIndex: nextVisitIdx,
         color: currentColor,
         startRatio: i === 0 ? 0 : startRatio,
         endRatio: i === changes.length - 1 ? 1 : endRatio,
-      })
+      }
+
+      console.log(`     Segment ${i}: color=${currentColor}, ratio=[${segment.startRatio?.toFixed(2)},${segment.endRatio?.toFixed(2)}]`)
+      segments.push(segment)
     }
 
     if (changes.length > 0) {
       currentColor = changes[changes.length - 1].color
     }
   }
+
+  console.log('\n[buildLightColorSegments] Final segments with ratios:', segments.filter(s => s.startRatio !== undefined).map(s =>
+    `visit[${s.startVisitIndex}]->[${s.endVisitIndex}] color=${s.color} ratio=[${s.startRatio?.toFixed(2)},${s.endRatio?.toFixed(2)}]`
+  ))
 
   return segments
 }
