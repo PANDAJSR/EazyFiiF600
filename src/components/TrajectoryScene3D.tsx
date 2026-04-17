@@ -155,6 +155,14 @@ function TrajectoryScene3D({
     const pathLines: Line2[] = []
 
     if (lightColorSegments.length > 0) {
+      console.log('[TrajectoryScene3D] lightColorSegments:', lightColorSegments.map(s => ({
+        startVisitIndex: s.startVisitIndex,
+        endVisitIndex: s.endVisitIndex,
+        color: s.color,
+        startRatio: s.startRatio,
+        endRatio: s.endRatio
+      })))
+
       const segmentGroups = new Map<string, typeof lightColorSegments>()
       lightColorSegments.forEach((segment) => {
         const key = `${segment.startVisitIndex}-${segment.endVisitIndex}`
@@ -164,18 +172,25 @@ function TrajectoryScene3D({
         segmentGroups.get(key)!.push(segment)
       })
 
+      console.log('[TrajectoryScene3D] segmentGroups keys:', [...segmentGroups.keys()])
+
       segmentGroups.forEach((segments, key) => {
         const [startIdx, endIdx] = key.split('-').map(Number)
+        console.log(`[TrajectoryScene3D] processing group ${key}: startIdx=${startIdx}, endIdx=${endIdx}`)
+
         if (startIdx >= visits.length || endIdx >= visits.length) {
+          console.log(`[TrajectoryScene3D] group ${key} skipped: index out of range`)
           return
         }
         const startVisit = visits[startIdx]
         const endVisit = visits[endIdx]
+        console.log(`[TrajectoryScene3D] group ${key}: startVisit=[${startVisit.x},${startVisit.y},${startVisit.z}], endVisit=[${endVisit.x},${endVisit.y},${endVisit.z}]`)
 
         const hasRatios = segments.some((s) => s.startRatio !== undefined && s.endRatio !== undefined)
 
         if (!hasRatios || segments.length === 1) {
           const segment = segments[0]
+          console.log(`[TrajectoryScene3D] group ${key}: drawing single color ${segment.color}`)
           const geometry = new LineGeometry()
           geometry.setPositions([startVisit.x, startVisit.y, startVisit.z, endVisit.x, endVisit.y, endVisit.z])
           const line = new Line2(geometry, new LineMaterial({
@@ -187,7 +202,8 @@ function TrajectoryScene3D({
           pathLines.push(line)
           disposers.push(() => { geometry.dispose() })
         } else {
-          segments.forEach((segment) => {
+          console.log(`[TrajectoryScene3D] group ${key}: drawing ${segments.length} colored sub-segments`)
+          segments.forEach((segment, idx) => {
             if (segment.startRatio === undefined || segment.endRatio === undefined) {
               return
             }
@@ -199,6 +215,8 @@ function TrajectoryScene3D({
             const endX = startVisit.x + (endVisit.x - startVisit.x) * segment.endRatio
             const endY = startVisit.y + (endVisit.y - startVisit.y) * segment.endRatio
             const endZ = startVisit.z + (endVisit.z - startVisit.z) * segment.endRatio
+
+            console.log(`[TrajectoryScene3D] group ${key} sub-segment ${idx}: color=${segment.color}, ratio=[${segment.startRatio},${segment.endRatio}], coords=[${startX.toFixed(1)},${startY.toFixed(1)},${startZ.toFixed(1)}] to [${endX.toFixed(1)},${endY.toFixed(1)},${endZ.toFixed(1)}]`)
 
             const geometry = new LineGeometry()
             geometry.setPositions([startX, startY, startZ, endX, endY, endZ])
