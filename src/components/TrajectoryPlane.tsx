@@ -64,7 +64,7 @@ function TrajectoryPlane({
   const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
   const [dragPreview, setDragPreview] = useState<PreviewPoint>()
   const [drawPreview, setDrawPreview] = useState<PreviewPoint>()
-  const [pathLineColorMode, setPathLineColorMode] = useState<PathLineColorMode>('light')
+  const [pathLineColorMode, setPathLineColorMode] = useState<PathLineColorMode>('fixed')
   const panelRef = useRef<HTMLDivElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
   const svgRef = useRef<SVGSVGElement>(null)
