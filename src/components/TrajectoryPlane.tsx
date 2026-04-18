@@ -1,7 +1,7 @@
-import { Empty, Segmented } from 'antd'
+import { Empty } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ParsedBlock } from '../types/fii'
-import TrajectoryScene3D from './TrajectoryScene3D'
+import TrajectoryScene3D, { type PathLineColorMode } from './TrajectoryScene3D'
 import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import type { RodConfig } from './trajectory/rodConfig'
 import type { MovePointPayload } from './trajectory/trajectoryScene3dUtils'
@@ -23,7 +23,6 @@ type Props = {
   activeTrajectoryColor?: string
 }
 
-type PathLineColorMode = 'fixed' | 'light'
 const VIEWBOX_WIDTH = 680, VIEWBOX_HEIGHT = 620
 function TrajectoryPlane({
   startPos,
@@ -182,18 +181,6 @@ function TrajectoryPlane({
     return (
       <div className="trajectory-card">
         <div className="trajectory-meta">{meta}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-          <span style={{ fontSize: 12, color: '#666' }}>路径线颜色：</span>
-          <Segmented<PathLineColorMode>
-            size="small"
-            value={pathLineColorMode}
-            onChange={(value) => setPathLineColorMode(value)}
-            options={[
-              { label: '固定颜色', value: 'fixed' },
-              { label: '灯光颜色', value: 'light' },
-            ]}
-          />
-        </div>
         <TrajectoryScene3D
           visits={visits}
           bounds={bounds}
@@ -203,7 +190,9 @@ function TrajectoryPlane({
           onMovePoint={onMovePoint}
           backgroundTrajectories={backgroundVisits}
           activeTrajectoryColor={activeTrajectoryColor}
-          lightColorSegments={pathLineColorMode === 'light' ? lightColorSegments : []}
+          lightColorSegments={lightColorSegments}
+          pathLineColorMode={pathLineColorMode}
+          onPathLineColorModeChange={setPathLineColorMode}
         />
       </div>
     )

@@ -1,4 +1,4 @@
-import { Empty } from 'antd'
+import { Empty, Segmented } from 'antd'
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
@@ -20,6 +20,8 @@ import {
 } from './trajectory/trajectoryScene3dUtils'
 import type { LightColorSegment, TrajectoryBounds, Visit } from './trajectory/trajectoryUtils'
 import { GRID_STEP } from './trajectory/trajectoryUtils'
+export type PathLineColorMode = 'fixed' | 'light'
+
 type Props = {
   visits: Visit[]
   bounds: TrajectoryBounds
@@ -30,6 +32,8 @@ type Props = {
   backgroundTrajectories?: Array<{ droneId: string; color: string; visits: Visit[] }>
   activeTrajectoryColor?: string
   lightColorSegments?: LightColorSegment[]
+  pathLineColorMode?: PathLineColorMode
+  onPathLineColorModeChange?: (mode: PathLineColorMode) => void
 }
 function TrajectoryScene3D({
   visits,
@@ -41,6 +45,8 @@ function TrajectoryScene3D({
   backgroundTrajectories = [],
   activeTrajectoryColor = '#1b6ed6',
   lightColorSegments = [],
+  pathLineColorMode = 'fixed',
+  onPathLineColorModeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneStateRef = useRef<{
@@ -153,8 +159,9 @@ function TrajectoryScene3D({
       resolution: new THREE.Vector2(container.clientWidth, container.clientHeight),
     })
     const pathLines: Line2[] = []
+    const effectiveLightSegments = pathLineColorMode === 'light' ? lightColorSegments : []
 
-    if (lightColorSegments.length > 0) {
+    if (effectiveLightSegments.length > 0) {
       console.log('[TrajectoryScene3D] lightColorSegments:', lightColorSegments.map(s => ({
         startVisitIndex: s.startVisitIndex,
         endVisitIndex: s.endVisitIndex,
@@ -163,8 +170,8 @@ function TrajectoryScene3D({
         endRatio: s.endRatio
       })))
 
-      const segmentGroups = new Map<string, typeof lightColorSegments>()
-      lightColorSegments.forEach((segment) => {
+      const segmentGroups = new Map<string, typeof effectiveLightSegments>()
+      effectiveLightSegments.forEach((segment) => {
         const key = `${segment.startVisitIndex}-${segment.endVisitIndex}`
         if (!segmentGroups.has(key)) {
           segmentGroups.set(key, [])
@@ -542,6 +549,7 @@ function TrajectoryScene3D({
     visits,
     selectedBlockId,
     lightColorSegments,
+    pathLineColorMode,
   ])
 
   useEffect(() => {
@@ -569,7 +577,21 @@ function TrajectoryScene3D({
   return (
     <div className="trajectory-3d-stage">
       <div ref={containerRef} className="trajectory-3d-canvas" />
-      <div className="trajectory-3d-tip">拖拽空白处旋转 · 滚轮缩放 · 拖动高亮点可改坐标 · 点击点可定位积木</div>
+      <div className="trajectory-3d-footer">
+        <div className="trajectory-3d-color-control">
+          <span className="trajectory-3d-color-label">路径线颜色：</span>
+          <Segmented<PathLineColorMode>
+            size="small"
+            value={pathLineColorMode}
+            onChange={(value) => onPathLineColorModeChange?.(value)}
+            options={[
+              { label: '固定颜色', value: 'fixed' },
+              { label: '灯光颜色', value: 'light' },
+            ]}
+          />
+        </div>
+        <div className="trajectory-3d-tip">拖拽空白处旋转 · 滚轮缩放 · 拖动高亮点可改坐标 · 点击点可定位积木</div>
+      </div>
     </div>
   )
 }
