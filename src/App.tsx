@@ -20,6 +20,7 @@ import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTra
 import { readLocalDraftResult } from './utils/localDraftStorage'
 import { isDesktopRuntime, onAgentStream, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
 import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { calculateBlockEndState } from './utils/blockEndState'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
@@ -294,6 +295,14 @@ function App() {
       return
     }
     const nextBlock = createInsertedBlock(definition)
+    if (definition.type === AUTO_DELAY_BLOCK_TYPE && selectedProgram?.drone.startPos) {
+      const endState = calculateBlockEndState(selectedProgram.drone.startPos, selectedProgram.blocks, targetBlockId)
+      if (endState) {
+        nextBlock.fields.X = String(endState.position.x)
+        nextBlock.fields.Y = String(endState.position.y)
+        nextBlock.fields.Z = String(endState.position.z)
+      }
+    }
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
     setSelectedBlockId(nextBlock.id)
     setHighlightedBlockId(nextBlock.id)
@@ -303,7 +312,7 @@ function App() {
     setInsertAfterBlockId(undefined)
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${definition.label}`)
-  }, [insertAfterBlockId, selectedBlockId, selectedDroneId])
+  }, [insertAfterBlockId, selectedBlockId, selectedDroneId, selectedProgram])
   const handleInsertFirstBlock = useCallback(() => {
     if (!selectedDroneId) {
       return

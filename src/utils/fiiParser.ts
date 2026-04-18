@@ -54,6 +54,12 @@ const findAllAttr = (xml: Document, tagName: string, attrName: string): string[]
     .filter(Boolean)
 }
 
+const extractPosValue = (posStr: string | undefined): string => {
+  if (!posStr) return ''
+  const match = posStr.match(/(\d+)$/)
+  return match ? match[1] : posStr
+}
+
 const parseDronesFromFii = (fiiText: string): DroneInfo[] => {
   const xml = parseXml(fiiText)
   const actionGroups = findAllAttr(xml, 'Actions', 'actionname')
@@ -75,9 +81,9 @@ const parseDronesFromFii = (fiiText: string): DroneInfo[] => {
       name,
       actionGroup: matchedGroup ?? actionGroups[i] ?? '',
       startPos: {
-        x: posX[i] ?? '',
-        y: posY[i] ?? '',
-        z: posZ[i] ?? '',
+        x: extractPosValue(posX[i]),
+        y: extractPosValue(posY[i]),
+        z: extractPosValue(posZ[i]),
       },
     })
   }
