@@ -2,7 +2,7 @@ import * as THREE from 'three'
 import type { RodConfig } from './rodConfig'
 import { buildTakeoffZone } from './trajectoryPlaneDecorations'
 
-const SUBJECT_ROD_HEIGHT = 170
+const DEFAULT_ROD_HEIGHT = 170
 const SUBJECT2_CROSSBAR_HEIGHT = 150
 const SUBJECT6_CROSSBAR_HEIGHT = 150
 const SUBJECT3_RING_DIAMETER = 65
@@ -43,7 +43,9 @@ export const renderSubjectRods = (
     metalness: 0.16,
     roughness: 0.36,
   })
-  const rodGeometry = new THREE.CylinderGeometry(ROD_RADIUS, ROD_RADIUS, SUBJECT_ROD_HEIGHT, 20)
+
+  const rodHeight = rodConfig?.verticalRodHeight ?? DEFAULT_ROD_HEIGHT
+  const rodGeometry = new THREE.CylinderGeometry(ROD_RADIUS, ROD_RADIUS, rodHeight, 20)
   const subject3RingGeometry = new THREE.TorusGeometry(SUBJECT3_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject7RingGeometry = new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
@@ -52,7 +54,7 @@ export const renderSubjectRods = (
   const addVerticalRod = (x: number, y: number) => {
     const rod = new THREE.Mesh(rodGeometry, rodMaterial)
     rod.rotation.x = Math.PI / 2
-    rod.position.set(x, y, SUBJECT_ROD_HEIGHT / 2)
+    rod.position.set(x, y, rodHeight / 2)
     scene.add(rod)
   }
 

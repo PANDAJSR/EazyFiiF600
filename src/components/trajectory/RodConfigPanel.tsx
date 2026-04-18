@@ -1,7 +1,7 @@
-import { Button, InputNumber, Typography } from 'antd'
+import { Button, InputNumber, Typography, Radio } from 'antd'
 import { useCallback, useState } from 'react'
 import { createDefaultRodConfig, ROD_SUBJECT_SPECS } from './rodConfig'
-import type { RodConfig, RodSubjectId } from './rodConfig'
+import type { RodConfig, RodSubjectId, VerticalRodHeight } from './rodConfig'
 
 type Props = {
   config: RodConfig
@@ -207,6 +207,13 @@ function RodConfigPanel({ config, onChange }: Props) {
     })
   }
 
+  const updateVerticalRodHeight = (value: VerticalRodHeight) => {
+    onChange({
+      ...config,
+      verticalRodHeight: value,
+    })
+  }
+
   const spreadPasteValues = (
     event: React.ClipboardEvent<HTMLInputElement>,
     group: GroupId,
@@ -301,6 +308,25 @@ function RodConfigPanel({ config, onChange }: Props) {
                 />
               </div>
             ))}
+          </div>
+        </section>
+        <section className="rod-config-subject">
+          <div className="rod-config-subject-title">
+            <div className="rod-config-subject-title-main">
+              <span className="rod-config-subject-marker">杆</span>
+              <span>竖杆高度</span>
+            </div>
+          </div>
+          <div className="rod-config-points">
+            <div className="rod-config-point-row">
+              <Radio.Group
+                value={config.verticalRodHeight}
+                onChange={(e) => updateVerticalRodHeight(e.target.value)}
+              >
+                <Radio value={150}>150cm</Radio>
+                <Radio value={170}>170cm</Radio>
+              </Radio.Group>
+            </div>
           </div>
         </section>
         {ROD_SUBJECT_SPECS.map((subject) => (

@@ -4,7 +4,7 @@ import { buildPathVisits, type XYZ } from './trajectoryUtils'
 import type { TrajectoryIssue } from './trajectoryIssues'
 
 const ROD_RADIUS = 1.8
-const ROD_HEIGHT = 170
+const DEFAULT_ROD_HEIGHT = 170
 const CROSSBAR_RADIUS = 1.8 * 0.72
 const SUBJECT2_CROSSBAR_HEIGHT = 150
 const SUBJECT6_CROSSBAR_HEIGHT = 150
@@ -294,6 +294,7 @@ const segmentToHorizontalRingDistance = (segment: Segment, ring: Obstacle & { ty
  */
 const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
   const obstacles: Obstacle[] = []
+  const rodHeight = rodConfig.verticalRodHeight ?? DEFAULT_ROD_HEIGHT
 
   // 科目1：竖杆
   const subject1Rod = rodConfig.subject1[0]
@@ -303,7 +304,7 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
       x: subject1Rod.x,
       y: subject1Rod.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
   }
 
@@ -316,14 +317,14 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
       x: subject2RodA.x,
       y: subject2RodA.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     obstacles.push({
       type: 'vertical-rod',
       x: subject2RodB.x,
       y: subject2RodB.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     obstacles.push({
       type: 'crossbar',
@@ -342,14 +343,14 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
       x: subject3RodA.x,
       y: subject3RodA.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     obstacles.push({
       type: 'vertical-rod',
       x: subject3RodB.x,
       y: subject3RodB.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
 
     const centerHeight = rodConfig.subject3Ring.centerHeight
@@ -382,14 +383,14 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
       x: subject4RodA.x,
       y: subject4RodA.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     obstacles.push({
       type: 'vertical-rod',
       x: subject4RodB.x,
       y: subject4RodB.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     const centerX = (subject4RodA.x + subject4RodB.x) / 2
     const centerY = (subject4RodA.y + subject4RodB.y) / 2
@@ -410,14 +411,14 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
       x: subject5RodA.x,
       y: subject5RodA.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
     obstacles.push({
       type: 'vertical-rod',
       x: subject5RodB.x,
       y: subject5RodB.y,
       radius: ROD_RADIUS,
-      height: ROD_HEIGHT,
+      height: rodHeight,
     })
   }
 
@@ -433,10 +434,10 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
     isFiniteRodPoint(subject6RodD)
   ) {
     obstacles.push(
-      { type: 'vertical-rod', x: subject6RodA.x, y: subject6RodA.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject6RodB.x, y: subject6RodB.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject6RodC.x, y: subject6RodC.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject6RodD.x, y: subject6RodD.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
+      { type: 'vertical-rod', x: subject6RodA.x, y: subject6RodA.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject6RodB.x, y: subject6RodB.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject6RodC.x, y: subject6RodC.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject6RodD.x, y: subject6RodD.y, radius: ROD_RADIUS, height: rodHeight },
       {
         type: 'crossbar',
         start: { x: subject6RodA.x, y: subject6RodA.y, z: SUBJECT6_CROSSBAR_HEIGHT },
@@ -457,8 +458,8 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
   const subject7RodB = rodConfig.subject7[1]
   if (isFiniteRodPoint(subject7RodA) && isFiniteRodPoint(subject7RodB)) {
     obstacles.push(
-      { type: 'vertical-rod', x: subject7RodA.x, y: subject7RodA.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject7RodB.x, y: subject7RodB.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
+      { type: 'vertical-rod', x: subject7RodA.x, y: subject7RodA.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject7RodB.x, y: subject7RodB.y, radius: ROD_RADIUS, height: rodHeight },
     )
     const centerX = (subject7RodA.x + subject7RodB.x) / 2
     const centerY = (subject7RodA.y + subject7RodB.y) / 2
@@ -478,9 +479,9 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
   const subject8RodC = rodConfig.subject8[2]
   if (isFiniteRodPoint(subject8RodA) && isFiniteRodPoint(subject8RodB) && isFiniteRodPoint(subject8RodC)) {
     obstacles.push(
-      { type: 'vertical-rod', x: subject8RodA.x, y: subject8RodA.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject8RodB.x, y: subject8RodB.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject8RodC.x, y: subject8RodC.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
+      { type: 'vertical-rod', x: subject8RodA.x, y: subject8RodA.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject8RodB.x, y: subject8RodB.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject8RodC.x, y: subject8RodC.y, radius: ROD_RADIUS, height: rodHeight },
     )
     // 高圈在AB之间
     const centerX1 = (subject8RodA.x + subject8RodB.x) / 2
@@ -508,8 +509,8 @@ const buildObstacles = (rodConfig: RodConfig): Obstacle[] => {
   const subject9SecondHeight = rodConfig.subject9Config.secondCrossbarHeight
   if (isFiniteRodPoint(subject9RodA) && isFiniteRodPoint(subject9RodB)) {
     obstacles.push(
-      { type: 'vertical-rod', x: subject9RodA.x, y: subject9RodA.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
-      { type: 'vertical-rod', x: subject9RodB.x, y: subject9RodB.y, radius: ROD_RADIUS, height: ROD_HEIGHT },
+      { type: 'vertical-rod', x: subject9RodA.x, y: subject9RodA.y, radius: ROD_RADIUS, height: rodHeight },
+      { type: 'vertical-rod', x: subject9RodB.x, y: subject9RodB.y, radius: ROD_RADIUS, height: rodHeight },
       {
         type: 'crossbar',
         start: { x: subject9RodA.x, y: subject9RodA.y, z: SUBJECT9_FIRST_CROSSBAR_HEIGHT },
