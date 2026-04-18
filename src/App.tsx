@@ -15,6 +15,7 @@ import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotke
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
 import usePathDrawingHotkey from './components/usePathDrawingHotkey'
+import useSaveOpenHotkey from './hooks/useSaveOpenHotkey'
 import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
@@ -234,6 +235,13 @@ function App() {
   usePathDrawingHotkey({
     pathDrawingMode,
     onToggle: handlePathDrawingToggle,
+  })
+  useSaveOpenHotkey({
+    onSave: () => {
+      setManualSaveSignal((prev) => prev + 1)
+      void handleSaveEdits()
+    },
+    onOpen: () => void handleOpenDirectory(),
   })
   useEffect(() => {
     if (!isDesktopRuntime()) {
