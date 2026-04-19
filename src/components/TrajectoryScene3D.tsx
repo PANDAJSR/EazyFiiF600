@@ -1,5 +1,5 @@
 import { Empty, Segmented } from 'antd'
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { Line2 } from 'three/examples/jsm/lines/Line2.js'
@@ -7,6 +7,8 @@ import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { RodConfig } from './trajectory/rodConfig'
 import { renderSubjectRods, renderTakeoffZoneOnGround } from './trajectory/trajectoryScene3dRods'
+import ObstacleHoverTooltip from './trajectory/ObstacleHoverTooltip'
+import { buildRodObstacleHoverInfos, findNearestHoveredRodObstacle, type RodObstacleHoverInfo } from './trajectory/trajectoryObstacleHover'
 import { SNAP_STEP, snapToStep } from './trajectory/trajectoryPlaneUtils'
 import {
   buildDragCandidates,
@@ -49,6 +51,11 @@ function TrajectoryScene3D({
   onPathLineColorModeChange,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const [hoveredObstacleTooltip, setHoveredObstacleTooltip] = useState<{
+    clientX: number
+    clientY: number
+    info: RodObstacleHoverInfo
+  }>()
   const sceneStateRef = useRef<{
     scene: THREE.Scene | null
     camera: THREE.PerspectiveCamera | null
@@ -78,6 +85,7 @@ function TrajectoryScene3D({
     }),
     [bounds.maxZ, bounds.minX, bounds.minY, bounds.minZ, bounds.span],
   )
+  const obstacleHoverInfos = useMemo(() => buildRodObstacleHoverInfos(rodConfig), [rodConfig])
 
   useEffect(() => {
     console.log('[TrajectoryScene3D] Effect RUN, container:', !!containerRef.current, 'sceneState:', !!sceneStateRef.current)
@@ -361,6 +369,7 @@ function TrajectoryScene3D({
     const pointer = new THREE.Vector2()
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
     const dragPlaneHit = new THREE.Vector3()
+    const hoverPlaneHit = new THREE.Vector3()
     const pickCandidateAtPointer = (event: PointerEvent) =>
       pickNearestAtPointer(event, sceneStateRef.current!.pickCandidatesRef.current, camera, renderer.domElement)
     const pickDragCandidateAtPointer = (event: PointerEvent) =>
@@ -382,6 +391,7 @@ function TrajectoryScene3D({
         return
       }
       setHoveredCandidate(null)
+      setHoveredObstacleTooltip(undefined)
       renderer.domElement.style.cursor = 'default'
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -410,6 +420,7 @@ function TrajectoryScene3D({
     }
     const onPointerMove = (event: PointerEvent) => {
       if (draggingCandidate && onMovePoint) {
+        setHoveredObstacleTooltip(undefined)
         const next = projectPointerToPlane(
           event,
           renderer.domElement,
@@ -435,6 +446,28 @@ function TrajectoryScene3D({
         }
         return
       }
+
+      const hoverPoint = projectPointerToPlane(
+        event,
+        renderer.domElement,
+        camera,
+        raycaster,
+        pointer,
+        dragPlane,
+        hoverPlaneHit,
+        0,
+      )
+      if (hoverPoint) {
+        const hoveredObstacle = findNearestHoveredRodObstacle(obstacleHoverInfos, hoverPoint.x, hoverPoint.y, 10)
+        if (hoveredObstacle) {
+          setHoveredObstacleTooltip({ clientX: event.clientX, clientY: event.clientY, info: hoveredObstacle })
+        } else {
+          setHoveredObstacleTooltip(undefined)
+        }
+      } else {
+        setHoveredObstacleTooltip(undefined)
+      }
+
       if (!pointerMoved) {
         const dx = event.clientX - pointerDown.x
         const dy = event.clientY - pointerDown.y
@@ -523,6 +556,7 @@ function TrajectoryScene3D({
         renderer.domElement.releasePointerCapture(activePointerId)
       }
       renderer.domElement.style.cursor = 'default'
+      setHoveredObstacleTooltip(undefined)
       disposers.forEach((dispose) => dispose())
       renderer.dispose()
       if (renderer.domElement.parentElement === container) {
@@ -546,6 +580,7 @@ function TrajectoryScene3D({
     backgroundTrajectories,
     activeTrajectoryColor,
     rodConfig,
+    obstacleHoverInfos,
     visits,
     selectedBlockId,
     lightColorSegments,
@@ -577,6 +612,7 @@ function TrajectoryScene3D({
   return (
     <div className="trajectory-3d-stage">
       <div ref={containerRef} className="trajectory-3d-canvas" />
+      <ObstacleHoverTooltip tooltip={hoveredObstacleTooltip} />
       <div className="trajectory-3d-footer">
         <div className="trajectory-3d-color-control">
           <span className="trajectory-3d-color-label">路径线颜色：</span>

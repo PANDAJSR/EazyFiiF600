@@ -6,10 +6,12 @@ import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import type { RodConfig } from './trajectory/rodConfig'
 import type { MovePointPayload } from './trajectory/trajectoryScene3dUtils'
 import { buildRodLineOccluders, buildRodMarkers, buildRodObstacleDecorations, buildRodRingOccluders, buildTakeoffZone } from './trajectory/trajectoryPlaneDecorations'
+import { buildRodObstacleHoverInfos, findNearestHoveredRodObstacle, type RodObstacleHoverInfo } from './trajectory/trajectoryObstacleHover'
 import { buildPathSegmentsAboveLines, buildPathSegmentsAboveRings } from './trajectory/trajectoryPathOcclusion'
 import { buildLightColorSegments, buildPathVisits, buildTicks, calcTrajectoryBounds, type TrajectoryBounds, type XYZ, type Visit } from './trajectory/trajectoryUtils'
 import { clamp, clientToSvg, EDITABLE_BLOCK_TYPES, isCountedVisit, snapToStep, SNAP_STEP, summarizePoints } from './trajectory/trajectoryPlaneUtils'
 import TrajectoryPlaneOverlay, { type PreviewPoint } from './trajectory/TrajectoryPlaneOverlay'
+import ObstacleHoverTooltip from './trajectory/ObstacleHoverTooltip'
 type Props = {
   startPos: XYZ
   blocks: ParsedBlock[]
@@ -65,6 +67,11 @@ function TrajectoryPlane({
   const [activePointAnchor, setActivePointAnchor] = useState<{ xPercent: number; yPercent: number }>()
   const [dragPreview, setDragPreview] = useState<PreviewPoint>()
   const [drawPreview, setDrawPreview] = useState<PreviewPoint>()
+  const [hoveredObstacleTooltip, setHoveredObstacleTooltip] = useState<{
+    clientX: number
+    clientY: number
+    info: RodObstacleHoverInfo
+  }>()
   const [pathLineColorMode, setPathLineColorMode] = useState<PathLineColorMode>('fixed')
   const panelRef = useRef<HTMLDivElement>(null)
   const canvasWrapRef = useRef<HTMLDivElement>(null)
@@ -201,6 +208,7 @@ function TrajectoryPlane({
   const [xTicks, yTicks] = [buildTicks(displayBounds.minX, displayBounds.maxX), buildTicks(displayBounds.minY, displayBounds.maxY)], polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const rodMarkers = buildRodMarkers(rodConfig)
   const rodObstacleDecorations = buildRodObstacleDecorations(rodConfig)
+  const rodObstacleHoverInfos = buildRodObstacleHoverInfos(rodConfig)
   const rodObstacleLines = rodObstacleDecorations.filter((item) => item.kind === 'line')
   const rodObstacleCircles = rodObstacleDecorations.filter((item) => item.kind === 'circle')
   const lineOccluders = buildRodLineOccluders(rodConfig)
@@ -250,6 +258,20 @@ function TrajectoryPlane({
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           role="img"
           onPointerMove={(event) => {
+            const hoverTolerance = (displayBounds.span / plotSize) * 8
+            const svgPoint = clientToSvg(event.currentTarget, event.clientX, event.clientY)
+            if (svgPoint && !isDraggingPoint) {
+              const x = displayBounds.minX + ((svgPoint.x - plotLeft) / plotSize) * displayBounds.span
+              const y = displayBounds.minY + (1 - (svgPoint.y - plotTop) / plotSize) * displayBounds.span
+              const hoveredObstacle = findNearestHoveredRodObstacle(rodObstacleHoverInfos, x, y, hoverTolerance)
+              if (hoveredObstacle) {
+                setHoveredObstacleTooltip({ clientX: event.clientX, clientY: event.clientY, info: hoveredObstacle })
+              } else {
+                setHoveredObstacleTooltip(undefined)
+              }
+            } else {
+              setHoveredObstacleTooltip(undefined)
+            }
             if (!pathDrawingMode) {
               return
             }
@@ -261,6 +283,7 @@ function TrajectoryPlane({
             setDrawPreview({ clientX: preview.clientX, clientY: preview.clientY, x: preview.x, y: preview.y })
           }}
           onPointerLeave={() => {
+            setHoveredObstacleTooltip(undefined)
             if (!pathDrawingMode) {
               return
             }
@@ -493,6 +516,7 @@ function TrajectoryPlane({
             drawPreview={activeDrawPreview}
             onLocateBlock={onLocateBlock}
           />
+          <ObstacleHoverTooltip tooltip={hoveredObstacleTooltip} />
         </div>
       </div>
     </div>

@@ -229,6 +229,32 @@
   background: #e2efff;
 }
 
+.trajectory-obstacle-hover-tooltip {
+  position: fixed;
+  z-index: 1300;
+  pointer-events: none;
+  border: 1px solid #9fc0ee;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  color: #1f5ea9;
+  box-shadow: 0 10px 24px rgba(16, 50, 93, 0.18);
+  padding: 8px 10px;
+  min-width: 144px;
+}
+
+.trajectory-obstacle-hover-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: #194d8a;
+  margin-bottom: 4px;
+}
+
+.trajectory-obstacle-hover-detail {
+  font-size: 12px;
+  color: #2f629d;
+  line-height: 1.45;
+}
+
 .blocks-wrap {
   display: flex;
   flex-direction: column;
