@@ -1,5 +1,6 @@
 import type { ParseResult } from '../types/fii'
 import { expandAutoDelayBlocks } from './autoDelayBlocks'
+import { expandAsyncMoveBlocks } from './asyncMoveBlocks'
 import { expandCommentBlocks } from './commentBlocks'
 
 export type SerializedProjectFile = {
@@ -43,7 +44,9 @@ const buildProgramNames = (_program: ParseResult['programs'][number], index: num
 }
 
 const buildBlockXml = (program: ParseResult['programs'][number], index: number): string => {
-  const serializedBlocks = expandCommentBlocks(expandAutoDelayBlocks(program.blocks, program.drone.startPos))
+  const serializedBlocks = expandCommentBlocks(
+    expandAsyncMoveBlocks(expandAutoDelayBlocks(program.blocks, program.drone.startPos), program.drone.startPos),
+  )
   const lines: string[] = []
   const emitBlockFields = (blockIndex: number) => {
     const block = serializedBlocks[blockIndex]

@@ -1,5 +1,6 @@
 import type { DroneInfo, ParseResult, ParsedBlock } from '../types/fii'
 import { collapseAutoDelayBlocks } from './autoDelayBlocks'
+import { collapseGeneratedRelativeAsyncMoveBlocks } from './asyncMoveBlocks'
 import { collapseCommentBlocks } from './commentBlocks'
 
 type FileLookup = {
@@ -150,7 +151,7 @@ const flattenBlocks = (node: XmlBlockNode | undefined, result: ParsedBlock[]): v
   flattenBlocks(node.next, result)
 }
 
-const parseBlocksFromXml = (xmlText: string): ParsedBlock[] => {
+const parseBlocksFromXml = (xmlText: string, startPos: DroneInfo['startPos']): ParsedBlock[] => {
   const xml = parseXml(xmlText)
   const root = xml.getElementsByTagName('block')[0]
   if (!root) {
@@ -160,7 +161,7 @@ const parseBlocksFromXml = (xmlText: string): ParsedBlock[] => {
   const tree = parseXmlBlockNode(root)
   const blocks: ParsedBlock[] = []
   flattenBlocks(tree, blocks)
-  return collapseCommentBlocks(collapseAutoDelayBlocks(blocks))
+  return collapseCommentBlocks(collapseAutoDelayBlocks(collapseGeneratedRelativeAsyncMoveBlocks(blocks, startPos)))
 }
 
 const resolveActionXml = (actionGroup: string, lookup: FileLookup): InputFile | undefined => {
@@ -211,7 +212,7 @@ const parseFiiFromInputFiles = async (files: InputFile[]): Promise<ParseResult> 
       }
 
       const xmlText = await actionXml.text()
-      const blocks = parseBlocksFromXml(xmlText)
+      const blocks = parseBlocksFromXml(xmlText, drone.startPos)
       return { drone, blocks }
     }),
   )
