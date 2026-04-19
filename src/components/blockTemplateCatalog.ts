@@ -201,15 +201,6 @@ const buildSubject2RectangleStableBlocks = (params: Subject2RectangleStableParam
     z: corner.z,
   }))
 
-  const headingToDeg = (from: { x: number; y: number }, to: { x: number; y: number }) => {
-    if (Math.abs(to.x - from.x) < EPSILON && Math.abs(to.y - from.y) < EPSILON) {
-      return null
-    }
-    const deg = (Math.atan2(to.x - from.x, to.y - from.y) * 180) / Math.PI
-    const normalized = ((deg % 360) + 360) % 360
-    return Math.round(normalized * 100) / 100
-  }
-
   const flightSegments = (() => {
     const segments: Array<{
       from: { x: number; y: number; z: number }
@@ -228,14 +219,6 @@ const buildSubject2RectangleStableBlocks = (params: Subject2RectangleStableParam
     return segments
   })()
 
-  const headingBlocks = flightSegments.flatMap((segment) => {
-    const headingDeg = headingToDeg(segment.from, segment.to)
-    if (headingDeg === null) {
-      return []
-    }
-    return [createInsertedBlockByType('Goertek_TurnTo', { turnDirection: 'r', angle: toFieldNumber(headingDeg) })]
-  })
-
   const moveBlocks = flightSegments.map((segment) =>
     createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, {
       X: toFieldNumber(segment.to.x),
@@ -244,11 +227,9 @@ const buildSubject2RectangleStableBlocks = (params: Subject2RectangleStableParam
       time: '800',
     }))
 
-  const flightBlocks = flightSegments.flatMap((_, index) => [headingBlocks[index], moveBlocks[index]]).filter(Boolean) as ParsedBlock[]
-
   return [
     createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目二 Begin' }),
-    ...flightBlocks,
+    ...moveBlocks,
     createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目二 End' }),
   ]
 }
