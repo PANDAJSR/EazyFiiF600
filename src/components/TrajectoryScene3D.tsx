@@ -6,9 +6,9 @@ import { Line2 } from 'three/examples/jsm/lines/Line2.js'
 import { LineGeometry } from 'three/examples/jsm/lines/LineGeometry.js'
 import { LineMaterial } from 'three/examples/jsm/lines/LineMaterial.js'
 import type { RodConfig } from './trajectory/rodConfig'
-import { renderSubjectRods, renderTakeoffZoneOnGround } from './trajectory/trajectoryScene3dRods'
+import { renderSubjectRods, renderTakeoffZoneOnGround, type RodObstacleHoverTarget3D } from './trajectory/trajectoryScene3dRods'
 import ObstacleHoverTooltip from './trajectory/ObstacleHoverTooltip'
-import { buildRodObstacleHoverInfos, findNearestHoveredRodObstacle, type RodObstacleHoverInfo } from './trajectory/trajectoryObstacleHover'
+import { buildRodObstacleHoverInfos, type RodObstacleHoverInfo } from './trajectory/trajectoryObstacleHover'
 import { SNAP_STEP, snapToStep } from './trajectory/trajectoryPlaneUtils'
 import {
   buildDragCandidates,
@@ -86,6 +86,7 @@ function TrajectoryScene3D({
     [bounds.maxZ, bounds.minX, bounds.minY, bounds.minZ, bounds.span],
   )
   const obstacleHoverInfos = useMemo(() => buildRodObstacleHoverInfos(rodConfig), [rodConfig])
+  const obstacleHoverInfoByKey = useMemo(() => new Map(obstacleHoverInfos.map((item) => [item.key, item])), [obstacleHoverInfos])
 
   useEffect(() => {
     console.log('[TrajectoryScene3D] Effect RUN, container:', !!containerRef.current, 'sceneState:', !!sceneStateRef.current)
@@ -158,7 +159,8 @@ function TrajectoryScene3D({
     }
     scene.add(gridGroup)
     renderTakeoffZoneOnGround(scene, rodConfig, disposers)
-    renderSubjectRods(scene, rodConfig, disposers)
+    const rodHoverTargets: RodObstacleHoverTarget3D[] = []
+    renderSubjectRods(scene, rodConfig, disposers, rodHoverTargets)
     const pathPoints = visits.map((visit) => new THREE.Vector3(visit.x, visit.y, visit.z))
     const pathLineWidth = Math.max(bounds.span * 0.0015, 3)
     const pathMaterial = new LineMaterial({
@@ -369,7 +371,6 @@ function TrajectoryScene3D({
     const pointer = new THREE.Vector2()
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
     const dragPlaneHit = new THREE.Vector3()
-    const hoverPlaneHit = new THREE.Vector3()
     const pickCandidateAtPointer = (event: PointerEvent) =>
       pickNearestAtPointer(event, sceneStateRef.current!.pickCandidatesRef.current, camera, renderer.domElement)
     const pickDragCandidateAtPointer = (event: PointerEvent) =>
@@ -447,20 +448,18 @@ function TrajectoryScene3D({
         return
       }
 
-      const hoverPoint = projectPointerToPlane(
-        event,
-        renderer.domElement,
-        camera,
-        raycaster,
-        pointer,
-        dragPlane,
-        hoverPlaneHit,
-        0,
+      const rect = renderer.domElement.getBoundingClientRect()
+      pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
+      raycaster.setFromCamera(pointer, camera)
+      const hoverHits = raycaster.intersectObjects(rodHoverTargets.map((item) => item.object), true)
+      const firstHoverHit = hoverHits.find((hit) =>
+        rodHoverTargets.some((item) => item.object === hit.object || item.object === hit.object.parent),
       )
-      if (hoverPoint) {
-        const hoveredObstacle = findNearestHoveredRodObstacle(obstacleHoverInfos, hoverPoint.x, hoverPoint.y, 10)
-        if (hoveredObstacle) {
-          setHoveredObstacleTooltip({ clientX: event.clientX, clientY: event.clientY, info: hoveredObstacle })
+      if (firstHoverHit) {
+        const target = rodHoverTargets.find((item) => item.object === firstHoverHit.object || item.object === firstHoverHit.object.parent)
+        const hoverInfo = target ? obstacleHoverInfoByKey.get(target.key) : undefined
+        if (hoverInfo) {
+          setHoveredObstacleTooltip({ clientX: event.clientX, clientY: event.clientY, info: hoverInfo })
         } else {
           setHoveredObstacleTooltip(undefined)
         }
@@ -580,7 +579,7 @@ function TrajectoryScene3D({
     backgroundTrajectories,
     activeTrajectoryColor,
     rodConfig,
-    obstacleHoverInfos,
+    obstacleHoverInfoByKey,
     visits,
     selectedBlockId,
     lightColorSegments,
