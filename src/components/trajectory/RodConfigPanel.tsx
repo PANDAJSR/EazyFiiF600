@@ -1,24 +1,18 @@
 import { Button, InputNumber, Typography, Radio } from 'antd'
 import { useCallback, useState } from 'react'
 import { createDefaultRodConfig, ROD_SUBJECT_SPECS } from './rodConfig'
-import type { RodConfig, RodSubjectId, VerticalRodHeight } from './rodConfig'
+import type { RodConfig, VerticalRodHeight } from './rodConfig'
+import { parseLabeledCoordinates, type CoordPair, type GroupId } from './rodConfigPasteParser'
 
 type Props = {
   config: RodConfig
   onChange: (nextConfig: RodConfig) => void
 }
 
-type GroupId = RodSubjectId | 'takeoffZone'
-
 type FieldTarget = {
   group: GroupId
   pointIndex: number
   axis: 'x' | 'y'
-}
-
-type CoordPair = {
-  x: number
-  y: number
 }
 
 type DeferredNumberInputProps = {
@@ -27,19 +21,6 @@ type DeferredNumberInputProps = {
   placeholder?: string
   onCommit: (value: number | null) => void
   onPaste?: (event: React.ClipboardEvent<HTMLInputElement>) => void
-}
-
-const SUBJECT_NUMBER_TO_ID: Record<number, RodSubjectId> = {
-  1: 'subject1',
-  2: 'subject2',
-  3: 'subject3',
-  4: 'subject4',
-  5: 'subject5',
-  6: 'subject6',
-  7: 'subject7',
-  8: 'subject8',
-  9: 'subject9',
-  10: 'subject10',
 }
 
 const cloneConfig = (source: RodConfig): RodConfig => {
@@ -55,46 +36,6 @@ const cloneConfig = (source: RodConfig): RodConfig => {
   }
 
   return nextConfig
-}
-
-const parseLabeledCoordinates = (rawText: string): Partial<Record<GroupId, CoordPair[]>> => {
-  const normalizedText = rawText
-    .replace(/（/g, '(')
-    .replace(/）/g, ')')
-    .replace(/，/g, ',')
-    .replace(/：/g, ':')
-    .replace(/\u3000/g, ' ')
-
-  const sectionMatches = [...normalizedText.matchAll(/(起降区|科目\s*(10|[1-9]))/g)]
-  if (sectionMatches.length === 0) {
-    return {}
-  }
-
-  const parsed: Partial<Record<GroupId, CoordPair[]>> = {}
-
-  sectionMatches.forEach((match, index) => {
-    const [label, , subjectNumber] = match
-    const start = (match.index ?? 0) + label.length
-    const end = sectionMatches[index + 1]?.index ?? normalizedText.length
-    const sectionText = normalizedText.slice(start, end)
-
-    const group: GroupId =
-      label === '起降区' ? 'takeoffZone' : SUBJECT_NUMBER_TO_ID[Number(subjectNumber)]
-
-    if (!group) {
-      return
-    }
-
-    const pairs: CoordPair[] = [...sectionText.matchAll(/\(\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*\)/g)]
-      .map((coordMatch) => ({ x: Number(coordMatch[1]), y: Number(coordMatch[2]) }))
-      .filter((pair) => Number.isFinite(pair.x) && Number.isFinite(pair.y))
-
-    if (pairs.length > 0) {
-      parsed[group] = pairs
-    }
-  })
-
-  return parsed
 }
 
 function DeferredNumberInput({ className, value, placeholder, onCommit, onPaste }: DeferredNumberInputProps) {
@@ -222,16 +163,28 @@ function RodConfigPanel({ config, onChange }: Props) {
   ) => {
     const pastedText = event.clipboardData.getData('text')
     const labeledCoordinates = parseLabeledCoordinates(pastedText)
+    const hasLabeledData =
+      Object.keys(labeledCoordinates.coordinates).length > 0
+      || Number.isFinite(labeledCoordinates.subject3RingCenterHeight)
+      || Number.isFinite(labeledCoordinates.subject9SecondCrossbarHeight)
 
-    if (Object.keys(labeledCoordinates).length > 0) {
+    if (hasLabeledData) {
       event.preventDefault()
       const nextConfig = cloneConfig(config)
 
-      for (const [targetGroup, pairs] of Object.entries(labeledCoordinates) as [GroupId, CoordPair[]][]) {
+      for (const [targetGroup, pairs] of Object.entries(labeledCoordinates.coordinates) as [GroupId, CoordPair[]][]) {
         nextConfig[targetGroup] = nextConfig[targetGroup].map((_, index) => {
           const pair = pairs[index]
           return pair ? { x: pair.x, y: pair.y } : {}
         })
+      }
+
+      if (Number.isFinite(labeledCoordinates.subject3RingCenterHeight)) {
+        nextConfig.subject3Ring.centerHeight = labeledCoordinates.subject3RingCenterHeight
+      }
+
+      if (Number.isFinite(labeledCoordinates.subject9SecondCrossbarHeight)) {
+        nextConfig.subject9Config.secondCrossbarHeight = labeledCoordinates.subject9SecondCrossbarHeight
       }
 
       onChange(nextConfig)
