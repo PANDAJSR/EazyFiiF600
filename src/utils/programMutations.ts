@@ -305,6 +305,26 @@ export const insertBlockAfterTarget = (
   })
 }
 
+export const insertBlocksAfterTarget = (
+  result: ParseResult,
+  selectedDroneId: string | undefined,
+  targetBlockId: string,
+  nextBlocks: ParsedBlock[],
+): ParseResult => {
+  if (!nextBlocks.length) {
+    return result
+  }
+  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) => {
+    const insertIndex = blocks.findIndex((block) => block.id === targetBlockId)
+    if (insertIndex < 0) {
+      return blocks
+    }
+    const updatedBlocks = [...blocks]
+    updatedBlocks.splice(insertIndex + 1, 0, ...nextBlocks)
+    return updatedBlocks
+  })
+}
+
 export const insertFirstBlockWhenEmpty = (
   result: ParseResult,
   selectedDroneId: string | undefined,

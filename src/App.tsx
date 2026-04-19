@@ -11,6 +11,10 @@ import SettingsModal from './components/SettingsModal'
 import type { ParseResult } from './types/fii'
 import type { RodConfig } from './components/trajectory/rodConfig'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
+import type { InsertPickerItem } from './components/blockInsertPickerCatalog'
+import { INSERT_PICKER_ITEMS } from './components/blockInsertPickerCatalog'
+import BlockTemplateInsertModal from './components/BlockTemplateInsertModal'
+import { buildTemplateBlocks, getSubject1TemplateDefaultCenter, type InsertableTemplateDefinition } from './components/blockTemplateCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
@@ -20,7 +24,7 @@ import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
 import { isDesktopRuntime, onAgentStream, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
-import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertBlocksAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { calculateBlockEndState } from './utils/blockEndState'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
@@ -50,6 +54,8 @@ function App() {
   const [manualSaveSignal, setManualSaveSignal] = useState(0)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
   const [settingsChangeSignal, setSettingsChangeSignal] = useState(0)
+  const [pendingTemplateDefinition, setPendingTemplateDefinition] = useState<InsertableTemplateDefinition>()
+  const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
   const filesPickerRef = useRef<HTMLInputElement>(null)
   const moveToBlockDefinition = INSERTABLE_BLOCKS.find((item) => item.type === 'Goertek_MoveToCoord2') ?? INSERTABLE_BLOCKS[0]
@@ -57,6 +63,10 @@ function App() {
   const selectedProgram = useMemo(
     () => result.programs.find((item) => item.drone.id === selectedDroneId),
     [result.programs, selectedDroneId],
+  )
+  const subject1TemplateDefaultCenter = useMemo(
+    () => getSubject1TemplateDefaultCenter(agentRodConfigContext),
+    [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
     const safetySettings = loadSafetySettings()
@@ -321,6 +331,51 @@ function App() {
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${definition.label}`)
   }, [insertAfterBlockId, selectedBlockId, selectedDroneId, selectedProgram])
+  const handleInsertPickerSubmit = useCallback((item: InsertPickerItem) => {
+    if (item.kind === 'template' && item.templateDefinition) {
+      setPendingTemplateDefinition(item.templateDefinition)
+      setTemplateModalOpen(true)
+      setInsertPickerOpen(false)
+      return
+    }
+    if (item.kind === 'block' && item.blockDefinition) {
+      handleInsertBlock(item.blockDefinition)
+    }
+  }, [handleInsertBlock])
+  const handleTemplateModalCancel = useCallback(() => {
+    setTemplateModalOpen(false)
+    setPendingTemplateDefinition(undefined)
+    setInsertAfterBlockId(undefined)
+  }, [])
+  const handleTemplateInsertConfirm = useCallback((payload: { x: number; y: number }) => {
+    const targetBlockId = insertAfterBlockId ?? selectedBlockId
+    if (!targetBlockId || !selectedDroneId || !pendingTemplateDefinition) {
+      setTemplateModalOpen(false)
+      setPendingTemplateDefinition(undefined)
+      return
+    }
+    const blocks = buildTemplateBlocks(pendingTemplateDefinition.id, {
+      subject1X: payload.x,
+      subject1Y: payload.y,
+    })
+    if (!blocks.length) {
+      message.warning('该模板暂未配置可插入内容')
+      setTemplateModalOpen(false)
+      setPendingTemplateDefinition(undefined)
+      setInsertAfterBlockId(undefined)
+      return
+    }
+    const lastInsertedBlock = blocks[blocks.length - 1]
+    setResult((prev) => insertBlocksAfterTarget(prev, selectedDroneId, targetBlockId, blocks))
+    setSelectedBlockId(lastInsertedBlock.id)
+    setHighlightedBlockId(lastInsertedBlock.id)
+    setHighlightPulse((prev) => prev + 1)
+    setTemplateModalOpen(false)
+    setPendingTemplateDefinition(undefined)
+    setInsertAfterBlockId(undefined)
+    setHasUnsavedChanges(true)
+    message.success(`已插入模板：${pendingTemplateDefinition.label}`)
+  }, [insertAfterBlockId, pendingTemplateDefinition, selectedBlockId, selectedDroneId])
   const handleInsertFirstBlock = useCallback(() => {
     if (!selectedDroneId) {
       return
@@ -441,9 +496,9 @@ function App() {
                 onDeleteBlock={handleDeleteBlock}
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}
-                insertPickerItems={INSERTABLE_BLOCKS}
+                insertPickerItems={INSERT_PICKER_ITEMS}
                 onInsertPickerCancel={() => { setInsertPickerOpen(false); setInsertAfterBlockId(undefined) }}
-                onInsertPickerSubmit={handleInsertBlock}
+                onInsertPickerSubmit={handleInsertPickerSubmit}
               />
             </section>
           </div>
@@ -502,6 +557,15 @@ function App() {
       /> */}
       {/* 终端按钮已隐藏 */}
       {/* <TerminalFloatingController /> */}
+      {templateModalOpen && (
+        <BlockTemplateInsertModal
+          template={pendingTemplateDefinition}
+          defaultX={subject1TemplateDefaultCenter.subject1X}
+          defaultY={subject1TemplateDefaultCenter.subject1Y}
+          onCancel={handleTemplateModalCancel}
+          onConfirm={handleTemplateInsertConfirm}
+        />
+      )}
       <SettingsModal
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}

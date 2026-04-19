@@ -7,7 +7,7 @@ import { blockTheme, groupBlocksByRow } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
 import useBlockInputNavigation from './useBlockInputNavigation'
 import BlockInsertPicker from './BlockInsertPicker'
-import type { InsertableBlockDefinition } from './blockInsertCatalog'
+import type { InsertPickerItem } from './blockInsertPickerCatalog'
 import BlockLine from './BlockLine'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import { calculateBlockEndState } from '../utils/blockEndState'
@@ -29,9 +29,9 @@ type Props = {
   onConvertTurnBlock?: (blockId: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
-  insertPickerItems?: InsertableBlockDefinition[]
+  insertPickerItems?: InsertPickerItem[]
   onInsertPickerCancel?: () => void
-  onInsertPickerSubmit?: (item: InsertableBlockDefinition) => void
+  onInsertPickerSubmit?: (item: InsertPickerItem) => void
 }
 
 function BlockCanvas({

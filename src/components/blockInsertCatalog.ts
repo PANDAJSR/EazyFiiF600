@@ -102,8 +102,11 @@ const createBlockId = () => {
   return `custom_${Date.now()}_${Math.random().toString(16).slice(2)}`
 }
 
-export const createInsertedBlock = (definition: InsertableBlockDefinition): ParsedBlock => ({
+export const createInsertedBlockByType = (type: string, fields: Record<string, string>): ParsedBlock => ({
   id: createBlockId(),
-  type: definition.type,
-  fields: { ...definition.fields },
+  type,
+  fields: { ...fields },
 })
+
+export const createInsertedBlock = (definition: InsertableBlockDefinition): ParsedBlock =>
+  createInsertedBlockByType(definition.type, definition.fields)

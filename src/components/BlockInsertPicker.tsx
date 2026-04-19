@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Input } from 'antd'
 import type { InputRef } from 'antd'
-import type { InsertableBlockDefinition } from './blockInsertCatalog'
+import type { InsertPickerItem } from './blockInsertPickerCatalog'
 
 type Props = {
-  items: InsertableBlockDefinition[]
+  items: InsertPickerItem[]
   onCancel: () => void
-  onSubmit: (item: InsertableBlockDefinition) => void
+  onSubmit: (item: InsertPickerItem) => void
 }
 
 const normalize = (value: string) => value.trim().toLowerCase()
@@ -23,7 +23,7 @@ function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
       return items
     }
     return items.filter((item) => {
-      const haystack = [item.label, item.type, ...item.keywords].join(' ').toLowerCase()
+      const haystack = [item.label, item.meta, ...item.keywords].join(' ').toLowerCase()
       return haystack.includes(keyword)
     })
   }, [items, query])
@@ -61,7 +61,7 @@ function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
     <div className="block-insert-picker" ref={wrapRef}>
       <Input
         ref={inputRef}
-        placeholder="搜索积木名称或类型（↑ ↓ 选择，Enter 插入）"
+        placeholder="搜索积木或模板（↑ ↓ 选择，Enter 插入）"
         value={query}
         onChange={(event) => {
           setQuery(event.target.value)
@@ -94,7 +94,7 @@ function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
           const active = index === safeActiveIndex
           return (
             <button
-              key={item.type}
+              key={item.id}
               type="button"
               role="option"
               aria-selected={active}
@@ -103,11 +103,11 @@ function BlockInsertPicker({ items, onCancel, onSubmit }: Props) {
               onClick={() => onSubmit(item)}
             >
               <span className="block-insert-picker-item-label">{item.label}</span>
-              <span className="block-insert-picker-item-type">{item.type}</span>
+              <span className="block-insert-picker-item-type">{item.kind === 'template' ? `模板 · ${item.meta}` : item.meta}</span>
             </button>
           )
         })}
-        {!filteredItems.length && <div className="block-insert-picker-empty">未找到匹配积木</div>}
+        {!filteredItems.length && <div className="block-insert-picker-empty">未找到匹配项</div>}
       </div>
     </div>
   )
