@@ -3,6 +3,7 @@ import { InputNumber, Modal, Space, Typography } from 'antd'
 import {
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
+  SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   type InsertableTemplateDefinition,
 } from './blockTemplateCatalog'
 
@@ -13,6 +14,10 @@ export type TemplateModalConfirmPayload = {
   subject2RodAY: number
   subject2RodBX: number
   subject2RodBY: number
+  subject5RodAX: number
+  subject5RodAY: number
+  subject5RodBX: number
+  subject5RodBY: number
 }
 
 type Props = {
@@ -23,6 +28,10 @@ type Props = {
   defaultSubject2RodAY: number
   defaultSubject2RodBX: number
   defaultSubject2RodBY: number
+  defaultSubject5RodAX: number
+  defaultSubject5RodAY: number
+  defaultSubject5RodBX: number
+  defaultSubject5RodBY: number
   onCancel: () => void
   onConfirm: (payload: TemplateModalConfirmPayload) => void
 }
@@ -35,6 +44,10 @@ function BlockTemplateInsertModal({
   defaultSubject2RodAY,
   defaultSubject2RodBX,
   defaultSubject2RodBY,
+  defaultSubject5RodAX,
+  defaultSubject5RodAY,
+  defaultSubject5RodBX,
+  defaultSubject5RodBY,
   onCancel,
   onConfirm,
 }: Props) {
@@ -44,10 +57,21 @@ function BlockTemplateInsertModal({
   const [subject2RodAY, setSubject2RodAY] = useState<number | null>(defaultSubject2RodAY)
   const [subject2RodBX, setSubject2RodBX] = useState<number | null>(defaultSubject2RodBX)
   const [subject2RodBY, setSubject2RodBY] = useState<number | null>(defaultSubject2RodBY)
+  const [subject5RodAX, setSubject5RodAX] = useState<number | null>(defaultSubject5RodAX)
+  const [subject5RodAY, setSubject5RodAY] = useState<number | null>(defaultSubject5RodAY)
+  const [subject5RodBX, setSubject5RodBX] = useState<number | null>(defaultSubject5RodBX)
+  const [subject5RodBY, setSubject5RodBY] = useState<number | null>(defaultSubject5RodBY)
   const isSubject1Template = template?.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID
   const isSubject2Template = template?.id === SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID
+  const isSubject5Template = template?.id === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID
 
   const valid = useMemo(() => {
+    if (isSubject5Template) {
+      return Number.isFinite(subject5RodAX)
+        && Number.isFinite(subject5RodAY)
+        && Number.isFinite(subject5RodBX)
+        && Number.isFinite(subject5RodBY)
+    }
     if (isSubject2Template) {
       return Number.isFinite(subject2RodAX)
         && Number.isFinite(subject2RodAY)
@@ -55,7 +79,7 @@ function BlockTemplateInsertModal({
         && Number.isFinite(subject2RodBY)
     }
     return Number.isFinite(subject1X) && Number.isFinite(subject1Y)
-  }, [isSubject2Template, subject1X, subject1Y, subject2RodAX, subject2RodAY, subject2RodBX, subject2RodBY])
+  }, [isSubject2Template, isSubject5Template, subject1X, subject1Y, subject2RodAX, subject2RodAY, subject2RodBX, subject2RodBY, subject5RodAX, subject5RodAY, subject5RodBX, subject5RodBY])
 
   return (
     <Modal
@@ -73,7 +97,11 @@ function BlockTemplateInsertModal({
           subject2RodAX === null ||
           subject2RodAY === null ||
           subject2RodBX === null ||
-          subject2RodBY === null
+          subject2RodBY === null ||
+          subject5RodAX === null ||
+          subject5RodAY === null ||
+          subject5RodBX === null ||
+          subject5RodBY === null
         ) {
           return
         }
@@ -84,6 +112,10 @@ function BlockTemplateInsertModal({
           subject2RodAY,
           subject2RodBX,
           subject2RodBY,
+          subject5RodAX,
+          subject5RodAY,
+          subject5RodBX,
+          subject5RodBY,
         })
       }}
       destroyOnClose
@@ -137,6 +169,54 @@ function BlockTemplateInsertModal({
               </Space>
             </Space>
           </>
+        ) : isSubject5Template ? (
+          <>
+            <Typography.Text type="secondary">
+              模板参数：科目五两杆端点坐标（A/B 的 XY）。模板会按杆子实际方向生成，起点仅在两端点里自动选最近点。
+            </Typography.Text>
+            <Space size={10} wrap>
+              <Space size={6} align="center">
+                <Typography.Text>A.X</Typography.Text>
+                <InputNumber
+                  value={subject5RodAX}
+                  controls={false}
+                  precision={2}
+                  placeholder="科目五 A 点 X"
+                  onChange={(value) => setSubject5RodAX(typeof value === 'number' ? value : null)}
+                />
+              </Space>
+              <Space size={6} align="center">
+                <Typography.Text>A.Y</Typography.Text>
+                <InputNumber
+                  value={subject5RodAY}
+                  controls={false}
+                  precision={2}
+                  placeholder="科目五 A 点 Y"
+                  onChange={(value) => setSubject5RodAY(typeof value === 'number' ? value : null)}
+                />
+              </Space>
+              <Space size={6} align="center">
+                <Typography.Text>B.X</Typography.Text>
+                <InputNumber
+                  value={subject5RodBX}
+                  controls={false}
+                  precision={2}
+                  placeholder="科目五 B 点 X"
+                  onChange={(value) => setSubject5RodBX(typeof value === 'number' ? value : null)}
+                />
+              </Space>
+              <Space size={6} align="center">
+                <Typography.Text>B.Y</Typography.Text>
+                <InputNumber
+                  value={subject5RodBY}
+                  controls={false}
+                  precision={2}
+                  placeholder="科目五 B 点 Y"
+                  onChange={(value) => setSubject5RodBY(typeof value === 'number' ? value : null)}
+                />
+              </Space>
+            </Space>
+          </>
         ) : (
           <>
             <Typography.Text type="secondary">
@@ -166,7 +246,7 @@ function BlockTemplateInsertModal({
             </Space>
           </>
         )}
-        {!isSubject1Template && !isSubject2Template && (
+        {!isSubject1Template && !isSubject2Template && !isSubject5Template && (
           <Typography.Text type="secondary">该模板暂未定义参数表单。</Typography.Text>
         )}
       </Space>

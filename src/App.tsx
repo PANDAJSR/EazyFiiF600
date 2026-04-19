@@ -18,8 +18,10 @@ import {
   buildTemplateBlocks,
   getSubject1TemplateDefaultCenter,
   getSubject2TemplateDefaultRods,
+  getSubject5TemplateDefaultRods,
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
+  SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   type InsertableTemplateDefinition,
 } from './components/blockTemplateCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
@@ -77,6 +79,10 @@ function App() {
   )
   const subject2TemplateDefaultRods = useMemo(
     () => getSubject2TemplateDefaultRods(agentRodConfigContext),
+    [agentRodConfigContext],
+  )
+  const subject5TemplateDefaultRods = useMemo(
+    () => getSubject5TemplateDefaultRods(agentRodConfigContext),
     [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
@@ -392,6 +398,15 @@ function App() {
           insertionContext,
         })
       }
+      if (pendingTemplateDefinition.id === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID) {
+        return buildTemplateBlocks(pendingTemplateDefinition.id, {
+          subject5RodAX: payload.subject5RodAX,
+          subject5RodAY: payload.subject5RodAY,
+          subject5RodBX: payload.subject5RodBX,
+          subject5RodBY: payload.subject5RodBY,
+          insertionContext,
+        })
+      }
       return []
     })()
     if (!blocks.length) {
@@ -602,6 +617,10 @@ function App() {
           defaultSubject2RodAY={subject2TemplateDefaultRods.subject2RodAY}
           defaultSubject2RodBX={subject2TemplateDefaultRods.subject2RodBX}
           defaultSubject2RodBY={subject2TemplateDefaultRods.subject2RodBY}
+          defaultSubject5RodAX={subject5TemplateDefaultRods.subject5RodAX}
+          defaultSubject5RodAY={subject5TemplateDefaultRods.subject5RodAY}
+          defaultSubject5RodBX={subject5TemplateDefaultRods.subject5RodBX}
+          defaultSubject5RodBY={subject5TemplateDefaultRods.subject5RodBY}
           onCancel={handleTemplateModalCancel}
           onConfirm={handleTemplateInsertConfirm}
         />

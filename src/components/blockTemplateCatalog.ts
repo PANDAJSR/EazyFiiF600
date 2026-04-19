@@ -6,6 +6,7 @@ import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 export const SUBJECT1_SQUARE_STABLE_TEMPLATE_ID = 'subject1_square_stable'
 export const SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID = 'subject2_rectangle_stable'
+export const SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID = 'subject5_hexagon_figure_eight'
 
 export type InsertableTemplateDefinition = {
   id: string
@@ -27,6 +28,12 @@ export const INSERTABLE_TEMPLATES: InsertableTemplateDefinition[] = [
     keywords: ['模板', '科目二', '长方形', '稳定', 'subject2', 'rectangle'],
     description: '围绕科目二横杆执行稳定长方形绕行并闭合',
   },
+  {
+    id: SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
+    label: '科目五_六边8字',
+    keywords: ['模板', '科目五', '六边', '8字', 'subject5', 'hexagon', 'figure8'],
+    description: '围绕科目五双杆执行六边8字闭合飞行（起点自动取两端最近点）',
+  },
 ]
 
 export type TemplateInsertionContext = {
@@ -47,6 +54,14 @@ export type Subject2RectangleStableParams = {
   subject2RodAY: number
   subject2RodBX: number
   subject2RodBY: number
+  insertionContext?: TemplateInsertionContext
+}
+
+export type Subject5HexagonFigureEightParams = {
+  subject5RodAX: number
+  subject5RodAY: number
+  subject5RodBX: number
+  subject5RodBY: number
   insertionContext?: TemplateInsertionContext
 }
 
@@ -234,15 +249,92 @@ const buildSubject2RectangleStableBlocks = (params: Subject2RectangleStableParam
   ]
 }
 
+const buildSubject5HexagonFigureEightBlocks = (params: Subject5HexagonFigureEightParams): ParsedBlock[] => {
+  const sideOffset = 40
+  const endExtension = 40
+  const defaultAxisSpan = 100
+  const axisX = params.subject5RodBX - params.subject5RodAX
+  const axisY = params.subject5RodBY - params.subject5RodAY
+  const axisLength = Math.hypot(axisX, axisY)
+  const unitAxisX = axisLength > EPSILON ? axisX / axisLength : 1
+  const unitAxisY = axisLength > EPSILON ? axisY / axisLength : 0
+  const unitPerpX = -unitAxisY
+  const unitPerpY = unitAxisX
+  const resolvedBX = axisLength > EPSILON ? params.subject5RodBX : params.subject5RodAX + defaultAxisSpan * unitAxisX
+  const resolvedBY = axisLength > EPSILON ? params.subject5RodBY : params.subject5RodAY + defaultAxisSpan * unitAxisY
+  const insertionX = params.insertionContext?.x ?? (params.subject5RodAX - endExtension * unitAxisX)
+  const insertionY = params.insertionContext?.y ?? (params.subject5RodAY - endExtension * unitAxisY)
+  const insertionZ = Math.min(params.insertionContext?.z ?? 100, 145)
+
+  const pathPoints = [
+    { x: params.subject5RodAX - endExtension * unitAxisX, y: params.subject5RodAY - endExtension * unitAxisY, z: insertionZ },
+    { x: params.subject5RodAX + sideOffset * unitPerpX, y: params.subject5RodAY + sideOffset * unitPerpY, z: insertionZ },
+    { x: resolvedBX - sideOffset * unitPerpX, y: resolvedBY - sideOffset * unitPerpY, z: insertionZ },
+    { x: resolvedBX + endExtension * unitAxisX, y: resolvedBY + endExtension * unitAxisY, z: insertionZ },
+    { x: resolvedBX + sideOffset * unitPerpX, y: resolvedBY + sideOffset * unitPerpY, z: insertionZ },
+    { x: params.subject5RodAX - sideOffset * unitPerpX, y: params.subject5RodAY - sideOffset * unitPerpY, z: insertionZ },
+  ]
+
+  const endpointIndexes = [0, 3]
+  const startPathIndex = endpointIndexes.reduce((bestIndex, currentIndex) => {
+    const best = pathPoints[bestIndex]
+    const current = pathPoints[currentIndex]
+    const bestDistance = Math.hypot(best.x - insertionX, best.y - insertionY)
+    const currentDistance = Math.hypot(current.x - insertionX, current.y - insertionY)
+    return currentDistance < bestDistance ? currentIndex : bestIndex
+  }, endpointIndexes[0])
+  const orderedLoopPoints = Array.from({ length: pathPoints.length + 1 }, (_, offset) => {
+    const nextIndex = (startPathIndex + offset) % pathPoints.length
+    return pathPoints[nextIndex]
+  })
+
+  const flightSegments = (() => {
+    const segments: Array<{
+      from: { x: number; y: number; z: number }
+      to: { x: number; y: number; z: number }
+    }> = []
+    if (Math.hypot(orderedLoopPoints[0].x - insertionX, orderedLoopPoints[0].y - insertionY) > EPSILON || Math.abs(orderedLoopPoints[0].z - insertionZ) > EPSILON) {
+      segments.push({
+        from: { x: insertionX, y: insertionY, z: insertionZ },
+        to: orderedLoopPoints[0],
+      })
+    }
+    for (let index = 0; index < orderedLoopPoints.length - 1; index += 1) {
+      segments.push({
+        from: orderedLoopPoints[index],
+        to: orderedLoopPoints[index + 1],
+      })
+    }
+    return segments
+  })()
+
+  const moveBlocks = flightSegments.map((segment) =>
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, {
+      X: toFieldNumber(segment.to.x),
+      Y: toFieldNumber(segment.to.y),
+      Z: toFieldNumber(segment.to.z),
+      time: '800',
+    }))
+
+  return [
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目五 Begin' }),
+    ...moveBlocks,
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目五 End' }),
+  ]
+}
+
 export const buildTemplateBlocks = (
   templateId: string,
-  params: Subject1SquareStableParams | Subject2RectangleStableParams,
+  params: Subject1SquareStableParams | Subject2RectangleStableParams | Subject5HexagonFigureEightParams,
 ): ParsedBlock[] => {
   if (templateId === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID) {
     return buildSubject1SquareStableBlocks(params as Subject1SquareStableParams)
   }
   if (templateId === SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID) {
     return buildSubject2RectangleStableBlocks(params as Subject2RectangleStableParams)
+  }
+  if (templateId === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID) {
+    return buildSubject5HexagonFigureEightBlocks(params as Subject5HexagonFigureEightParams)
   }
   return []
 }
@@ -269,5 +361,20 @@ export const getSubject2TemplateDefaultRods = (rodConfig?: RodConfig): Subject2R
     subject2RodAY: ay,
     subject2RodBX: bx,
     subject2RodBY: by,
+  }
+}
+
+export const getSubject5TemplateDefaultRods = (rodConfig?: RodConfig): Subject5HexagonFigureEightParams => {
+  const pointA = rodConfig?.subject5?.[0]
+  const pointB = rodConfig?.subject5?.[1]
+  const ax = typeof pointA?.x === 'number' && Number.isFinite(pointA.x) ? pointA.x : 0
+  const ay = typeof pointA?.y === 'number' && Number.isFinite(pointA.y) ? pointA.y : 0
+  const bx = typeof pointB?.x === 'number' && Number.isFinite(pointB.x) ? pointB.x : ax + 100
+  const by = typeof pointB?.y === 'number' && Number.isFinite(pointB.y) ? pointB.y : ay
+  return {
+    subject5RodAX: ax,
+    subject5RodAY: ay,
+    subject5RodBX: bx,
+    subject5RodBY: by,
   }
 }
