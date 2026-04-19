@@ -207,6 +207,12 @@ function TrajectoryPlane({
   const ringOccluders = buildRodRingOccluders(rodConfig)
   const pathSegmentsAboveLines = buildPathSegmentsAboveLines(visits, lineOccluders)
   const pathSegmentsAboveRings = buildPathSegmentsAboveRings(visits, ringOccluders)
+  const backgroundPathSegmentsAboveObstacles = backgroundVisits.map((item) => ({
+    droneId: item.droneId,
+    color: item.color,
+    lineSegments: buildPathSegmentsAboveLines(item.visits, lineOccluders),
+    ringSegments: buildPathSegmentsAboveRings(item.visits, ringOccluders),
+  }))
   const takeoffZonePoints = buildTakeoffZone(rodConfig), takeoffZonePolygon = takeoffZonePoints.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const panelDirection = activePointAnchor && activePointAnchor.yPercent > 54 ? 'trajectory-visit-panel-up' : 'trajectory-visit-panel-down'
   const resolveDrawPreviewPoint = (clientX: number, clientY: number) => {
@@ -334,6 +340,32 @@ function TrajectoryPlane({
               className="trajectory-obstacle-circle"
             />
           ))}
+          {backgroundPathSegmentsAboveObstacles.flatMap((item) =>
+            item.lineSegments.map((segment) => (
+              <line
+                key={`bg-line-over-${item.droneId}-${segment.key}`}
+                x1={toSvgX(segment.x1)}
+                y1={toSvgY(segment.y1)}
+                x2={toSvgX(segment.x2)}
+                y2={toSvgY(segment.y2)}
+                className="trajectory-line-over-ring"
+                style={{ stroke: item.color, opacity: 0.8 }}
+              />
+            )),
+          )}
+          {backgroundPathSegmentsAboveObstacles.flatMap((item) =>
+            item.ringSegments.map((segment) => (
+              <line
+                key={`bg-ring-over-${item.droneId}-${segment.key}`}
+                x1={toSvgX(segment.x1)}
+                y1={toSvgY(segment.y1)}
+                x2={toSvgX(segment.x2)}
+                y2={toSvgY(segment.y2)}
+                className="trajectory-line-over-ring"
+                style={{ stroke: item.color, opacity: 0.8 }}
+              />
+            )),
+          )}
           {pathSegmentsAboveLines.map((segment) => (
             <line
               key={segment.key}
