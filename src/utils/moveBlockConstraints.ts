@@ -2,7 +2,7 @@ const ASYNC_MOVE_X_MIN = 0
 const ASYNC_MOVE_X_MAX = 400
 const ASYNC_MOVE_Y_MIN = 0
 const ASYNC_MOVE_Y_MAX = 400
-const ASYNC_MOVE_Z_MIN = 100
+const ASYNC_MOVE_Z_MIN = 0
 const ASYNC_MOVE_Z_MAX = 300
 
 const AUTO_DELAY_X_MIN = 0
@@ -22,7 +22,8 @@ const toNumber = (value: string | undefined): number | null => {
   return Number.isFinite(n) ? n : null
 }
 
-export const MIN_ABSOLUTE_MOVE_Z = ASYNC_MOVE_Z_MIN
+// 保存兼容阈值：绝对异步平移低于该高度时，落盘需转为相对平移。
+export const MIN_ABSOLUTE_MOVE_Z = 100
 
 export const clampAsyncMoveX = (value: number) => clamp(value, ASYNC_MOVE_X_MIN, ASYNC_MOVE_X_MAX)
 export const clampAsyncMoveY = (value: number) => clamp(value, ASYNC_MOVE_Y_MIN, ASYNC_MOVE_Y_MAX)
