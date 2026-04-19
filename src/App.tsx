@@ -353,9 +353,20 @@ function App() {
       setPendingTemplateDefinition(undefined)
       return
     }
+    const insertionEndState = selectedProgram
+      ? calculateBlockEndState(selectedProgram.drone.startPos, selectedProgram.blocks, targetBlockId)
+      : null
     const blocks = buildTemplateBlocks(pendingTemplateDefinition.id, {
       subject1X: payload.x,
       subject1Y: payload.y,
+      insertionContext: insertionEndState
+        ? {
+          x: insertionEndState.position.x,
+          y: insertionEndState.position.y,
+          z: insertionEndState.position.z,
+          orientationDeg: insertionEndState.orientation,
+        }
+        : undefined,
     })
     if (!blocks.length) {
       message.warning('该模板暂未配置可插入内容')
@@ -374,7 +385,7 @@ function App() {
     setInsertAfterBlockId(undefined)
     setHasUnsavedChanges(true)
     message.success(`已插入模板：${pendingTemplateDefinition.label}`)
-  }, [insertAfterBlockId, pendingTemplateDefinition, selectedBlockId, selectedDroneId])
+  }, [insertAfterBlockId, pendingTemplateDefinition, selectedBlockId, selectedDroneId, selectedProgram])
   const handleInsertFirstBlock = useCallback(() => {
     if (!selectedDroneId) {
       return
