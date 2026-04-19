@@ -143,9 +143,6 @@ export const buildRodObstacleHoverInfos = (rodConfig?: RodConfig): RodObstacleHo
   const [subject9A, subject9B] = rodConfig.subject9
   const [subject10A, subject10B, subject10C, subject10D, subject10E, subject10F] = rodConfig.subject10
   const secondCrossbarHeight = rodConfig.subject9Config.secondCrossbarHeight
-  const subject9TopHeight = Number.isFinite(secondCrossbarHeight)
-    ? Math.max(COMMON_CROSSBAR_HEIGHT, secondCrossbarHeight as number)
-    : COMMON_CROSSBAR_HEIGHT
 
   const subject2Line = buildCrossbarLine(subject2A, subject2B)
   if (subject2Line) {
@@ -204,9 +201,16 @@ export const buildRodObstacleHoverInfos = (rodConfig?: RodConfig): RodObstacleHo
   const subject9Line = buildCrossbarLine(subject9A, subject9B)
   if (subject9Line) {
     const length = Math.hypot(subject9Line.x2 - subject9Line.x1, subject9Line.y2 - subject9Line.y1)
+    const firstHeightText = formatCm(COMMON_CROSSBAR_HEIGHT)
+    const secondHeightText = Number.isFinite(secondCrossbarHeight) ? formatCm(secondCrossbarHeight as number) : '待题卡'
+    const middleHeightText = Number.isFinite(secondCrossbarHeight)
+      ? formatCm((COMMON_CROSSBAR_HEIGHT + (secondCrossbarHeight as number)) / 2)
+      : '待题卡'
     pushLineInfo(infos, 'subject9-hover', '科目九', '横杆', subject9Line, [
       `长度：${formatCm(length)}`,
-      `最高横杆高度：${formatCm(subject9TopHeight)}`,
+      `第一横杆高度：${firstHeightText}`,
+      `第二横杆高度：${secondHeightText}`,
+      `中间高度：${middleHeightText}`,
     ])
   }
 
