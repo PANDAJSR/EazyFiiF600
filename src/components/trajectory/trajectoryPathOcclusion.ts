@@ -1,4 +1,5 @@
 import type { RodRingOccluder } from './trajectoryPlaneDecorations'
+import type { RodLineOccluder } from './trajectoryPlaneDecorations'
 import type { Visit } from './trajectoryUtils'
 
 export type PathSegment = {
@@ -10,6 +11,7 @@ export type PathSegment = {
 }
 
 const Z_OVER_EPSILON = 2
+const LINE_OCCLUSION_DISTANCE = 2
 
 const distanceToPoint = (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x2 - x1, y2 - y1)
 
@@ -66,6 +68,57 @@ const isSegmentAboveRing = (ring: RodRingOccluder, start: Visit, end: Visit) => 
   return zAtClosest >= ring.centerHeight + Z_OVER_EPSILON
 }
 
+const segmentsIntersect = (
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+) => {
+  const cross = (x1: number, y1: number, x2: number, y2: number, x3: number, y3: number) =>
+    (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
+  const d1 = cross(ax, ay, bx, by, cx, cy)
+  const d2 = cross(ax, ay, bx, by, dx, dy)
+  const d3 = cross(cx, cy, dx, dy, ax, ay)
+  const d4 = cross(cx, cy, dx, dy, bx, by)
+  return d1 * d2 <= 0 && d3 * d4 <= 0
+}
+
+const segmentDistance = (
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+) => {
+  if (segmentsIntersect(ax, ay, bx, by, cx, cy, dx, dy)) {
+    return 0
+  }
+  return Math.min(
+    distancePointToSegment(ax, ay, cx, cy, dx, dy),
+    distancePointToSegment(bx, by, cx, cy, dx, dy),
+    distancePointToSegment(cx, cy, ax, ay, bx, by),
+    distancePointToSegment(dx, dy, ax, ay, bx, by),
+  )
+}
+
+const isSegmentNearLine = (line: RodLineOccluder, start: Visit, end: Visit) =>
+  segmentDistance(start.x, start.y, end.x, end.y, line.x1, line.y1, line.x2, line.y2) <= LINE_OCCLUSION_DISTANCE
+
+const isSegmentAboveLine = (line: RodLineOccluder, start: Visit, end: Visit) => {
+  const lineMidX = (line.x1 + line.x2) / 2
+  const lineMidY = (line.y1 + line.y2) / 2
+  const ratio = projectPointToSegmentRatio(lineMidX, lineMidY, start.x, start.y, end.x, end.y)
+  const zAtClosest = start.z + (end.z - start.z) * ratio
+  return zAtClosest >= line.height + Z_OVER_EPSILON
+}
+
 export const buildPathSegmentsAboveRings = (
   visits: Visit[],
   occluders: RodRingOccluder[],
@@ -83,6 +136,32 @@ export const buildPathSegmentsAboveRings = (
     }
     segments.push({
       key: `over-ring-${index}-${start.x}-${start.y}-${start.z}-${end.x}-${end.y}-${end.z}`,
+      x1: start.x,
+      y1: start.y,
+      x2: end.x,
+      y2: end.y,
+    })
+  }
+  return segments
+}
+
+export const buildPathSegmentsAboveLines = (
+  visits: Visit[],
+  occluders: RodLineOccluder[],
+): PathSegment[] => {
+  if (visits.length < 2 || !occluders.length) {
+    return []
+  }
+  const segments: PathSegment[] = []
+  for (let index = 1; index < visits.length; index += 1) {
+    const start = visits[index - 1]
+    const end = visits[index]
+    const overAnyLine = occluders.some((line) => isSegmentNearLine(line, start, end) && isSegmentAboveLine(line, start, end))
+    if (!overAnyLine) {
+      continue
+    }
+    segments.push({
+      key: `over-line-${index}-${start.x}-${start.y}-${start.z}-${end.x}-${end.y}-${end.z}`,
       x1: start.x,
       y1: start.y,
       x2: end.x,
