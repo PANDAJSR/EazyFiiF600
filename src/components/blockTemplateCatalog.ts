@@ -1,6 +1,7 @@
 import type { ParsedBlock } from '../types/fii'
 import type { RodConfig } from './trajectory/rodConfig'
 import { createInsertedBlockByType } from './blockInsertCatalog'
+import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 
 export const SUBJECT1_SQUARE_STABLE_TEMPLATE_ID = 'subject1_square_stable'
 
@@ -40,17 +41,17 @@ const buildSubject1SquareStableBlocks = (params: Subject1SquareStableParams): Pa
     createInsertedBlockByType('block_delay', { time: '100' }),
     createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor4', { motor: '2', color1: '#00ff00' }),
     createInsertedBlockByType('block_delay', { time: '100' }),
-    createInsertedBlockByType('Goertek_MoveToCoord2', { X: toFieldNumber(left), Y: toFieldNumber(bottom), Z: String(z) }),
-    createInsertedBlockByType('Goertek_MoveToCoord2', { X: toFieldNumber(left), Y: toFieldNumber(top), Z: String(z) }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(left), Y: toFieldNumber(bottom), Z: String(z), time: '800' }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(left), Y: toFieldNumber(top), Z: String(z), time: '800' }),
     createInsertedBlockByType('Goertek_Turn', { turnDirection: 'r', angle: '90' }),
     createInsertedBlockByType('block_delay', { time: '1000' }),
-    createInsertedBlockByType('Goertek_MoveToCoord2', { X: toFieldNumber(right), Y: toFieldNumber(top), Z: String(z) }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(right), Y: toFieldNumber(top), Z: String(z), time: '800' }),
     createInsertedBlockByType('Goertek_Turn', { turnDirection: 'r', angle: '90' }),
     createInsertedBlockByType('block_delay', { time: '1000' }),
-    createInsertedBlockByType('Goertek_MoveToCoord2', { X: toFieldNumber(right), Y: toFieldNumber(bottom), Z: String(z) }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(right), Y: toFieldNumber(bottom), Z: String(z), time: '800' }),
     createInsertedBlockByType('Goertek_Turn', { turnDirection: 'r', angle: '90' }),
     createInsertedBlockByType('block_delay', { time: '1000' }),
-    createInsertedBlockByType('Goertek_MoveToCoord2', { X: toFieldNumber(left), Y: toFieldNumber(bottom), Z: String(z) }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(left), Y: toFieldNumber(bottom), Z: String(z), time: '800' }),
   ]
 }
 
