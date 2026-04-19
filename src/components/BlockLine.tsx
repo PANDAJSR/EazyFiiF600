@@ -1,6 +1,7 @@
 import { ColorPicker, Input, Select } from 'antd'
 import type { ParsedBlock } from '../types/fii'
 import { blockText, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
+import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
 
@@ -67,7 +68,12 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                   key={`${block.id}-${idx}`}
                   size="small"
                   value={block.fields[value.fieldKey] ?? ''}
-                  inputMode={value.fieldKey === 'time' ? undefined : 'decimal'}
+                  inputMode={
+                    value.fieldKey === 'time' ||
+                    (block.type === COMMENT_BLOCK_TYPE && value.fieldKey === 'content')
+                      ? undefined
+                      : 'decimal'
+                  }
                   draggable={false}
                   data-block-id={block.id}
                   data-field-key={value.fieldKey}
@@ -92,7 +98,7 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                     onFieldBlur?.(block.id, value.fieldKey!, event.target.value)
                   }}
                   className="block-chip block-chip-value"
-                  style={{ width: 64 }}
+                  style={{ width: block.type === COMMENT_BLOCK_TYPE && value.fieldKey === 'content' ? 240 : 64 }}
                 />
               )
             }

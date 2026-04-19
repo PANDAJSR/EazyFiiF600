@@ -1,5 +1,6 @@
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
+import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 export type InsertableBlockDefinition = {
   type: string
@@ -14,6 +15,12 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
     label: '智能平移',
     keywords: ['平移', '自动延时', 'move', 'auto', 'delay', 'x', 'y', 'z'],
     fields: { X: '0', Y: '0', Z: '100', time: '800' },
+  },
+  {
+    type: COMMENT_BLOCK_TYPE,
+    label: '注释',
+    keywords: ['注释', '说明', '备注', 'comment', 'note'],
+    fields: { content: '在这里写注释内容' },
   },
   {
     type: 'block_inittime',

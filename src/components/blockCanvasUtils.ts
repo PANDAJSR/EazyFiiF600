@@ -1,5 +1,6 @@
 import type { ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
+import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 export type BlockFieldInputType = 'text' | 'select' | 'color'
 
@@ -57,6 +58,7 @@ export const blockTheme: Record<string, { color: string; bg: string; border: str
   Goertek_VerticalSpeed: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_UnLock: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   block_delay: { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' },
+  [COMMENT_BLOCK_TYPE]: { color: '#5a3514', bg: '#fff2df', border: '#dfb27d' },
   Goertek_TakeOff2: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_MoveToCoord2: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   [AUTO_DELAY_BLOCK_TYPE]: { color: '#17324d', bg: '#e2fff2', border: '#89c7a7' },
@@ -101,6 +103,11 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
       return { title: '解锁', values: [] }
     case 'block_delay':
       return { title: '延时', values: [token('ms'), token(f.time ?? '-', true, false, 'time')] }
+    case COMMENT_BLOCK_TYPE:
+      return {
+        title: '注释',
+        values: [token(f.content ?? '', true, false, 'content')],
+      }
     case 'Goertek_TakeOff2':
       return {
         title: '起飞',

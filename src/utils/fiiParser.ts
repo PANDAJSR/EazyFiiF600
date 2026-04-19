@@ -1,5 +1,6 @@
 import type { DroneInfo, ParseResult, ParsedBlock } from '../types/fii'
 import { collapseAutoDelayBlocks } from './autoDelayBlocks'
+import { collapseCommentBlocks } from './commentBlocks'
 
 type FileLookup = {
   byName: Map<string, InputFile>
@@ -159,7 +160,7 @@ const parseBlocksFromXml = (xmlText: string): ParsedBlock[] => {
   const tree = parseXmlBlockNode(root)
   const blocks: ParsedBlock[] = []
   flattenBlocks(tree, blocks)
-  return collapseAutoDelayBlocks(blocks)
+  return collapseCommentBlocks(collapseAutoDelayBlocks(blocks))
 }
 
 const resolveActionXml = (actionGroup: string, lookup: FileLookup): InputFile | undefined => {
