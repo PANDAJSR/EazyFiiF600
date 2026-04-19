@@ -60,6 +60,12 @@
   stroke-linecap: round;
 }
 
+.trajectory-line-over-ring {
+  stroke-width: 2.2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
 .trajectory-takeoff-zone {
   fill: rgba(255, 138, 43, 0.2);
   stroke: rgba(255, 138, 43, 0.9);

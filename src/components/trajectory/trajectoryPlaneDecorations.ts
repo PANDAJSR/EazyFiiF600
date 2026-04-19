@@ -28,9 +28,20 @@ type ObstacleCircleDecoration = {
 }
 
 export type RodObstacleDecoration = ObstacleLineDecoration | ObstacleCircleDecoration
+export type RodRingOccluder = {
+  key: string
+  cx: number
+  cy: number
+  r: number
+  centerHeight: number
+}
 
 const SUBJECT_RING_DIAMETER = 65
 const SUBJECT_RING_RADIUS = SUBJECT_RING_DIAMETER / 2
+const SUBJECT4_RING_CENTER_HEIGHT = 120
+const SUBJECT7_RING_HEIGHTS = [100, 125, 150] as const
+const SUBJECT8_HIGH_RING_CENTER_HEIGHT = 150
+const SUBJECT8_LOW_RING_CENTER_HEIGHT = 110
 
 const sortPointsAroundCenter = (points: XYPoint[]): XYPoint[] => {
   const center = points.reduce(
@@ -215,4 +226,57 @@ export const buildRodObstacleDecorations = (rodConfig?: RodConfig): RodObstacleD
   }
 
   return decorations
+}
+
+const toRingOccluder = (
+  key: string,
+  start: XYPointLike | undefined,
+  end: XYPointLike | undefined,
+  centerHeight: number,
+): RodRingOccluder | null => {
+  const ring = buildHorizontalRing(start, end, key)
+  if (!ring) {
+    return null
+  }
+  return {
+    key: ring.key,
+    cx: ring.cx,
+    cy: ring.cy,
+    r: ring.r,
+    centerHeight,
+  }
+}
+
+export const buildRodRingOccluders = (rodConfig?: RodConfig): RodRingOccluder[] => {
+  if (!rodConfig) {
+    return []
+  }
+  const occluders: RodRingOccluder[] = []
+  const [subject4A, subject4B] = rodConfig.subject4
+  const [subject7A, subject7B] = rodConfig.subject7
+  const [subject8A, subject8B, subject8C] = rodConfig.subject8
+
+  const subject4 = toRingOccluder('subject4-occluder', subject4A, subject4B, SUBJECT4_RING_CENTER_HEIGHT)
+  if (subject4) {
+    occluders.push(subject4)
+  }
+
+  SUBJECT7_RING_HEIGHTS.forEach((height, index) => {
+    const ring = toRingOccluder(`subject7-occluder-${index}`, subject7A, subject7B, height)
+    if (ring) {
+      occluders.push(ring)
+    }
+  })
+
+  const subject8High = toRingOccluder('subject8-occluder-high', subject8A, subject8B, SUBJECT8_HIGH_RING_CENTER_HEIGHT)
+  if (subject8High) {
+    occluders.push(subject8High)
+  }
+
+  const subject8Low = toRingOccluder('subject8-occluder-low', subject8B, subject8C, SUBJECT8_LOW_RING_CENTER_HEIGHT)
+  if (subject8Low) {
+    occluders.push(subject8Low)
+  }
+
+  return occluders
 }
