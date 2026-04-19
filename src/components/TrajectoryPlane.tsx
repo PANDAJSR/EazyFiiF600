@@ -201,6 +201,8 @@ function TrajectoryPlane({
   const [xTicks, yTicks] = [buildTicks(displayBounds.minX, displayBounds.maxX), buildTicks(displayBounds.minY, displayBounds.maxY)], polylinePoints = visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
   const rodMarkers = buildRodMarkers(rodConfig)
   const rodObstacleDecorations = buildRodObstacleDecorations(rodConfig)
+  const rodObstacleLines = rodObstacleDecorations.filter((item) => item.kind === 'line')
+  const rodObstacleCircles = rodObstacleDecorations.filter((item) => item.kind === 'circle')
   const ringOccluders = buildRodRingOccluders(rodConfig)
   const pathSegmentsAboveRings = buildPathSegmentsAboveRings(visits, ringOccluders)
   const takeoffZonePoints = buildTakeoffZone(rodConfig), takeoffZonePolygon = takeoffZonePoints.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')
@@ -309,28 +311,27 @@ function TrajectoryPlane({
             </g>
           ))}
           {takeoffZonePoints.length === 4 && <polygon points={takeoffZonePolygon} className="trajectory-takeoff-zone" />}
-          {rodObstacleDecorations.map((item) =>
-            item.kind === 'line' ? (
-              <line
-                key={item.key}
-                x1={toSvgX(item.x1)}
-                y1={toSvgY(item.y1)}
-                x2={toSvgX(item.x2)}
-                y2={toSvgY(item.y2)}
-                className="trajectory-obstacle-line"
-              />
-            ) : (
-              <circle
-                key={item.key}
-                cx={toSvgX(item.cx)}
-                cy={toSvgY(item.cy)}
-                r={(item.r / displayBounds.span) * plotSize}
-                className="trajectory-obstacle-circle"
-              />
-            ),
-          )}
+          {rodObstacleLines.map((item) => (
+            <line
+              key={item.key}
+              x1={toSvgX(item.x1)}
+              y1={toSvgY(item.y1)}
+              x2={toSvgX(item.x2)}
+              y2={toSvgY(item.y2)}
+              className="trajectory-obstacle-line"
+            />
+          ))}
           {backgroundVisits.map((item) => <polyline key={`trajectory-bg-${item.droneId}`} points={item.visits.map((point) => `${toSvgX(point.x)},${toSvgY(point.y)}`).join(' ')} className="trajectory-line" style={{ stroke: item.color, opacity: 0.8 }} />)}
           <polyline points={polylinePoints} className="trajectory-line" style={{ stroke: activeTrajectoryColor }} />
+          {rodObstacleCircles.map((item) => (
+            <circle
+              key={item.key}
+              cx={toSvgX(item.cx)}
+              cy={toSvgY(item.cy)}
+              r={(item.r / displayBounds.span) * plotSize}
+              className="trajectory-obstacle-circle"
+            />
+          ))}
           {pathSegmentsAboveRings.map((segment) => (
             <line
               key={segment.key}

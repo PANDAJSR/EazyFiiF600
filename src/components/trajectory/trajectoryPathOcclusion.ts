@@ -34,6 +34,24 @@ const distancePointToSegment = (
   return distanceToPoint(px, py, nearestX, nearestY)
 }
 
+const projectPointToSegmentRatio = (
+  px: number,
+  py: number,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+) => {
+  const dx = x2 - x1
+  const dy = y2 - y1
+  const segmentLengthSquared = dx * dx + dy * dy
+  if (segmentLengthSquared < 0.0001) {
+    return 0
+  }
+  const projection = ((px - x1) * dx + (py - y1) * dy) / segmentLengthSquared
+  return Math.max(0, Math.min(1, projection))
+}
+
 const intersectsRingDisk = (ring: RodRingOccluder, start: Visit, end: Visit) => {
   const d1 = distanceToPoint(start.x, start.y, ring.cx, ring.cy)
   const d2 = distanceToPoint(end.x, end.y, ring.cx, ring.cy)
@@ -42,8 +60,11 @@ const intersectsRingDisk = (ring: RodRingOccluder, start: Visit, end: Visit) => 
   return minDistance <= ring.r && maxEndpointDistance >= ring.r
 }
 
-const isSegmentAboveRing = (ring: RodRingOccluder, start: Visit, end: Visit) =>
-  (start.z + end.z) / 2 >= ring.centerHeight + Z_OVER_EPSILON
+const isSegmentAboveRing = (ring: RodRingOccluder, start: Visit, end: Visit) => {
+  const ratio = projectPointToSegmentRatio(ring.cx, ring.cy, start.x, start.y, end.x, end.y)
+  const zAtClosest = start.z + (end.z - start.z) * ratio
+  return zAtClosest >= ring.centerHeight + Z_OVER_EPSILON
+}
 
 export const buildPathSegmentsAboveRings = (
   visits: Visit[],
