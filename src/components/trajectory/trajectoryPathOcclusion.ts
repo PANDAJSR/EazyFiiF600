@@ -36,6 +36,8 @@ const distancePointToSegment = (
   return distanceToPoint(px, py, nearestX, nearestY)
 }
 
+const cross2D = (x1: number, y1: number, x2: number, y2: number) => x1 * y2 - y1 * x2
+
 const projectPointToSegmentRatio = (
   px: number,
   py: number,
@@ -108,13 +110,74 @@ const segmentDistance = (
   )
 }
 
+const lineIntersectionRatioOnSegment = (
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+) => {
+  const rX = bx - ax
+  const rY = by - ay
+  const sX = dx - cx
+  const sY = dy - cy
+  const denominator = cross2D(rX, rY, sX, sY)
+  if (Math.abs(denominator) < 0.000001) {
+    return null
+  }
+  const qmpX = cx - ax
+  const qmpY = cy - ay
+  const t = cross2D(qmpX, qmpY, sX, sY) / denominator
+  const u = cross2D(qmpX, qmpY, rX, rY) / denominator
+  if (t < 0 || t > 1 || u < 0 || u > 1) {
+    return null
+  }
+  return t
+}
+
+const closestRatioFromLineToSegment = (
+  ax: number,
+  ay: number,
+  bx: number,
+  by: number,
+  cx: number,
+  cy: number,
+  dx: number,
+  dy: number,
+) => {
+  const intersectionRatio = lineIntersectionRatioOnSegment(ax, ay, bx, by, cx, cy, dx, dy)
+  if (intersectionRatio !== null) {
+    return intersectionRatio
+  }
+
+  const ratioFromC = projectPointToSegmentRatio(cx, cy, ax, ay, bx, by)
+  const ratioFromD = projectPointToSegmentRatio(dx, dy, ax, ay, bx, by)
+  const projCX = ax + (bx - ax) * ratioFromC
+  const projCY = ay + (by - ay) * ratioFromC
+  const projDX = ax + (bx - ax) * ratioFromD
+  const projDY = ay + (by - ay) * ratioFromD
+  const distC = distanceToPoint(projCX, projCY, cx, cy)
+  const distD = distanceToPoint(projDX, projDY, dx, dy)
+  return distC <= distD ? ratioFromC : ratioFromD
+}
+
 const isSegmentNearLine = (line: RodLineOccluder, start: Visit, end: Visit) =>
   segmentDistance(start.x, start.y, end.x, end.y, line.x1, line.y1, line.x2, line.y2) <= LINE_OCCLUSION_DISTANCE
 
 const isSegmentAboveLine = (line: RodLineOccluder, start: Visit, end: Visit) => {
-  const lineMidX = (line.x1 + line.x2) / 2
-  const lineMidY = (line.y1 + line.y2) / 2
-  const ratio = projectPointToSegmentRatio(lineMidX, lineMidY, start.x, start.y, end.x, end.y)
+  const ratio = closestRatioFromLineToSegment(
+    start.x,
+    start.y,
+    end.x,
+    end.y,
+    line.x1,
+    line.y1,
+    line.x2,
+    line.y2,
+  )
   const zAtClosest = start.z + (end.z - start.z) * ratio
   return zAtClosest >= line.height + Z_OVER_EPSILON
 }
