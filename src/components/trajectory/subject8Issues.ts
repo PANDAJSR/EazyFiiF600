@@ -6,7 +6,7 @@ type XYPoint = {
   y: number
 }
 
-export type Subject8CheckResult = 'ok' | 'high-ring-not-descending' | 'low-ring-not-ascending'
+export type Subject8CheckResult = 'ok' | 'high-ring-not-crossed' | 'low-ring-not-crossed' | 'direction-mismatch'
 
 const SUBJECT8_RING_DIAMETER_CM = 65
 const SUBJECT8_RING_RADIUS_CM = SUBJECT8_RING_DIAMETER_CM / 2
@@ -92,10 +92,24 @@ export const checkSubject8PassHighLowRings = (
     startPos,
     blocks,
   )
-  if (!hasHighRingDescendingCross) {
-    return 'high-ring-not-descending'
+  const hasHighRingAscendingCross = hasRingCrossEvent(
+    highRingCenter,
+    SUBJECT8_HIGH_RING_CENTER_HEIGHT_CM,
+    false,
+    startPos,
+    blocks,
+  )
+  if (!hasHighRingDescendingCross && !hasHighRingAscendingCross) {
+    return 'high-ring-not-crossed'
   }
 
+  const hasLowRingDescendingCross = hasRingCrossEvent(
+    lowRingCenter,
+    SUBJECT8_LOW_RING_CENTER_HEIGHT_CM,
+    true,
+    startPos,
+    blocks,
+  )
   const hasLowRingAscendingCross = hasRingCrossEvent(
     lowRingCenter,
     SUBJECT8_LOW_RING_CENTER_HEIGHT_CM,
@@ -103,8 +117,14 @@ export const checkSubject8PassHighLowRings = (
     startPos,
     blocks,
   )
-  if (!hasLowRingAscendingCross) {
-    return 'low-ring-not-ascending'
+  if (!hasLowRingDescendingCross && !hasLowRingAscendingCross) {
+    return 'low-ring-not-crossed'
+  }
+
+  const hasForwardPattern = hasHighRingDescendingCross && hasLowRingAscendingCross
+  const hasReversePattern = hasLowRingDescendingCross && hasHighRingAscendingCross
+  if (!hasForwardPattern && !hasReversePattern) {
+    return 'direction-mismatch'
   }
 
   return 'ok'

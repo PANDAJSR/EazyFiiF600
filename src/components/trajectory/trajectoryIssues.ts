@@ -370,15 +370,20 @@ export const buildTrajectoryIssues = (
     hasFiniteXY(subject8RodC)
   ) {
     const subject8Result = checkSubject8PassHighLowRings(subject8RodA, subject8RodB, subject8RodC, startPos, blocks)
-    if (subject8Result === 'high-ring-not-descending') {
+    if (subject8Result === 'high-ring-not-crossed') {
       issues.push({
-        key: 'subject8-high-ring-not-descending',
-        message: '科目⑧穿高低圈未完成：高圈需从高到低穿越',
+        key: 'subject8-high-ring-not-crossed',
+        message: '科目⑧穿高低圈未完成：未检测到穿越高圈',
       })
-    } else if (subject8Result === 'low-ring-not-ascending') {
+    } else if (subject8Result === 'low-ring-not-crossed') {
       issues.push({
-        key: 'subject8-low-ring-not-ascending',
-        message: '科目⑧穿高低圈未完成：低圈需从低到高穿越',
+        key: 'subject8-low-ring-not-crossed',
+        message: '科目⑧穿高低圈未完成：未检测到穿越低圈',
+      })
+    } else if (subject8Result === 'direction-mismatch') {
+      issues.push({
+        key: 'subject8-direction-mismatch',
+        message: '科目⑧穿高低圈未完成：穿越方向需满足“高圈高到低+低圈低到高”或“低圈高到低+高圈低到高”',
       })
     }
   }
