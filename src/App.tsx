@@ -13,8 +13,15 @@ import type { RodConfig } from './components/trajectory/rodConfig'
 import { createInsertedBlock, INSERTABLE_BLOCKS } from './components/blockInsertCatalog'
 import type { InsertPickerItem } from './components/blockInsertPickerCatalog'
 import { INSERT_PICKER_ITEMS } from './components/blockInsertPickerCatalog'
-import BlockTemplateInsertModal from './components/BlockTemplateInsertModal'
-import { buildTemplateBlocks, getSubject1TemplateDefaultCenter, type InsertableTemplateDefinition } from './components/blockTemplateCatalog'
+import BlockTemplateInsertModal, { type TemplateModalConfirmPayload } from './components/BlockTemplateInsertModal'
+import {
+  buildTemplateBlocks,
+  getSubject1TemplateDefaultCenter,
+  getSubject2TemplateDefaultRods,
+  SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
+  SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
+  type InsertableTemplateDefinition,
+} from './components/blockTemplateCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
 import useFocusBlockFirstInput from './components/useFocusBlockFirstInput'
 import useBlockKeyboardNavigation from './components/useBlockKeyboardNavigation'
@@ -66,6 +73,10 @@ function App() {
   )
   const subject1TemplateDefaultCenter = useMemo(
     () => getSubject1TemplateDefaultCenter(agentRodConfigContext),
+    [agentRodConfigContext],
+  )
+  const subject2TemplateDefaultRods = useMemo(
+    () => getSubject2TemplateDefaultRods(agentRodConfigContext),
     [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
@@ -346,7 +357,7 @@ function App() {
     setPendingTemplateDefinition(undefined)
     setInsertAfterBlockId(undefined)
   }, [])
-  const handleTemplateInsertConfirm = useCallback((payload: { x: number; y: number }) => {
+  const handleTemplateInsertConfirm = useCallback((payload: TemplateModalConfirmPayload) => {
     const targetBlockId = insertAfterBlockId ?? selectedBlockId
     if (!targetBlockId || !selectedDroneId || !pendingTemplateDefinition) {
       setTemplateModalOpen(false)
@@ -356,18 +367,33 @@ function App() {
     const insertionEndState = selectedProgram
       ? calculateBlockEndState(selectedProgram.drone.startPos, selectedProgram.blocks, targetBlockId)
       : null
-    const blocks = buildTemplateBlocks(pendingTemplateDefinition.id, {
-      subject1X: payload.x,
-      subject1Y: payload.y,
-      insertionContext: insertionEndState
-        ? {
-          x: insertionEndState.position.x,
-          y: insertionEndState.position.y,
-          z: insertionEndState.position.z,
-          orientationDeg: insertionEndState.orientation,
-        }
-        : undefined,
-    })
+    const insertionContext = insertionEndState
+      ? {
+        x: insertionEndState.position.x,
+        y: insertionEndState.position.y,
+        z: insertionEndState.position.z,
+        orientationDeg: insertionEndState.orientation,
+      }
+      : undefined
+    const blocks = (() => {
+      if (pendingTemplateDefinition.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID) {
+        return buildTemplateBlocks(pendingTemplateDefinition.id, {
+          subject1X: payload.subject1X,
+          subject1Y: payload.subject1Y,
+          insertionContext,
+        })
+      }
+      if (pendingTemplateDefinition.id === SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID) {
+        return buildTemplateBlocks(pendingTemplateDefinition.id, {
+          subject2RodAX: payload.subject2RodAX,
+          subject2RodAY: payload.subject2RodAY,
+          subject2RodBX: payload.subject2RodBX,
+          subject2RodBY: payload.subject2RodBY,
+          insertionContext,
+        })
+      }
+      return []
+    })()
     if (!blocks.length) {
       message.warning('该模板暂未配置可插入内容')
       setTemplateModalOpen(false)
@@ -570,8 +596,12 @@ function App() {
       {templateModalOpen && (
         <BlockTemplateInsertModal
           template={pendingTemplateDefinition}
-          defaultX={subject1TemplateDefaultCenter.subject1X}
-          defaultY={subject1TemplateDefaultCenter.subject1Y}
+          defaultSubject1X={subject1TemplateDefaultCenter.subject1X}
+          defaultSubject1Y={subject1TemplateDefaultCenter.subject1Y}
+          defaultSubject2RodAX={subject2TemplateDefaultRods.subject2RodAX}
+          defaultSubject2RodAY={subject2TemplateDefaultRods.subject2RodAY}
+          defaultSubject2RodBX={subject2TemplateDefaultRods.subject2RodBX}
+          defaultSubject2RodBY={subject2TemplateDefaultRods.subject2RodBY}
           onCancel={handleTemplateModalCancel}
           onConfirm={handleTemplateInsertConfirm}
         />
