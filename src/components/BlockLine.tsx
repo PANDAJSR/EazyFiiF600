@@ -10,11 +10,19 @@ type Props = {
   editable: boolean
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
   onFieldBlur?: (blockId: string, fieldKey: string, value: string) => void
-  onInputKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, blockId: string) => void
+  onInputKeyDown?: (event: React.KeyboardEvent<HTMLInputElement>, blockId: string, fieldKey: string) => void
 }
 
 function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown }: Props) {
   const text = blockText(block)
+  const getInputWidth = (fieldKey: string, value: string) => {
+    if (block.type === COMMENT_BLOCK_TYPE && fieldKey === 'content') {
+      const content = value || ''
+      const widthCh = Math.max(12, Math.min(60, content.length + 2))
+      return `${widthCh}ch`
+    }
+    return 64
+  }
   const getTextInputSlotIndex = (valueIndex: number) =>
     text.values
       .slice(0, valueIndex + 1)
@@ -92,13 +100,13 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                       event.currentTarget.blur()
                       return
                     }
-                    onInputKeyDown?.(event, block.id)
+                    onInputKeyDown?.(event, block.id, value.fieldKey!)
                   }}
                   onBlur={(event) => {
                     onFieldBlur?.(block.id, value.fieldKey!, event.target.value)
                   }}
                   className="block-chip block-chip-value"
-                  style={{ width: block.type === COMMENT_BLOCK_TYPE && value.fieldKey === 'content' ? 240 : 64 }}
+                  style={{ width: getInputWidth(value.fieldKey!, block.fields[value.fieldKey] ?? '') }}
                 />
               )
             }

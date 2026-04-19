@@ -110,7 +110,10 @@ function useBlockInputNavigation(rows: ParsedBlock[][]) {
   )
 
   const handleInputKeyDown = useCallback(
-    (event: KeyboardEvent<HTMLInputElement>, blockId: string) => {
+    (event: KeyboardEvent<HTMLInputElement>, blockId: string, fieldKey: string) => {
+      if (fieldKey === 'content') {
+        return
+      }
       const key = event.key.toLowerCase()
       if (!NAV_KEYS.has(key) || event.metaKey || event.ctrlKey || event.altKey) {
         return
