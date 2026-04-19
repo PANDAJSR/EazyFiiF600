@@ -156,8 +156,8 @@ const buildSubject2RectangleStableBlocks = (params: Subject2RectangleStableParam
 
   const relX = insertionX - centerX
   const relY = insertionY - centerY
-  const rawU = relX * unitAxisX + relY * unitAxisY
-  const u = Math.max(-halfRodSpan, Math.min(halfRodSpan, rawU))
+  // 科目二模板要求围绕横杆中间闭合，不沿横杆方向偏移到杆端。
+  const u = 0
   const rawV = relX * unitPerpX + relY * unitPerpY
   const startOnPositiveV = rawV >= 0
   const startAtLowEdge = Math.abs(insertionZ - lowZ) <= Math.abs(insertionZ - highZ)
