@@ -20,10 +20,12 @@ import {
   getSubject2TemplateDefaultRods,
   getSubject5TemplateDefaultRods,
   getSubject6TemplateDefaultRods,
+  getSubject7TemplateDefaultRods,
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
   SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
+  SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID,
   type InsertableTemplateDefinition,
 } from './components/blockTemplateCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
@@ -89,6 +91,10 @@ function App() {
   )
   const subject6TemplateDefaultRods = useMemo(
     () => getSubject6TemplateDefaultRods(agentRodConfigContext),
+    [agentRodConfigContext],
+  )
+  const subject7TemplateDefaultRods = useMemo(
+    () => getSubject7TemplateDefaultRods(agentRodConfigContext),
     [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
@@ -426,6 +432,15 @@ function App() {
           insertionContext,
         })
       }
+      if (pendingTemplateDefinition.id === SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID) {
+        return buildTemplateBlocks(pendingTemplateDefinition.id, {
+          subject7RodAX: subject7TemplateDefaultRods.subject7RodAX,
+          subject7RodAY: subject7TemplateDefaultRods.subject7RodAY,
+          subject7RodBX: subject7TemplateDefaultRods.subject7RodBX,
+          subject7RodBY: subject7TemplateDefaultRods.subject7RodBY,
+          insertionContext,
+        })
+      }
       return []
     })()
     if (!blocks.length) {
@@ -445,7 +460,17 @@ function App() {
     setInsertAfterBlockId(undefined)
     setHasUnsavedChanges(true)
     message.success(`已插入模板：${pendingTemplateDefinition.label}`)
-  }, [insertAfterBlockId, pendingTemplateDefinition, selectedBlockId, selectedDroneId, selectedProgram])
+  }, [
+    insertAfterBlockId,
+    pendingTemplateDefinition,
+    selectedBlockId,
+    selectedDroneId,
+    selectedProgram,
+    subject7TemplateDefaultRods.subject7RodAX,
+    subject7TemplateDefaultRods.subject7RodAY,
+    subject7TemplateDefaultRods.subject7RodBX,
+    subject7TemplateDefaultRods.subject7RodBY,
+  ])
   const handleInsertFirstBlock = useCallback(() => {
     if (!selectedDroneId) {
       return

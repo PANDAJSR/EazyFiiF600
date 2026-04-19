@@ -5,6 +5,7 @@ import {
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
   SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
+  SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID,
   type InsertableTemplateDefinition,
 } from './blockTemplateCatalog'
 
@@ -98,8 +99,12 @@ function BlockTemplateInsertModal({
   const isSubject2Template = template?.id === SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID
   const isSubject5Template = template?.id === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID
   const isSubject6Template = template?.id === SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID
+  const isSubject7Template = template?.id === SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID
 
   const valid = useMemo(() => {
+    if (isSubject7Template) {
+      return true
+    }
     if (isSubject6Template) {
       return Number.isFinite(subject6RodAX)
         && Number.isFinite(subject6RodAY)
@@ -127,6 +132,7 @@ function BlockTemplateInsertModal({
     isSubject2Template,
     isSubject5Template,
     isSubject6Template,
+    isSubject7Template,
     subject1X,
     subject1Y,
     subject2RodAX,
@@ -339,6 +345,10 @@ function BlockTemplateInsertModal({
               </Space>
             </Space>
           </>
+        ) : isSubject7Template ? (
+          <Typography.Text type="secondary">
+            模板参数：默认读取科目七两杆坐标（A/B），按中点生成“先下探再异步上升”的三色穿圈动作，无需手动输入。
+          </Typography.Text>
         ) : (
           <>
             <Typography.Text type="secondary">
@@ -368,7 +378,7 @@ function BlockTemplateInsertModal({
             </Space>
           </>
         )}
-        {!isSubject1Template && !isSubject2Template && !isSubject5Template && !isSubject6Template && (
+        {!isSubject1Template && !isSubject2Template && !isSubject5Template && !isSubject6Template && !isSubject7Template && (
           <Typography.Text type="secondary">该模板暂未定义参数表单。</Typography.Text>
         )}
       </Space>

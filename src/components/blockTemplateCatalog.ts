@@ -8,6 +8,7 @@ export const SUBJECT1_SQUARE_STABLE_TEMPLATE_ID = 'subject1_square_stable'
 export const SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID = 'subject2_rectangle_stable'
 export const SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID = 'subject5_hexagon_figure_eight'
 export const SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID = 'subject6_octagon_figure_eight'
+export const SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID = 'subject7_three_color_rings'
 
 export type InsertableTemplateDefinition = {
   id: string
@@ -40,6 +41,12 @@ export const INSERTABLE_TEMPLATES: InsertableTemplateDefinition[] = [
     label: '科目六_八边8字',
     keywords: ['模板', '科目六', '八边', '8字', 'subject6', 'octagon', 'figure8'],
     description: '围绕科目六双横杆执行八边8字闭合飞行（两端4点自动取最近起点）',
+  },
+  {
+    id: SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID,
+    label: '科目七_三色穿圈',
+    keywords: ['模板', '科目七', '三色', '穿圈', 'subject7', 'ring', 'color'],
+    description: '先下探再异步上升穿过三圈，中间分段切换红绿蓝灯光',
   },
 ]
 
@@ -81,6 +88,14 @@ export type Subject6OctagonFigureEightParams = {
   subject6RodCY: number
   subject6RodDX: number
   subject6RodDY: number
+  insertionContext?: TemplateInsertionContext
+}
+
+export type Subject7ThreeColorRingsParams = {
+  subject7RodAX: number
+  subject7RodAY: number
+  subject7RodBX: number
+  subject7RodBY: number
   insertionContext?: TemplateInsertionContext
 }
 
@@ -434,9 +449,41 @@ const buildSubject6OctagonFigureEightBlocks = (params: Subject6OctagonFigureEigh
   ]
 }
 
+const buildSubject7ThreeColorRingsBlocks = (params: Subject7ThreeColorRingsParams): ParsedBlock[] => {
+  const centerX = (params.subject7RodAX + params.subject7RodBX) / 2
+  const centerY = (params.subject7RodAY + params.subject7RodBY) / 2
+
+  return [
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目七 Begin' }),
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, {
+      X: toFieldNumber(centerX),
+      Y: toFieldNumber(centerY),
+      Z: '80',
+      time: '1200',
+    }),
+    createInsertedBlockByType('Goertek_MoveToCoord2', {
+      X: toFieldNumber(centerX),
+      Y: toFieldNumber(centerY),
+      Z: '170',
+    }),
+    createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor2', { color1: '#FF0000' }),
+    createInsertedBlockByType('block_delay', { time: '500' }),
+    createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor2', { color1: '#00FF00' }),
+    createInsertedBlockByType('block_delay', { time: '500' }),
+    createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor2', { color1: '#0000FF' }),
+    createInsertedBlockByType('block_delay', { time: '500' }),
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目七 End' }),
+  ]
+}
+
 export const buildTemplateBlocks = (
   templateId: string,
-  params: Subject1SquareStableParams | Subject2RectangleStableParams | Subject5HexagonFigureEightParams | Subject6OctagonFigureEightParams,
+  params:
+    | Subject1SquareStableParams
+    | Subject2RectangleStableParams
+    | Subject5HexagonFigureEightParams
+    | Subject6OctagonFigureEightParams
+    | Subject7ThreeColorRingsParams,
 ): ParsedBlock[] => {
   if (templateId === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID) {
     return buildSubject1SquareStableBlocks(params as Subject1SquareStableParams)
@@ -449,6 +496,9 @@ export const buildTemplateBlocks = (
   }
   if (templateId === SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID) {
     return buildSubject6OctagonFigureEightBlocks(params as Subject6OctagonFigureEightParams)
+  }
+  if (templateId === SUBJECT7_THREE_COLOR_RINGS_TEMPLATE_ID) {
+    return buildSubject7ThreeColorRingsBlocks(params as Subject7ThreeColorRingsParams)
   }
   return []
 }
@@ -515,5 +565,20 @@ export const getSubject6TemplateDefaultRods = (rodConfig?: RodConfig): Subject6O
     subject6RodCY: cy,
     subject6RodDX: dx,
     subject6RodDY: dy,
+  }
+}
+
+export const getSubject7TemplateDefaultRods = (rodConfig?: RodConfig): Subject7ThreeColorRingsParams => {
+  const pointA = rodConfig?.subject7?.[0]
+  const pointB = rodConfig?.subject7?.[1]
+  const ax = typeof pointA?.x === 'number' && Number.isFinite(pointA.x) ? pointA.x : 100
+  const ay = typeof pointA?.y === 'number' && Number.isFinite(pointA.y) ? pointA.y : 60
+  const bx = typeof pointB?.x === 'number' && Number.isFinite(pointB.x) ? pointB.x : 160
+  const by = typeof pointB?.y === 'number' && Number.isFinite(pointB.y) ? pointB.y : 60
+  return {
+    subject7RodAX: ax,
+    subject7RodAY: ay,
+    subject7RodBX: bx,
+    subject7RodBY: by,
   }
 }
