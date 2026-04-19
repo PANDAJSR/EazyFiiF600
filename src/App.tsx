@@ -598,6 +598,8 @@ function App() {
             </section>
           </div>
           <FloatingTrajectoryPanel
+            selectedDroneId={selectedDroneId}
+            allPrograms={result.programs}
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
             safetyDistance={appSettings.safetyDistance}

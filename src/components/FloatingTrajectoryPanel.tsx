@@ -1,7 +1,7 @@
 import { Button, Segmented, Tooltip, Typography } from 'antd'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
-import type { ParsedBlock } from '../types/fii'
+import type { DroneProgram, ParsedBlock } from '../types/fii'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
 import TrajectoryPlane from './TrajectoryPlane'
 import type { TrajectoryDisplay } from './useTrajectoryVisibility'
@@ -19,6 +19,8 @@ type XYZ = {
 
 type Props = {
   openedDirectoryPath?: string
+  selectedDroneId?: string
+  allPrograms?: DroneProgram[]
   startPos: XYZ
   blocks: ParsedBlock[]
   safetyDistance?: number
@@ -136,6 +138,8 @@ const getDockedRightRect = (currentWidth: number): Rect => {
 
 function FloatingTrajectoryPanel({
   openedDirectoryPath,
+  selectedDroneId,
+  allPrograms = [],
   startPos,
   blocks,
   safetyDistance,
@@ -305,8 +309,48 @@ function FloatingTrajectoryPanel({
 
   const issueWarnings = useMemo(() => {
     const safeDistance = safetyDistance ?? loadAppSettings().safetyDistance
-    return buildTrajectoryIssues(startPos, blocks, rodConfig, safeDistance)
-  }, [blocks, rodConfig, safetyDistance, startPos])
+    const selectedIssues = buildTrajectoryIssues(startPos, blocks, rodConfig, safeDistance)
+    if (!selectedDroneId || allPrograms.length === 0) {
+      return selectedIssues
+    }
+
+    const subjectFailureByDrone = allPrograms.reduce<Record<string, Set<string>>>((acc, program) => {
+      const programIssues = buildTrajectoryIssues(program.drone.startPos, program.blocks, rodConfig, safeDistance)
+      const failedSubjects = new Set<string>()
+      programIssues.forEach((issue) => {
+        const match = issue.key.match(/^subject(\d+)-/)
+        if (match?.[1]) {
+          failedSubjects.add(match[1])
+        }
+      })
+      acc[program.drone.id] = failedSubjects
+      return acc
+    }, {})
+
+    const allSubjectCodes = new Set<string>()
+    Object.values(subjectFailureByDrone).forEach((failedSubjects) => {
+      failedSubjects.forEach((code) => allSubjectCodes.add(code))
+    })
+
+    const globallyCompletedSubjects = new Set<string>()
+    allSubjectCodes.forEach((subjectCode) => {
+      const completedByAnyDrone = allPrograms.some((program) => {
+        const failedSubjects = subjectFailureByDrone[program.drone.id]
+        return failedSubjects && !failedSubjects.has(subjectCode)
+      })
+      if (completedByAnyDrone) {
+        globallyCompletedSubjects.add(subjectCode)
+      }
+    })
+
+    return selectedIssues.filter((issue) => {
+      const match = issue.key.match(/^subject(\d+)-/)
+      if (!match?.[1]) {
+        return true
+      }
+      return !globallyCompletedSubjects.has(match[1])
+    })
+  }, [allPrograms, blocks, rodConfig, safetyDistance, selectedDroneId, startPos])
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
     if (dockedRight) {
