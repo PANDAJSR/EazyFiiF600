@@ -168,28 +168,28 @@ export const checkSubject6VerticalFigureEightAroundCrossbars = (
   }
 
   let hasEightShapeLoop = false
+  const requiredEndIndex = local.visits.length - 1
 
   for (let startIndex = 0; startIndex < local.visits.length; startIndex += 1) {
-    for (
-      let endIndex = startIndex + SUBJECT6_MIN_LOOP_POINTS - 1;
-      endIndex < local.visits.length;
-      endIndex += 1
-    ) {
-      const start = local.visits[startIndex]
-      const end = local.visits[endIndex]
-      if (!isClosedIn3D(start, end)) {
-        continue
-      }
+    const loopPointCount = requiredEndIndex - startIndex + 1
+    if (loopPointCount < SUBJECT6_MIN_LOOP_POINTS) {
+      continue
+    }
 
-      const loop = local.visits.slice(startIndex, endIndex + 1)
-      if (!isVerticalFigureEightLoop(loop, local.halfGap)) {
-        continue
-      }
+    const start = local.visits[startIndex]
+    const end = local.visits[requiredEndIndex]
+    if (!isClosedIn3D(start, end)) {
+      continue
+    }
 
-      hasEightShapeLoop = true
-      if (isEntryExitFromSameSide(loop, local.halfGap)) {
-        return 'ok'
-      }
+    const loop = local.visits.slice(startIndex, requiredEndIndex + 1)
+    if (!isVerticalFigureEightLoop(loop, local.halfGap)) {
+      continue
+    }
+
+    hasEightShapeLoop = true
+    if (isEntryExitFromSameSide(loop, local.halfGap)) {
+      return 'ok'
     }
   }
 
