@@ -7,6 +7,7 @@ import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 export const SUBJECT1_SQUARE_STABLE_TEMPLATE_ID = 'subject1_square_stable'
 export const SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID = 'subject2_rectangle_stable'
 export const SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID = 'subject5_hexagon_figure_eight'
+export const SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID = 'subject6_octagon_figure_eight'
 
 export type InsertableTemplateDefinition = {
   id: string
@@ -33,6 +34,12 @@ export const INSERTABLE_TEMPLATES: InsertableTemplateDefinition[] = [
     label: '科目五_六边8字',
     keywords: ['模板', '科目五', '六边', '8字', 'subject5', 'hexagon', 'figure8'],
     description: '围绕科目五双杆执行六边8字闭合飞行（起点自动取两端最近点）',
+  },
+  {
+    id: SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
+    label: '科目六_八边8字',
+    keywords: ['模板', '科目六', '八边', '8字', 'subject6', 'octagon', 'figure8'],
+    description: '围绕科目六双横杆执行八边8字闭合飞行（两端4点自动取最近起点）',
   },
 ]
 
@@ -62,6 +69,18 @@ export type Subject5HexagonFigureEightParams = {
   subject5RodAY: number
   subject5RodBX: number
   subject5RodBY: number
+  insertionContext?: TemplateInsertionContext
+}
+
+export type Subject6OctagonFigureEightParams = {
+  subject6RodAX: number
+  subject6RodAY: number
+  subject6RodBX: number
+  subject6RodBY: number
+  subject6RodCX: number
+  subject6RodCY: number
+  subject6RodDX: number
+  subject6RodDY: number
   insertionContext?: TemplateInsertionContext
 }
 
@@ -323,9 +342,101 @@ const buildSubject5HexagonFigureEightBlocks = (params: Subject5HexagonFigureEigh
   ]
 }
 
+const buildSubject6OctagonFigureEightBlocks = (params: Subject6OctagonFigureEightParams): ParsedBlock[] => {
+  const crossbarHeight = 150
+  const heightOffset = 30
+  const endExtension = 50
+  const defaultGapSpan = 120
+  const center1X = (params.subject6RodAX + params.subject6RodBX) / 2
+  const center1Y = (params.subject6RodAY + params.subject6RodBY) / 2
+  const center2X = (params.subject6RodCX + params.subject6RodDX) / 2
+  const center2Y = (params.subject6RodCY + params.subject6RodDY) / 2
+  const rawGapAxisX = center2X - center1X
+  const rawGapAxisY = center2Y - center1Y
+  const gapAxisLength = Math.hypot(rawGapAxisX, rawGapAxisY)
+  const unitGapX = gapAxisLength > EPSILON ? rawGapAxisX / gapAxisLength : 1
+  const unitGapY = gapAxisLength > EPSILON ? rawGapAxisY / gapAxisLength : 0
+  const middleX = (center1X + center2X) / 2
+  const middleY = (center1Y + center2Y) / 2
+  const halfGap = gapAxisLength > EPSILON ? gapAxisLength / 2 : defaultGapSpan / 2
+  const insertionX = params.insertionContext?.x ?? (middleX + (-halfGap - endExtension) * unitGapX)
+  const insertionY = params.insertionContext?.y ?? (middleY + (-halfGap - endExtension) * unitGapY)
+  const insertionZ = Math.min(params.insertionContext?.z ?? crossbarHeight - heightOffset, 175)
+
+  const toWorldPoint = (u: number, w: number) => ({
+    x: middleX + u * unitGapX,
+    y: middleY + u * unitGapY,
+    z: crossbarHeight + w,
+  })
+  const lowW = -heightOffset
+  const highW = heightOffset
+  const leftU = -halfGap - endExtension
+  const middleU = 0
+  const rightU = halfGap + endExtension
+
+  const baseLoopPoints = [
+    toWorldPoint(leftU, lowW),
+    toWorldPoint(middleU, lowW),
+    toWorldPoint(middleU, highW),
+    toWorldPoint(rightU, highW),
+    toWorldPoint(rightU, lowW),
+    toWorldPoint(middleU, lowW),
+    toWorldPoint(middleU, highW),
+    toWorldPoint(leftU, highW),
+  ]
+
+  const endpointIndexes = [0, 3, 4, 7]
+  const startPathIndex = endpointIndexes.reduce((bestIndex, currentIndex) => {
+    const best = baseLoopPoints[bestIndex]
+    const current = baseLoopPoints[currentIndex]
+    const bestDistance = Math.hypot(best.x - insertionX, best.y - insertionY, best.z - insertionZ)
+    const currentDistance = Math.hypot(current.x - insertionX, current.y - insertionY, current.z - insertionZ)
+    return currentDistance < bestDistance ? currentIndex : bestIndex
+  }, endpointIndexes[0])
+
+  const orderedLoopPoints = Array.from({ length: baseLoopPoints.length + 1 }, (_, offset) => {
+    const nextIndex = (startPathIndex + offset) % baseLoopPoints.length
+    return baseLoopPoints[nextIndex]
+  })
+
+  const flightSegments = (() => {
+    const segments: Array<{
+      from: { x: number; y: number; z: number }
+      to: { x: number; y: number; z: number }
+    }> = []
+    if (Math.hypot(orderedLoopPoints[0].x - insertionX, orderedLoopPoints[0].y - insertionY, orderedLoopPoints[0].z - insertionZ) > EPSILON) {
+      segments.push({
+        from: { x: insertionX, y: insertionY, z: insertionZ },
+        to: orderedLoopPoints[0],
+      })
+    }
+    for (let index = 0; index < orderedLoopPoints.length - 1; index += 1) {
+      segments.push({
+        from: orderedLoopPoints[index],
+        to: orderedLoopPoints[index + 1],
+      })
+    }
+    return segments
+  })()
+
+  const moveBlocks = flightSegments.map((segment) =>
+    createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, {
+      X: toFieldNumber(segment.to.x),
+      Y: toFieldNumber(segment.to.y),
+      Z: toFieldNumber(segment.to.z),
+      time: '800',
+    }))
+
+  return [
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目六 Begin' }),
+    ...moveBlocks,
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目六 End' }),
+  ]
+}
+
 export const buildTemplateBlocks = (
   templateId: string,
-  params: Subject1SquareStableParams | Subject2RectangleStableParams | Subject5HexagonFigureEightParams,
+  params: Subject1SquareStableParams | Subject2RectangleStableParams | Subject5HexagonFigureEightParams | Subject6OctagonFigureEightParams,
 ): ParsedBlock[] => {
   if (templateId === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID) {
     return buildSubject1SquareStableBlocks(params as Subject1SquareStableParams)
@@ -335,6 +446,9 @@ export const buildTemplateBlocks = (
   }
   if (templateId === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID) {
     return buildSubject5HexagonFigureEightBlocks(params as Subject5HexagonFigureEightParams)
+  }
+  if (templateId === SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID) {
+    return buildSubject6OctagonFigureEightBlocks(params as Subject6OctagonFigureEightParams)
   }
   return []
 }
@@ -376,5 +490,30 @@ export const getSubject5TemplateDefaultRods = (rodConfig?: RodConfig): Subject5H
     subject5RodAY: ay,
     subject5RodBX: bx,
     subject5RodBY: by,
+  }
+}
+
+export const getSubject6TemplateDefaultRods = (rodConfig?: RodConfig): Subject6OctagonFigureEightParams => {
+  const pointA = rodConfig?.subject6?.[0]
+  const pointB = rodConfig?.subject6?.[1]
+  const pointC = rodConfig?.subject6?.[2]
+  const pointD = rodConfig?.subject6?.[3]
+  const ax = typeof pointA?.x === 'number' && Number.isFinite(pointA.x) ? pointA.x : 100
+  const ay = typeof pointA?.y === 'number' && Number.isFinite(pointA.y) ? pointA.y : 60
+  const bx = typeof pointB?.x === 'number' && Number.isFinite(pointB.x) ? pointB.x : 100
+  const by = typeof pointB?.y === 'number' && Number.isFinite(pointB.y) ? pointB.y : 140
+  const cx = typeof pointC?.x === 'number' && Number.isFinite(pointC.x) ? pointC.x : 220
+  const cy = typeof pointC?.y === 'number' && Number.isFinite(pointC.y) ? pointC.y : 60
+  const dx = typeof pointD?.x === 'number' && Number.isFinite(pointD.x) ? pointD.x : 220
+  const dy = typeof pointD?.y === 'number' && Number.isFinite(pointD.y) ? pointD.y : 140
+  return {
+    subject6RodAX: ax,
+    subject6RodAY: ay,
+    subject6RodBX: bx,
+    subject6RodBY: by,
+    subject6RodCX: cx,
+    subject6RodCY: cy,
+    subject6RodDX: dx,
+    subject6RodDY: dy,
   }
 }

@@ -19,9 +19,11 @@ import {
   getSubject1TemplateDefaultCenter,
   getSubject2TemplateDefaultRods,
   getSubject5TemplateDefaultRods,
+  getSubject6TemplateDefaultRods,
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
   SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
+  SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
   type InsertableTemplateDefinition,
 } from './components/blockTemplateCatalog'
 import useSelectedBlockEnterHotkey from './components/useSelectedBlockEnterHotkey'
@@ -83,6 +85,10 @@ function App() {
   )
   const subject5TemplateDefaultRods = useMemo(
     () => getSubject5TemplateDefaultRods(agentRodConfigContext),
+    [agentRodConfigContext],
+  )
+  const subject6TemplateDefaultRods = useMemo(
+    () => getSubject6TemplateDefaultRods(agentRodConfigContext),
     [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
@@ -407,6 +413,19 @@ function App() {
           insertionContext,
         })
       }
+      if (pendingTemplateDefinition.id === SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID) {
+        return buildTemplateBlocks(pendingTemplateDefinition.id, {
+          subject6RodAX: payload.subject6RodAX,
+          subject6RodAY: payload.subject6RodAY,
+          subject6RodBX: payload.subject6RodBX,
+          subject6RodBY: payload.subject6RodBY,
+          subject6RodCX: payload.subject6RodCX,
+          subject6RodCY: payload.subject6RodCY,
+          subject6RodDX: payload.subject6RodDX,
+          subject6RodDY: payload.subject6RodDY,
+          insertionContext,
+        })
+      }
       return []
     })()
     if (!blocks.length) {
@@ -621,6 +640,14 @@ function App() {
           defaultSubject5RodAY={subject5TemplateDefaultRods.subject5RodAY}
           defaultSubject5RodBX={subject5TemplateDefaultRods.subject5RodBX}
           defaultSubject5RodBY={subject5TemplateDefaultRods.subject5RodBY}
+          defaultSubject6RodAX={subject6TemplateDefaultRods.subject6RodAX}
+          defaultSubject6RodAY={subject6TemplateDefaultRods.subject6RodAY}
+          defaultSubject6RodBX={subject6TemplateDefaultRods.subject6RodBX}
+          defaultSubject6RodBY={subject6TemplateDefaultRods.subject6RodBY}
+          defaultSubject6RodCX={subject6TemplateDefaultRods.subject6RodCX}
+          defaultSubject6RodCY={subject6TemplateDefaultRods.subject6RodCY}
+          defaultSubject6RodDX={subject6TemplateDefaultRods.subject6RodDX}
+          defaultSubject6RodDY={subject6TemplateDefaultRods.subject6RodDY}
           onCancel={handleTemplateModalCancel}
           onConfirm={handleTemplateInsertConfirm}
         />
