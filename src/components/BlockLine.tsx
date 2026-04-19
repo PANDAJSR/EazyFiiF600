@@ -4,6 +4,7 @@ import { blockText, sanitizeBlockTextFieldInput } from './blockCanvasUtils'
 import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
+const LIGHT_COLOR_PRESETS = ['#ff0000', '#00ff00', '#0000ff']
 
 type Props = {
   block: ParsedBlock
@@ -62,6 +63,12 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                     format="hex"
                     disabledFormat
                     showText
+                    presets={[
+                      {
+                        label: '快捷色',
+                        colors: LIGHT_COLOR_PRESETS,
+                      },
+                    ]}
                     value={block.fields[value.fieldKey] ?? value.text}
                     onChangeComplete={(nextColor) => {
                       onFieldChange(block.id, value.fieldKey!, nextColor.toHexString().toLowerCase())
