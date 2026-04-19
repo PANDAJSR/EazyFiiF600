@@ -20,7 +20,8 @@ const TAKEOFF_ZONE_Z = 0.12
 
 export type RodObstacleHoverTarget3D = {
   key: string
-  object: THREE.Object3D
+  pickObject: THREE.Object3D
+  highlightObject?: THREE.Mesh
 }
 
 const isFiniteRodPoint = (point?: { x?: number; y?: number }): point is { x: number; y: number } =>
@@ -56,6 +57,34 @@ export const renderSubjectRods = (
   const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject7RingGeometry = new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject8RingGeometry = new THREE.TorusGeometry(SUBJECT8_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
+  const addHoverTargets = (
+    key: string | undefined,
+    object: THREE.Mesh,
+    expandedGeometry: THREE.BufferGeometry | null,
+  ) => {
+    if (!hoverTargets || !key) {
+      return
+    }
+    hoverTargets.push({ key, pickObject: object, highlightObject: object })
+    if (!expandedGeometry) {
+      return
+    }
+    const expandedMaterial = new THREE.MeshBasicMaterial({
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+    })
+    const expandedMesh = new THREE.Mesh(expandedGeometry, expandedMaterial)
+    expandedMesh.position.copy(object.position)
+    expandedMesh.quaternion.copy(object.quaternion)
+    expandedMesh.scale.copy(object.scale)
+    scene.add(expandedMesh)
+    hoverTargets.push({ key, pickObject: expandedMesh, highlightObject: object })
+    disposers.push(() => {
+      expandedGeometry.dispose()
+      expandedMaterial.dispose()
+    })
+  }
 
   const addVerticalRod = (x: number, y: number) => {
     const rod = new THREE.Mesh(rodGeometry, rodMaterial)
@@ -81,9 +110,11 @@ export const renderSubjectRods = (
     crossbar.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction)
     crossbar.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, height)
     scene.add(crossbar)
-    if (hoverTargets && hoverKey) {
-      hoverTargets.push({ key: hoverKey, object: crossbar })
-    }
+    addHoverTargets(
+      hoverKey,
+      crossbar,
+      new THREE.CylinderGeometry(ROD_RADIUS * 1.9, ROD_RADIUS * 1.9, length, 14),
+    )
     disposers.push(() => geometry.dispose())
   }
 
@@ -106,9 +137,11 @@ export const renderSubjectRods = (
     }
     ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, centerHeight)
     scene.add(ring)
-    if (hoverTargets && hoverKey) {
-      hoverTargets.push({ key: hoverKey, object: ring })
-    }
+    addHoverTargets(
+      hoverKey,
+      ring,
+      new THREE.TorusGeometry(SUBJECT3_RING_DIAMETER / 2, RING_TUBE_RADIUS * 2.5, 18, 48),
+    )
   }
 
   const addSubject4Ring = (start: { x: number; y: number }, end: { x: number; y: number }, hoverKey?: string) => {
@@ -119,9 +152,11 @@ export const renderSubjectRods = (
     const ring = new THREE.Mesh(subject4RingGeometry, ringMaterial)
     ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, SUBJECT4_RING_CENTER_HEIGHT)
     scene.add(ring)
-    if (hoverTargets && hoverKey) {
-      hoverTargets.push({ key: hoverKey, object: ring })
-    }
+    addHoverTargets(
+      hoverKey,
+      ring,
+      new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS * 2.5, 18, 48),
+    )
   }
 
   const addSubject7Rings = (start: { x: number; y: number }, end: { x: number; y: number }, hoverKey?: string) => {
@@ -135,9 +170,11 @@ export const renderSubjectRods = (
       const ring = new THREE.Mesh(subject7RingGeometry, ringMaterial)
       ring.position.set(centerX, centerY, height)
       scene.add(ring)
-      if (hoverTargets && hoverKey) {
-        hoverTargets.push({ key: hoverKey, object: ring })
-      }
+      addHoverTargets(
+        hoverKey,
+        ring,
+        new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS * 2.5, 18, 48),
+      )
     }
   }
 
@@ -154,9 +191,11 @@ export const renderSubjectRods = (
     const ring = new THREE.Mesh(subject8RingGeometry, ringMaterial)
     ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, centerHeight)
     scene.add(ring)
-    if (hoverTargets && hoverKey) {
-      hoverTargets.push({ key: hoverKey, object: ring })
-    }
+    addHoverTargets(
+      hoverKey,
+      ring,
+      new THREE.TorusGeometry(SUBJECT8_RING_DIAMETER / 2, RING_TUBE_RADIUS * 2.5, 18, 48),
+    )
   }
 
   const subject1Rod = rodConfig?.subject1[0]

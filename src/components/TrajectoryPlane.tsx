@@ -258,7 +258,7 @@ function TrajectoryPlane({
           viewBox={`0 0 ${VIEWBOX_WIDTH} ${VIEWBOX_HEIGHT}`}
           role="img"
           onPointerMove={(event) => {
-            const hoverTolerance = (displayBounds.span / plotSize) * 8
+            const hoverTolerance = (displayBounds.span / plotSize) * 14
             const svgPoint = clientToSvg(event.currentTarget, event.clientX, event.clientY)
             if (svgPoint && !isDraggingPoint) {
               const x = displayBounds.minX + ((svgPoint.x - plotLeft) / plotSize) * displayBounds.span
@@ -363,6 +363,23 @@ function TrajectoryPlane({
               className="trajectory-obstacle-circle"
             />
           ))}
+          {!!hoveredObstacleTooltip && hoveredObstacleTooltip.info.shape.kind === 'line' && (
+            <line
+              x1={toSvgX(hoveredObstacleTooltip.info.shape.x1)}
+              y1={toSvgY(hoveredObstacleTooltip.info.shape.y1)}
+              x2={toSvgX(hoveredObstacleTooltip.info.shape.x2)}
+              y2={toSvgY(hoveredObstacleTooltip.info.shape.y2)}
+              className="trajectory-obstacle-hover-outline"
+            />
+          )}
+          {!!hoveredObstacleTooltip && hoveredObstacleTooltip.info.shape.kind === 'circle' && (
+            <circle
+              cx={toSvgX(hoveredObstacleTooltip.info.shape.cx)}
+              cy={toSvgY(hoveredObstacleTooltip.info.shape.cy)}
+              r={(hoveredObstacleTooltip.info.shape.r / displayBounds.span) * plotSize}
+              className="trajectory-obstacle-hover-outline"
+            />
+          )}
           {backgroundPathSegmentsAboveObstacles.flatMap((item) =>
             item.lineSegments.map((segment) => (
               <line

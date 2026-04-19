@@ -303,6 +303,19 @@ function TrajectoryScene3D({
     scene.add(hoverMesh)
     const pickCandidates = buildPickCandidates(visits, pointOffsetZ)
     const dragCandidates = buildDragCandidates(visits, pointOffsetZ)
+    const obstacleHighlightMaterial = new THREE.MeshBasicMaterial({
+      color: '#ffe58f',
+      wireframe: true,
+      transparent: true,
+      opacity: 0.95,
+      depthTest: false,
+    })
+    const obstacleHighlightMesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshBasicMaterial> = new THREE.Mesh(
+      new THREE.BoxGeometry(1, 1, 1),
+      obstacleHighlightMaterial,
+    )
+    obstacleHighlightMesh.visible = false
+    scene.add(obstacleHighlightMesh)
     const selectedPointMaterial = new THREE.MeshStandardMaterial({
       color: '#ffd700',
       emissive: '#ff8c00',
@@ -318,6 +331,8 @@ function TrajectoryScene3D({
       pointGeometry.dispose()
       hoverPointMaterial.dispose()
       selectedPointMaterial.dispose()
+      ;(obstacleHighlightMesh.geometry as THREE.BufferGeometry).dispose()
+      obstacleHighlightMaterial.dispose()
     })
 
     const updateSelectedMesh = () => {
@@ -367,6 +382,7 @@ function TrajectoryScene3D({
     let activePointerId: number | null = null
     let pointerDown = { x: 0, y: 0 }
     let pointerMoved = false
+    let highlightedObstacleObject: THREE.Mesh | null = null
     const raycaster = new THREE.Raycaster()
     const pointer = new THREE.Vector2()
     const dragPlane = new THREE.Plane(new THREE.Vector3(0, 0, 1), 0)
@@ -393,6 +409,8 @@ function TrajectoryScene3D({
       }
       setHoveredCandidate(null)
       setHoveredObstacleTooltip(undefined)
+      obstacleHighlightMesh.visible = false
+      highlightedObstacleObject = null
       renderer.domElement.style.cursor = 'default'
     }
     const onPointerDown = (event: PointerEvent) => {
@@ -422,6 +440,8 @@ function TrajectoryScene3D({
     const onPointerMove = (event: PointerEvent) => {
       if (draggingCandidate && onMovePoint) {
         setHoveredObstacleTooltip(undefined)
+        obstacleHighlightMesh.visible = false
+        highlightedObstacleObject = null
         const next = projectPointerToPlane(
           event,
           renderer.domElement,
@@ -451,20 +471,35 @@ function TrajectoryScene3D({
       const rect = renderer.domElement.getBoundingClientRect()
       pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1)
       raycaster.setFromCamera(pointer, camera)
-      const hoverHits = raycaster.intersectObjects(rodHoverTargets.map((item) => item.object), true)
+      const hoverHits = raycaster.intersectObjects(rodHoverTargets.map((item) => item.pickObject), true)
       const firstHoverHit = hoverHits.find((hit) =>
-        rodHoverTargets.some((item) => item.object === hit.object || item.object === hit.object.parent),
+        rodHoverTargets.some((item) => item.pickObject === hit.object || item.pickObject === hit.object.parent),
       )
       if (firstHoverHit) {
-        const target = rodHoverTargets.find((item) => item.object === firstHoverHit.object || item.object === firstHoverHit.object.parent)
+        const target = rodHoverTargets.find((item) => item.pickObject === firstHoverHit.object || item.pickObject === firstHoverHit.object.parent)
         const hoverInfo = target ? obstacleHoverInfoByKey.get(target.key) : undefined
         if (hoverInfo) {
           setHoveredObstacleTooltip({ clientX: event.clientX, clientY: event.clientY, info: hoverInfo })
         } else {
           setHoveredObstacleTooltip(undefined)
         }
+        if (target?.highlightObject) {
+          if (highlightedObstacleObject !== target.highlightObject) {
+            obstacleHighlightMesh.geometry = target.highlightObject.geometry
+            highlightedObstacleObject = target.highlightObject
+          }
+          obstacleHighlightMesh.position.copy(target.highlightObject.position)
+          obstacleHighlightMesh.quaternion.copy(target.highlightObject.quaternion)
+          obstacleHighlightMesh.scale.copy(target.highlightObject.scale).multiplyScalar(1.05)
+          obstacleHighlightMesh.visible = true
+        } else {
+          obstacleHighlightMesh.visible = false
+          highlightedObstacleObject = null
+        }
       } else {
         setHoveredObstacleTooltip(undefined)
+        obstacleHighlightMesh.visible = false
+        highlightedObstacleObject = null
       }
 
       if (!pointerMoved) {

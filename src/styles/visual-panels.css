@@ -88,6 +88,14 @@
   opacity: 0.96;
 }
 
+.trajectory-obstacle-hover-outline {
+  fill: none;
+  stroke: #fff1a6;
+  stroke-width: 7;
+  stroke-linecap: round;
+  opacity: 0.9;
+}
+
 .trajectory-point {
   fill: #fff;
   stroke: #1b6ed6;
