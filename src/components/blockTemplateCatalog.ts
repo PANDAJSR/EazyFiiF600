@@ -2,6 +2,7 @@ import type { ParsedBlock } from '../types/fii'
 import type { RodConfig } from './trajectory/rodConfig'
 import { createInsertedBlockByType } from './blockInsertCatalog'
 import { AUTO_DELAY_BLOCK_TYPE } from '../utils/autoDelayBlocks'
+import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 export const SUBJECT1_SQUARE_STABLE_TEMPLATE_ID = 'subject1_square_stable'
 
@@ -37,6 +38,7 @@ const buildSubject1SquareStableBlocks = (params: Subject1SquareStableParams): Pa
   const top = params.subject1Y + halfSide
 
   return [
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目一 Begin' }),
     createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor4', { motor: '1', color1: '#00ff00' }),
     createInsertedBlockByType('block_delay', { time: '100' }),
     createInsertedBlockByType('Goertek_LEDTurnOnAllSingleColor4', { motor: '2', color1: '#00ff00' }),
@@ -52,6 +54,7 @@ const buildSubject1SquareStableBlocks = (params: Subject1SquareStableParams): Pa
     createInsertedBlockByType('Goertek_Turn', { turnDirection: 'r', angle: '90' }),
     createInsertedBlockByType('block_delay', { time: '1000' }),
     createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, { X: toFieldNumber(left), Y: toFieldNumber(bottom), Z: String(z), time: '800' }),
+    createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目一 End' }),
   ]
 }
 
