@@ -97,14 +97,39 @@ const calcWindingSweep = (points: LocalVisit[], centerW: number): number => {
   return sweep
 }
 
+const distanceSqToLocalCenterOnSegment = (start: LocalVisit, end: LocalVisit): number => {
+  const du = end.u - start.u
+  const dw = end.w - start.w
+  const lengthSq = du * du + dw * dw
+  if (lengthSq < AXIS_EPSILON) {
+    return start.u * start.u + start.w * start.w
+  }
+
+  const projection = -(start.u * du + start.w * dw) / lengthSq
+  const t = Math.max(0, Math.min(1, projection))
+  const closestU = start.u + du * t
+  const closestW = start.w + dw * t
+  return closestU * closestU + closestW * closestW
+}
+
+const passesNearLocalCenterOnSegment = (start: LocalVisit, end: LocalVisit, toleranceCm: number): boolean => {
+  const toleranceSq = toleranceCm * toleranceCm
+  const startDistSq = start.u * start.u + start.w * start.w
+  if (startDistSq <= toleranceSq) {
+    return true
+  }
+  const endDistSq = end.u * end.u + end.w * end.w
+  if (endDistSq <= toleranceSq) {
+    return true
+  }
+  return distanceSqToLocalCenterOnSegment(start, end) <= toleranceSq
+}
+
 const hasMiddleCrossing = (points: LocalVisit[]): boolean => {
   for (let index = 1; index < points.length; index += 1) {
     const prev = points[index - 1]
     const curr = points[index]
-    const closeToMiddle = Math.abs(prev.w) <= SUBJECT9_CENTER_CROSS_TOLERANCE_CM || Math.abs(curr.w) <= SUBJECT9_CENTER_CROSS_TOLERANCE_CM
-    const throughMiddle = prev.w * curr.w < 0
-    const sideClose = Math.abs(prev.u) <= SUBJECT9_CENTER_CROSS_TOLERANCE_CM || Math.abs(curr.u) <= SUBJECT9_CENTER_CROSS_TOLERANCE_CM
-    if ((closeToMiddle || throughMiddle) && sideClose) {
+    if (passesNearLocalCenterOnSegment(prev, curr, SUBJECT9_CENTER_CROSS_TOLERANCE_CM)) {
       return true
     }
   }
