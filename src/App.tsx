@@ -24,13 +24,13 @@ import useDroneDialog from './components/useDroneDialog'
 import useTrajectoryVisibility, { getTrajectoryColor } from './components/useTrajectoryVisibility'
 import { readLocalDraftResult } from './utils/localDraftStorage'
 import { isDesktopRuntime, onAgentStream, onAgentTrajectoryIssuesRequest, sendAgentTrajectoryIssuesResponse, onAgentProjectContextRequest, sendAgentProjectContextResponse } from './utils/desktopBridge'
-import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertBlocksAfterTarget, insertFirstBlockWhenEmpty, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
+import { convertTurnBlockById, duplicateBlockAfterTarget, insertBlockAfterTarget, insertBlocksAfterTarget, insertFirstBlockWhenEmpty, normalizeAllProgramsAutoDelayBlocks, normalizeBlockFieldOnBlur, removeBlockById, replaceSelectedProgramBlocks, splitAutoDelayBlockById, updateBlockField, updateMovePoint } from './utils/programMutations'
 import { calculateBlockEndState } from './utils/blockEndState'
 import { AUTO_DELAY_BLOCK_TYPE } from './utils/autoDelayBlocks'
 import { getPathDrawingInheritedZ } from './utils/pathDrawing'
 import { useProjectFileIO } from './hooks/useProjectFileIO'
 import { buildTrajectoryIssueContext } from './components/trajectory/trajectoryIssueContext'
-import { loadSafetySettings } from './components/SettingsModal'
+import { loadAppSettings, type AppSettings } from './utils/appSettings'
 type PendingFocusTarget = {
   blockId: string
   fieldKey?: string
@@ -53,7 +53,7 @@ function App() {
   const [agentRodConfigContext, setAgentRodConfigContext] = useState<RodConfig>()
   const [manualSaveSignal, setManualSaveSignal] = useState(0)
   const [settingsModalOpen, setSettingsModalOpen] = useState(false)
-  const [settingsChangeSignal, setSettingsChangeSignal] = useState(0)
+  const [appSettings, setAppSettings] = useState<AppSettings>(() => loadAppSettings())
   const [pendingTemplateDefinition, setPendingTemplateDefinition] = useState<InsertableTemplateDefinition>()
   const [templateModalOpen, setTemplateModalOpen] = useState(false)
   const directoryPickerRef = useRef<HTMLInputElement>(null)
@@ -69,9 +69,8 @@ function App() {
     [agentRodConfigContext],
   )
   const trajectoryIssueContext = useMemo(() => {
-    const safetySettings = loadSafetySettings()
-    return buildTrajectoryIssueContext(result, agentRodConfigContext, safetySettings.safetyDistance)
-  }, [agentRodConfigContext, result, settingsChangeSignal])
+    return buildTrajectoryIssueContext(result, agentRodConfigContext, appSettings.safetyDistance)
+  }, [agentRodConfigContext, appSettings.safetyDistance, result])
   const selectedTrajectoryColor = useMemo(() => getTrajectoryColor(Math.max(0, result.programs.findIndex((item) => item.drone.id === selectedDroneId))), [result.programs, selectedDroneId])
   const { visibleTrajectoryIds, toggleTrajectoryVisibility, backgroundTrajectories } = useTrajectoryVisibility(result.programs)
   const {
@@ -505,6 +504,7 @@ function App() {
           <FloatingTrajectoryPanel
             startPos={selectedProgram?.drone.startPos ?? { x: '0', y: '0', z: '0' }}
             blocks={selectedProgram?.blocks ?? []}
+            safetyDistance={appSettings.safetyDistance}
             openedDirectoryPath={desktopProjectDirectory}
             selectedBlockId={selectedBlockId}
             pathDrawingMode={pathDrawingMode}
@@ -516,7 +516,6 @@ function App() {
             activeTrajectoryColor={selectedTrajectoryColor}
             onRodConfigChange={setAgentRodConfigContext}
             manualSaveSignal={manualSaveSignal}
-            settingsChangeSignal={settingsChangeSignal}
           />
         </Layout.Content>
       </Layout>
@@ -569,7 +568,13 @@ function App() {
       <SettingsModal
         open={settingsModalOpen}
         onClose={() => setSettingsModalOpen(false)}
-        onSettingsChange={() => setSettingsChangeSignal((prev) => prev + 1)}
+        onSettingsChange={(nextSettings) => {
+          if (nextSettings.autoDelayOffsetMs !== appSettings.autoDelayOffsetMs) {
+            setResult((prev) => normalizeAllProgramsAutoDelayBlocks(prev))
+            setHasUnsavedChanges(true)
+          }
+          setAppSettings(nextSettings)
+        }}
       />
     </ConfigProvider>
   )

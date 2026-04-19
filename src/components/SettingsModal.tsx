@@ -1,63 +1,37 @@
 import { Modal, Form, InputNumber, Typography } from 'antd'
 import { SettingOutlined } from '@ant-design/icons'
-import { useState, useEffect } from 'react'
-
-export interface SafetySettings {
-  safetyDistance: number
-}
-
-const DEFAULT_SAFETY_DISTANCE = 15
-
-const STORAGE_KEY = 'fii-safety-settings'
-
-export function loadSafetySettings(): SafetySettings {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY)
-    if (stored) {
-      const parsed = JSON.parse(stored)
-      return {
-        safetyDistance: typeof parsed.safetyDistance === 'number' ? parsed.safetyDistance : DEFAULT_SAFETY_DISTANCE,
-      }
-    }
-  } catch {
-    // ignore
-  }
-  return { safetyDistance: DEFAULT_SAFETY_DISTANCE }
-}
-
-export function saveSafetySettings(settings: SafetySettings): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings))
-  } catch {
-    // ignore
-  }
-}
+import { useEffect } from 'react'
+import {
+  DEFAULT_AUTO_DELAY_OFFSET_MS,
+  DEFAULT_SAFETY_DISTANCE,
+  loadAppSettings,
+  saveAppSettings,
+  type AppSettings,
+} from '../utils/appSettings'
 
 type Props = {
   open: boolean
   onClose: () => void
-  onSettingsChange?: (settings: SafetySettings) => void
+  onSettingsChange?: (settings: AppSettings) => void
 }
 
 function SettingsModal({ open, onClose, onSettingsChange }: Props) {
   const [form] = Form.useForm()
-  const [settings, setSettings] = useState<SafetySettings>(() => loadSafetySettings())
 
   useEffect(() => {
     if (open) {
-      const current = loadSafetySettings()
-      setSettings(current)
+      const current = loadAppSettings()
       form.setFieldsValue(current)
     }
   }, [open, form])
 
   const handleOk = () => {
     form.validateFields().then((values) => {
-      const newSettings: SafetySettings = {
+      const newSettings: AppSettings = {
         safetyDistance: values.safetyDistance ?? DEFAULT_SAFETY_DISTANCE,
+        autoDelayOffsetMs: values.autoDelayOffsetMs ?? DEFAULT_AUTO_DELAY_OFFSET_MS,
       }
-      saveSafetySettings(newSettings)
-      setSettings(newSettings)
+      saveAppSettings(newSettings)
       onSettingsChange?.(newSettings)
       onClose()
     })
@@ -81,7 +55,7 @@ function SettingsModal({ open, onClose, onSettingsChange }: Props) {
       <Form
         form={form}
         layout="vertical"
-        initialValues={settings}
+        initialValues={loadAppSettings()}
         style={{ marginTop: 16 }}
       >
         <Form.Item
@@ -100,6 +74,25 @@ function SettingsModal({ open, onClose, onSettingsChange }: Props) {
             max={100}
             precision={1}
             addonAfter="cm"
+          />
+        </Form.Item>
+        <Form.Item
+          name="autoDelayOffsetMs"
+          label="自动延时偏差"
+          extra={<Typography.Text type="secondary">正数会在自动计算后增加，负数会减少，单位毫秒(ms)</Typography.Text>}
+          rules={[
+            { required: true, message: '请输入自动延时偏差' },
+            { type: 'number', min: -10000, max: 10000, message: '自动延时偏差范围 -10000 到 10000 ms' },
+          ]}
+        >
+          <InputNumber
+            style={{ width: '100%' }}
+            placeholder="请输入自动延时偏差"
+            min={-10000}
+            max={10000}
+            precision={0}
+            step={100}
+            addonAfter="ms"
           />
         </Form.Item>
       </Form>

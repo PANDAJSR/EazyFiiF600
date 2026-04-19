@@ -33,6 +33,16 @@ const updateSelectedProgramBlocks = (
   }
 }
 
+export const normalizeAllProgramsAutoDelayBlocks = (result: ParseResult): ParseResult => {
+  return {
+    ...result,
+    programs: result.programs.map((program) => ({
+      ...program,
+      blocks: normalizeAutoDelayBlocks(program.blocks, program.drone.startPos),
+    })),
+  }
+}
+
 const createRuntimeBlockId = () => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
     return `custom_${crypto.randomUUID()}`

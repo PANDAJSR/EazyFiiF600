@@ -1,5 +1,6 @@
 import type { ParsedBlock } from '../types/fii'
 import { clampAsyncMoveX, clampAsyncMoveY, clampAsyncMoveZ, MIN_ABSOLUTE_MOVE_Z } from './moveBlockConstraints'
+import { loadAppSettings } from './appSettings'
 
 type XYZ = {
   x: string
@@ -10,10 +11,19 @@ type XYZ = {
 export const AUTO_DELAY_BLOCK_TYPE = 'EazyFii_MoveToCoordAutoDelay'
 export const AUTO_DELAY_UUID_KEY = 'eazyfii_block_uuid'
 
-const AUTO_DELAY_MIN_MS = 800
-const AUTO_DELAY_STEP_CM = 40
-const AUTO_DELAY_STEP_MS = 200
-const AUTO_DELAY_BASE_CM = 20
+const AUTO_DELAY_DELAY_ANCHORS = [
+  { distanceCm: 20, delayMs: 600 },
+  { distanceCm: 30, delayMs: 700 },
+  { distanceCm: 40, delayMs: 800 },
+  { distanceCm: 50, delayMs: 900 },
+  { distanceCm: 60, delayMs: 1000 },
+  { distanceCm: 70, delayMs: 1000 },
+  { distanceCm: 80, delayMs: 1100 },
+  { distanceCm: 90, delayMs: 1100 },
+  { distanceCm: 100, delayMs: 1200 },
+  { distanceCm: 110, delayMs: 1200 },
+  { distanceCm: 120, delayMs: 1300 },
+] as const
 
 const toNumber = (value?: string): number | null => {
   if (!value) {
@@ -37,10 +47,45 @@ const toFieldNumber = (value: string | undefined, fallback: number) => {
 
 export const isAutoDelayBlock = (block: ParsedBlock) => block.type === AUTO_DELAY_BLOCK_TYPE
 
-export const estimateAutoDelayMs = (distanceCm: number): number => {
+const estimateDelayByDistance = (distanceCm: number): number => {
   const safeDistance = Number.isFinite(distanceCm) ? Math.max(0, distanceCm) : 0
-  const step = Math.floor(Math.max(0, safeDistance - AUTO_DELAY_BASE_CM) / AUTO_DELAY_STEP_CM)
-  return AUTO_DELAY_MIN_MS + step * AUTO_DELAY_STEP_MS
+  const first = AUTO_DELAY_DELAY_ANCHORS[0]
+  const last = AUTO_DELAY_DELAY_ANCHORS[AUTO_DELAY_DELAY_ANCHORS.length - 1]
+
+  if (safeDistance <= first.distanceCm) {
+    const right = AUTO_DELAY_DELAY_ANCHORS[1]
+    const ratio = (safeDistance - first.distanceCm) / (right.distanceCm - first.distanceCm)
+    return Math.round(first.delayMs + (right.delayMs - first.delayMs) * ratio)
+  }
+
+  if (safeDistance >= last.distanceCm) {
+    const left = AUTO_DELAY_DELAY_ANCHORS[AUTO_DELAY_DELAY_ANCHORS.length - 2]
+    const ratio = (safeDistance - left.distanceCm) / (last.distanceCm - left.distanceCm)
+    return Math.round(left.delayMs + (last.delayMs - left.delayMs) * ratio)
+  }
+
+  for (let i = 1; i < AUTO_DELAY_DELAY_ANCHORS.length; i += 1) {
+    const left = AUTO_DELAY_DELAY_ANCHORS[i - 1]
+    const right = AUTO_DELAY_DELAY_ANCHORS[i]
+    if (safeDistance > right.distanceCm) {
+      continue
+    }
+    if (safeDistance === left.distanceCm) {
+      return left.delayMs
+    }
+    if (safeDistance === right.distanceCm) {
+      return right.delayMs
+    }
+    const ratio = (safeDistance - left.distanceCm) / (right.distanceCm - left.distanceCm)
+    return Math.round(left.delayMs + (right.delayMs - left.delayMs) * ratio)
+  }
+
+  return last.delayMs
+}
+
+export const estimateAutoDelayMs = (distanceCm: number, offsetMs = loadAppSettings().autoDelayOffsetMs): number => {
+  const baseDelayMs = estimateDelayByDistance(distanceCm)
+  return Math.max(0, Math.round(baseDelayMs + offsetMs))
 }
 
 export const createAutoDelayComment = (uuid: string) => JSON.stringify({ [AUTO_DELAY_UUID_KEY]: uuid })
@@ -205,6 +250,7 @@ export const normalizeAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): 
   let currentX = startX
   let currentY = startY
   let currentZ = startZ
+  const autoDelayOffsetMs = loadAppSettings().autoDelayOffsetMs
 
   return blocks.map((block) => {
     if (block.type === 'Goertek_TakeOff2') {
@@ -222,7 +268,7 @@ export const normalizeAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): 
 
       if (block.type === AUTO_DELAY_BLOCK_TYPE) {
         const distance = Math.hypot(nextX - currentX, nextY - currentY, nextZ - currentZ)
-        const delay = String(estimateAutoDelayMs(distance))
+        const delay = String(estimateAutoDelayMs(distance, autoDelayOffsetMs))
         const safeUuid = readAutoDelayUuidFromComment(block.comment) ?? createRuntimeUuid()
         const comment = createAutoDelayComment(safeUuid)
         currentX = nextX
