@@ -63,6 +63,42 @@ const toFieldNumber = (value: string | undefined, fallback: number) => {
   return parsed ?? fallback
 }
 
+const calculateStateBeforeBlockIndex = (
+  blocks: ParsedBlock[],
+  targetIndex: number,
+  startPos: { x: string; y: string; z: string },
+) => {
+  let currentX = toFieldNumber(startPos.x, 0)
+  let currentY = toFieldNumber(startPos.y, 0)
+  let currentZ = toFieldNumber(startPos.z, 0)
+  for (let i = 0; i < targetIndex; i += 1) {
+    const block = blocks[i]
+    if (block.type === 'Goertek_TakeOff2') {
+      const nextZ = toNumber(block.fields.alt)
+      if (nextZ !== null) {
+        currentZ = nextZ
+      }
+      continue
+    }
+    if (block.type === 'Goertek_MoveToCoord2' || block.type === AUTO_DELAY_BLOCK_TYPE) {
+      currentX = toFieldNumber(block.fields.X, currentX)
+      currentY = toFieldNumber(block.fields.Y, currentY)
+      currentZ = toFieldNumber(block.fields.Z, currentZ)
+      continue
+    }
+    if (block.type === 'Goertek_Move') {
+      currentX += toFieldNumber(block.fields.X, 0)
+      currentY += toFieldNumber(block.fields.Y, 0)
+      currentZ += toFieldNumber(block.fields.Z, 0)
+      continue
+    }
+    if (block.type === 'Goertek_Land') {
+      currentZ = 0
+    }
+  }
+  return { currentX, currentY, currentZ }
+}
+
 export const updateBlockField = (
   result: ParseResult,
   selectedDroneId: string | undefined,
@@ -350,24 +386,67 @@ export const convertTurnBlockById = (
   selectedDroneId: string | undefined,
   blockId: string,
 ): ParseResult => {
-  return updateSelectedProgramBlocks(result, selectedDroneId, (blocks) =>
-    blocks.map((block) => {
-      if (block.id !== blockId) {
-        return block
+  if (!selectedDroneId) {
+    return result
+  }
+  return {
+    ...result,
+    programs: result.programs.map((program) => {
+      if (program.drone.id !== selectedDroneId) {
+        return program
       }
-      if (block.type === 'Goertek_Turn') {
-        return {
-          ...block,
+      const targetIndex = program.blocks.findIndex((block) => block.id === blockId)
+      if (targetIndex < 0) {
+        return program
+      }
+      const targetBlock = program.blocks[targetIndex]
+      const { currentX, currentY, currentZ } = calculateStateBeforeBlockIndex(program.blocks, targetIndex, program.drone.startPos)
+      const nextBlocks = [...program.blocks]
+
+      if (targetBlock.type === 'Goertek_Turn') {
+        nextBlocks[targetIndex] = {
+          ...targetBlock,
           type: 'Goertek_TurnTo',
         }
-      }
-      if (block.type === 'Goertek_TurnTo') {
-        return {
-          ...block,
+      } else if (targetBlock.type === 'Goertek_TurnTo') {
+        nextBlocks[targetIndex] = {
+          ...targetBlock,
           type: 'Goertek_Turn',
         }
+      } else if (targetBlock.type === 'Goertek_MoveToCoord2') {
+        const nextX = toFieldNumber(targetBlock.fields.X, currentX)
+        const nextY = toFieldNumber(targetBlock.fields.Y, currentY)
+        const nextZ = toFieldNumber(targetBlock.fields.Z, currentZ)
+        nextBlocks[targetIndex] = {
+          ...targetBlock,
+          type: 'Goertek_Move',
+          fields: {
+            X: String(nextX - currentX),
+            Y: String(nextY - currentY),
+            Z: String(nextZ - currentZ),
+          },
+        }
+      } else if (targetBlock.type === 'Goertek_Move') {
+        const deltaX = toFieldNumber(targetBlock.fields.X, 0)
+        const deltaY = toFieldNumber(targetBlock.fields.Y, 0)
+        const deltaZ = toFieldNumber(targetBlock.fields.Z, 0)
+        nextBlocks[targetIndex] = {
+          ...targetBlock,
+          type: 'Goertek_MoveToCoord2',
+          fields: {
+            X: String(clampAsyncMoveX(currentX + deltaX)),
+            Y: String(clampAsyncMoveY(currentY + deltaY)),
+            Z: String(currentZ + deltaZ),
+          },
+        }
+      } else {
+        return program
       }
-      return block
+
+      return {
+        ...program,
+        blocks: normalizeAutoDelayBlocks(nextBlocks, program.drone.startPos),
+      }
     }),
-  )
+  }
 }

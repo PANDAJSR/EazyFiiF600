@@ -214,9 +214,24 @@ function BlockCanvas({
     if (block.type === AUTO_DELAY_BLOCK_TYPE && onSplitAutoDelayBlock) {
       menuItems.push({ key: 'split', label: '拆散成两个积木' })
     }
-    if ((block.type === 'Goertek_Turn' || block.type === 'Goertek_TurnTo') && onConvertTurnBlock) {
-      const isTurn = block.type === 'Goertek_Turn'
-      menuItems.push({ key: 'convert', label: isTurn ? '转换为转向' : '转换为转动' })
+    if (
+      (block.type === 'Goertek_Turn'
+        || block.type === 'Goertek_TurnTo'
+        || block.type === 'Goertek_MoveToCoord2'
+        || block.type === 'Goertek_Move')
+      && onConvertTurnBlock
+    ) {
+      let convertLabel = '转换积木类型'
+      if (block.type === 'Goertek_Turn') {
+        convertLabel = '转换为转向'
+      } else if (block.type === 'Goertek_TurnTo') {
+        convertLabel = '转换为转动'
+      } else if (block.type === 'Goertek_MoveToCoord2') {
+        convertLabel = '转换为异步相对平移'
+      } else if (block.type === 'Goertek_Move') {
+        convertLabel = '转换为异步平移'
+      }
+      menuItems.push({ key: 'convert', label: convertLabel })
     }
     menuItems.push({ key: 'delete', label: '删除', danger: true })
 
