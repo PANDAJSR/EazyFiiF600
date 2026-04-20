@@ -5,6 +5,11 @@ import { COMMENT_BLOCK_TYPE } from '../utils/commentBlocks'
 
 const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
 const LIGHT_COLOR_PRESETS = ['#ff0000', '#00ff00', '#0000ff']
+const INTEGER_INPUT_FIELDS = new Set([
+  'block_delay:time',
+  'Goertek_Turn:angle',
+  'Goertek_TurnTo:angle',
+])
 
 type Props = {
   block: ParsedBlock
@@ -16,6 +21,16 @@ type Props = {
 
 function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown }: Props) {
   const text = blockText(block)
+  const getInputMode = (fieldKey: string) => {
+    const fieldId = `${block.type}:${fieldKey}`
+    if (INTEGER_INPUT_FIELDS.has(fieldId)) {
+      return 'numeric' as const
+    }
+    if ((block.type === 'block_inittime' && fieldKey === 'time') || (block.type === COMMENT_BLOCK_TYPE && fieldKey === 'content')) {
+      return undefined
+    }
+    return 'decimal' as const
+  }
   const getInputWidth = (fieldKey: string, value: string) => {
     if (block.type === COMMENT_BLOCK_TYPE && fieldKey === 'content') {
       const content = value || ''
@@ -83,12 +98,7 @@ function BlockLine({ block, editable, onFieldChange, onFieldBlur, onInputKeyDown
                   key={`${block.id}-${idx}`}
                   size="small"
                   value={block.fields[value.fieldKey] ?? ''}
-                  inputMode={
-                    value.fieldKey === 'time' ||
-                    (block.type === COMMENT_BLOCK_TYPE && value.fieldKey === 'content')
-                      ? undefined
-                      : 'decimal'
-                  }
+                  inputMode={getInputMode(value.fieldKey)}
                   draggable={false}
                   data-block-id={block.id}
                   data-field-key={value.fieldKey}

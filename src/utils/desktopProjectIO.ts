@@ -2,6 +2,7 @@ import type { ParseResult } from '../types/fii'
 import { parseFiiFromTextFiles } from './fiiParser'
 import { serializeProjectFiles } from './fiiSerializer'
 import { pickOpenDirectory, pickSaveDirectory, writeProjectFiles } from './desktopBridge'
+import { normalizeResultForSave } from './saveValidation'
 
 export type OpenDesktopProjectResult = {
   directoryPath: string
@@ -34,7 +35,7 @@ export const saveDesktopProject = async (
     return null
   }
 
-  const files = serializeProjectFiles(result)
+  const files = serializeProjectFiles(normalizeResultForSave(result))
   const writeResult = await writeProjectFiles({
     directoryPath: saveDirectory,
     files,

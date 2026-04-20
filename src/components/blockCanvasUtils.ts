@@ -33,6 +33,11 @@ const NUMERIC_TEXT_FIELDS = new Set([
   'Goertek_Turn:angle',
   'Goertek_TurnTo:angle',
 ])
+const NON_NEGATIVE_INTEGER_FIELDS = new Set([
+  'block_delay:time',
+  'Goertek_Turn:angle',
+  'Goertek_TurnTo:angle',
+])
 const TIME_TEXT_FIELDS = new Set(['block_inittime:time'])
 
 const token = (
@@ -220,6 +225,9 @@ export const sanitizeBlockTextFieldInput = (blockType: string, fieldKey: string,
   const withoutLetters = raw.replace(/[A-Za-z]/g, '')
   if (TIME_TEXT_FIELDS.has(fieldId)) {
     return withoutLetters.replace(/[^\d:]/g, '')
+  }
+  if (NON_NEGATIVE_INTEGER_FIELDS.has(fieldId)) {
+    return withoutLetters.replace(/[^\d]/g, '')
   }
   return withoutLetters.replace(/[^\d+\-.]/g, '')
 }

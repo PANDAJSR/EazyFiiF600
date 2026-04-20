@@ -63,6 +63,17 @@ const toFieldNumber = (value: string | undefined, fallback: number) => {
   return parsed ?? fallback
 }
 
+const normalizeNonNegativeIntString = (value: string, fallback: number, min: number, max?: number) => {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) {
+    return String(fallback)
+  }
+  const rounded = Math.round(parsed)
+  const clampedMin = Math.max(min, rounded)
+  const clamped = max === undefined ? clampedMin : Math.min(clampedMin, max)
+  return String(clamped)
+}
+
 const calculateStateBeforeBlockIndex = (
   blocks: ParsedBlock[],
   targetIndex: number,
@@ -149,6 +160,33 @@ export const normalizeBlockFieldOnBlur = (
           fields: {
             ...block.fields,
             [fieldKey]: clampAutoDelayFieldValue(fieldKey, value),
+          },
+        }
+      }
+      if (block.type === 'Goertek_TurnTo' && fieldKey === 'angle') {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            angle: normalizeNonNegativeIntString(value, 90, 0, 359),
+          },
+        }
+      }
+      if (block.type === 'Goertek_Turn' && fieldKey === 'angle') {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            angle: normalizeNonNegativeIntString(value, 90, 0, 360),
+          },
+        }
+      }
+      if (block.type === 'block_delay' && fieldKey === 'time') {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            time: normalizeNonNegativeIntString(value, 0, 0),
           },
         }
       }

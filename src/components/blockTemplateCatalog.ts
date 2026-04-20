@@ -99,7 +99,7 @@ export type Subject7ThreeColorRingsParams = {
   insertionContext?: TemplateInsertionContext
 }
 
-const toFieldNumber = (value: number) => String(Math.round(value * 100) / 100)
+const toFieldNumber = (value: number) => String(Math.round(value))
 const EPSILON = 1e-6
 
 const buildSubject1SquareStableBlocks = (params: Subject1SquareStableParams): ParsedBlock[] => {
