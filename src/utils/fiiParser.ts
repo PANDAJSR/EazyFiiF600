@@ -161,7 +161,7 @@ const parseBlocksFromXml = (xmlText: string, startPos: DroneInfo['startPos']): P
   const tree = parseXmlBlockNode(root)
   const blocks: ParsedBlock[] = []
   flattenBlocks(tree, blocks)
-  return collapseCommentBlocks(collapseAutoDelayBlocks(collapseGeneratedRelativeAsyncMoveBlocks(blocks, startPos)))
+  return collapseCommentBlocks(collapseAutoDelayBlocks(collapseGeneratedRelativeAsyncMoveBlocks(blocks, startPos), startPos))
 }
 
 const resolveActionXml = (actionGroup: string, lookup: FileLookup): InputFile | undefined => {

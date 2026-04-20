@@ -106,8 +106,11 @@ export const readAutoDelayUuidFromComment = (comment?: string): string | undefin
   return undefined
 }
 
-export const collapseAutoDelayBlocks = (blocks: ParsedBlock[]): ParsedBlock[] => {
+export const collapseAutoDelayBlocks = (blocks: ParsedBlock[], startPos: XYZ): ParsedBlock[] => {
   const next: ParsedBlock[] = []
+  let currentX = toFieldNumber(startPos.x, 0)
+  let currentY = toFieldNumber(startPos.y, 0)
+  let currentZ = toFieldNumber(startPos.z, 0)
   for (let i = 0; i < blocks.length; i += 1) {
     const current = blocks[i]
     const maybeDelay = blocks[i + 1]
@@ -115,22 +118,84 @@ export const collapseAutoDelayBlocks = (blocks: ParsedBlock[]): ParsedBlock[] =>
       const moveUuid = readAutoDelayUuidFromComment(current.comment)
       const delayUuid = readAutoDelayUuidFromComment(maybeDelay.comment)
       if (moveUuid && delayUuid && moveUuid === delayUuid) {
+        const nextX = toFieldNumber(current.fields.X, currentX)
+        const nextY = toFieldNumber(current.fields.Y, currentY)
+        const nextZ = toFieldNumber(current.fields.Z, currentZ)
         next.push({
           id: current.id,
           type: AUTO_DELAY_BLOCK_TYPE,
           fields: {
-            X: current.fields.X ?? '0',
-            Y: current.fields.Y ?? '0',
-            Z: current.fields.Z ?? '100',
+            X: String(nextX),
+            Y: String(nextY),
+            Z: String(nextZ),
             time: maybeDelay.fields.time ?? '0',
           },
           comment: current.comment,
         })
+        currentX = nextX
+        currentY = nextY
+        currentZ = nextZ
         i += 1
         continue
       }
     }
+
+    if (current?.type === 'Goertek_Move' && maybeDelay?.type === 'block_delay') {
+      const moveUuid = readAutoDelayUuidFromComment(current.comment)
+      const delayUuid = readAutoDelayUuidFromComment(maybeDelay.comment)
+      if (moveUuid && delayUuid && moveUuid === delayUuid) {
+        const deltaX = toFieldNumber(current.fields.X, 0)
+        const deltaY = toFieldNumber(current.fields.Y, 0)
+        const deltaZ = toFieldNumber(current.fields.Z, 0)
+        const nextX = currentX + deltaX
+        const nextY = currentY + deltaY
+        const nextZ = currentZ + deltaZ
+        next.push({
+          id: current.id,
+          type: AUTO_DELAY_BLOCK_TYPE,
+          fields: {
+            X: String(nextX),
+            Y: String(nextY),
+            Z: String(nextZ),
+            time: maybeDelay.fields.time ?? '0',
+          },
+          comment: current.comment,
+        })
+        currentX = nextX
+        currentY = nextY
+        currentZ = nextZ
+        i += 1
+        continue
+      }
+    }
+
     next.push(current)
+
+    if (current?.type === 'Goertek_TakeOff2') {
+      const nextAlt = toNumber(current.fields.alt)
+      if (nextAlt !== null) {
+        currentZ = nextAlt
+      }
+      continue
+    }
+
+    if (current?.type === 'Goertek_MoveToCoord2') {
+      currentX = toFieldNumber(current.fields.X, currentX)
+      currentY = toFieldNumber(current.fields.Y, currentY)
+      currentZ = toFieldNumber(current.fields.Z, currentZ)
+      continue
+    }
+
+    if (current?.type === 'Goertek_Move') {
+      currentX += toFieldNumber(current.fields.X, 0)
+      currentY += toFieldNumber(current.fields.Y, 0)
+      currentZ += toFieldNumber(current.fields.Z, 0)
+      continue
+    }
+
+    if (current?.type === 'Goertek_Land') {
+      currentZ = 0
+    }
   }
   return next
 }
