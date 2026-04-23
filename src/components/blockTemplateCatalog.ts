@@ -178,7 +178,18 @@ const buildSubject1SquareTurnAndFlyBlocks = (params: Subject1SquareTurnAndFlyPar
       Z: toFieldNumber(z),
     }))
 
-  const flightBlocks = flightSegments.flatMap((_, index) => [headingBlocks[index], createInsertedBlockByType('block_delay', { time: '1500' }), moveBlocks[index]]).filter(Boolean) as ParsedBlock[]
+  const flightBlocks = flightSegments.flatMap((_, index) => {
+    const blocks: ParsedBlock[] = []
+    if (headingBlocks[index]) {
+      blocks.push(headingBlocks[index])
+    }
+    blocks.push(createInsertedBlockByType('block_delay', { time: '1500' }))
+    blocks.push(moveBlocks[index])
+    if (index === flightSegments.length - 1) {
+      blocks.push(createInsertedBlockByType('block_delay', { time: '1000' }))
+    }
+    return blocks
+  })
 
   return [
     createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目一 Begin' }),
