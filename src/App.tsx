@@ -219,15 +219,25 @@ function App() {
       okButtonProps: { danger: true },
       cancelText: '取消',
       onOk: () => {
+        const blocks = selectedProgram?.blocks ?? []
+        const currentIndex = blocks.findIndex((b) => b.id === blockId)
+        let nextSelectedId: string | undefined
+        if (blocks.length > 1) {
+          if (currentIndex < blocks.length - 1) {
+            nextSelectedId = blocks[currentIndex + 1]?.id
+          } else {
+            nextSelectedId = blocks[currentIndex - 1]?.id
+          }
+        }
         setResult((prev) => removeBlockById(prev, selectedDroneId, blockId))
         setHasUnsavedChanges(true)
         setPathInsertAfterBlockId((prev) => (prev === blockId ? undefined : prev))
-        setSelectedBlockId((prev) => (prev === blockId ? undefined : prev))
+        setSelectedBlockId(nextSelectedId)
         setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
         message.success('积木已删除')
       },
     })
-  }, [selectedDroneId])
+  }, [selectedDroneId, selectedProgram])
   const handleDuplicateBlock = useCallback((blockId: string) => {
     setResult((prev) => duplicateBlockAfterTarget(prev, selectedDroneId, blockId))
     setHasUnsavedChanges(true)
