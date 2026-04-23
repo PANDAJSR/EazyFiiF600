@@ -183,7 +183,9 @@ const buildSubject1SquareTurnAndFlyBlocks = (params: Subject1SquareTurnAndFlyPar
     if (headingBlocks[index]) {
       blocks.push(headingBlocks[index])
     }
-    blocks.push(createInsertedBlockByType('block_delay', { time: '1500' }))
+    if (index > 0) {
+      blocks.push(createInsertedBlockByType('block_delay', { time: '1500' }))
+    }
     blocks.push(moveBlocks[index])
     if (index === flightSegments.length - 1) {
       blocks.push(createInsertedBlockByType('block_delay', { time: '1000' }))
