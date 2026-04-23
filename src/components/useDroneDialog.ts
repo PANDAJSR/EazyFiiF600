@@ -8,7 +8,7 @@ type Params = {
   result: ParseResult
   setResult: Dispatch<SetStateAction<ParseResult>>
   setSelectedDroneId: Dispatch<SetStateAction<string | undefined>>
-  setSelectedBlockId: Dispatch<SetStateAction<string | undefined>>
+  setSelectedBlockIds: Dispatch<SetStateAction<string[]>>
   setHighlightedBlockId: Dispatch<SetStateAction<string | undefined>>
   setHighlightPulse: Dispatch<SetStateAction<number>>
   setHasUnsavedChanges: Dispatch<SetStateAction<boolean>>
@@ -18,7 +18,7 @@ function useDroneDialog({
   result,
   setResult,
   setSelectedDroneId,
-  setSelectedBlockId,
+  setSelectedBlockIds,
   setHighlightedBlockId,
   setHighlightPulse,
   setHasUnsavedChanges,
@@ -36,12 +36,12 @@ function useDroneDialog({
       sourceName: prev.sourceName || LOCAL_DRAFT_SOURCE_NAME,
     }))
     setSelectedDroneId(nextDrone.drone.id)
-    setSelectedBlockId(undefined)
+    setSelectedBlockIds([])
     setHighlightedBlockId(undefined)
     setHighlightPulse(0)
     setHasUnsavedChanges(true)
     message.success(`已新建：${nextDrone.drone.name}`)
-  }, [droneStartPosDraft, result.programs.length, setHasUnsavedChanges, setHighlightPulse, setHighlightedBlockId, setResult, setSelectedBlockId, setSelectedDroneId])
+  }, [droneStartPosDraft, result.programs.length, setHasUnsavedChanges, setHighlightPulse, setHighlightedBlockId, setResult, setSelectedBlockIds, setSelectedDroneId])
 
   const openCreateDroneDialog = useCallback(() => {
     setDroneDialogMode('create')

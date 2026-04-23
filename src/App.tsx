@@ -54,7 +54,8 @@ function App() {
   const [result, setResult] = useState<ParseResult>(() => readLocalDraftResult())
   const [selectedDroneId, setSelectedDroneId] = useState<string>()
   const [highlightedBlockId, setHighlightedBlockId] = useState<string>()
-  const [selectedBlockId, setSelectedBlockId] = useState<string>()
+  const [selectedBlockIds, setSelectedBlockIds] = useState<string[]>([])
+  const [shiftSelectAnchor, setShiftSelectAnchor] = useState<string | null>(null)
   const [highlightPulse, setHighlightPulse] = useState(0)
   const [loading, setLoading] = useState(false)
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false)
@@ -116,7 +117,7 @@ function App() {
     result,
     setResult,
     setSelectedDroneId,
-    setSelectedBlockId,
+    setSelectedBlockIds,
     setHighlightedBlockId,
     setHighlightPulse,
     setHasUnsavedChanges,
@@ -130,13 +131,13 @@ function App() {
     setDesktopProjectDirectory,
     setSelectedDroneId,
     setHighlightedBlockId,
-    setSelectedBlockId,
+    setSelectedBlockIds,
     setHighlightPulse,
     setHasUnsavedChanges,
   })
   useSelectedBlockEnterHotkey({
     enabled: !!selectedDroneId && !insertPickerOpen,
-    selectedBlockId,
+    selectedBlockId: selectedBlockIds[0],
     onOpen: (blockId) => {
       setInsertAfterBlockId(blockId)
       setInsertPickerOpen(true)
@@ -151,7 +152,8 @@ function App() {
   const handleLocateBlock = useCallback((blockId: string) => {
     console.log('[App] handleLocateBlock called, blockId:', blockId)
     setHighlightedBlockId(blockId)
-    setSelectedBlockId(blockId)
+    setSelectedBlockIds([blockId])
+    setShiftSelectAnchor(null)
     setHighlightPulse((prev) => prev + 1)
   }, [])
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
@@ -178,18 +180,18 @@ function App() {
       setPathInsertAfterBlockId(undefined)
       return
     }
-    if (!selectedBlockId) {
+    if (!selectedBlockIds.length) {
       message.warning('请先选中一个积木，再进入画路径模式')
       return
     }
     setPathDrawingMode(true)
-    setPathInsertAfterBlockId(selectedBlockId)
-  }, [selectedBlockId])
+    setPathInsertAfterBlockId(selectedBlockIds[0])
+  }, [selectedBlockIds])
   const handlePathPointDraw = useCallback((x: number, y: number) => {
     if (!pathDrawingMode || !selectedDroneId) {
       return
     }
-    const targetBlockId = pathInsertAfterBlockId ?? selectedBlockId
+    const targetBlockId = pathInsertAfterBlockId ?? selectedBlockIds[0]
     if (!targetBlockId) {
       message.warning('请先选中一个积木，再继续画路径')
       setPathDrawingMode(false)
@@ -205,13 +207,13 @@ function App() {
       nextBlock.fields.Z = String(inheritedZ)
     }
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
-    setSelectedBlockId(nextBlock.id)
+    setSelectedBlockIds([nextBlock.id])
     setHighlightedBlockId(nextBlock.id)
     setHighlightPulse((prev) => prev + 1)
     setPathInsertAfterBlockId(nextBlock.id)
     setPendingFocusTarget({ blockId: nextBlock.id, fieldKey: 'Z', selectAll: true })
     setHasUnsavedChanges(true)
-  }, [moveToAutoDelayBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockId, selectedDroneId, selectedProgram])
+  }, [moveToAutoDelayBlockDefinition, pathDrawingMode, pathInsertAfterBlockId, selectedBlockIds, selectedDroneId, selectedProgram])
   const handleDeleteBlock = useCallback((blockId: string) => {
     Modal.confirm({
       title: '删除积木',
@@ -233,8 +235,9 @@ function App() {
         setResult((prev) => removeBlockById(prev, selectedDroneId, blockId))
         setHasUnsavedChanges(true)
         setPathInsertAfterBlockId((prev) => (prev === blockId ? undefined : prev))
-        setSelectedBlockId(nextSelectedId)
+        setSelectedBlockIds(nextSelectedId ? [nextSelectedId] : [])
         setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
+        setShiftSelectAnchor(null)
         setHighlightPulse(0)
         message.success('积木已删除')
       },
@@ -255,6 +258,32 @@ function App() {
     setHasUnsavedChanges(true)
     message.success('已转换积木类型')
   }, [selectedDroneId])
+  const handleDeleteBlocks = useCallback((blockIds: string[]) => {
+    if (!blockIds.length) return
+    const count = blockIds.length
+    Modal.confirm({
+      title: '删除积木',
+      content: `确认删除所选的 ${count} 个积木吗？`,
+      okText: '删除',
+      okButtonProps: { danger: true },
+      cancelText: '取消',
+      onOk: () => {
+        setResult((prev) => {
+          let next = prev
+          blockIds.forEach((id) => {
+            next = removeBlockById(next, selectedDroneId, id)
+          })
+          return next
+        })
+        setHasUnsavedChanges(true)
+        setPathInsertAfterBlockId((prev) => (blockIds.includes(prev ?? '') ? undefined : prev))
+        setSelectedBlockIds([])
+        setShiftSelectAnchor(null)
+        setHighlightPulse(0)
+        message.success(`${count} 个积木已删除`)
+      },
+    })
+  }, [selectedDroneId])
   useEffect(() => {
     if (!selectedDroneId) {
       queueMicrotask(() => setSelectedDroneId(result.programs[0]?.drone.id))
@@ -269,17 +298,17 @@ function App() {
     if (!pathDrawingMode) {
       return
     }
-    if (!selectedBlockId) {
+    if (!selectedBlockIds.length) {
       queueMicrotask(() => {
         setPathDrawingMode(false)
         setPathInsertAfterBlockId(undefined)
       })
     }
-  }, [pathDrawingMode, selectedBlockId])
+  }, [pathDrawingMode, selectedBlockIds])
   useBlockKeyboardNavigation({
     selectedProgram,
-    selectedBlockId,
-    onSelectBlock: (blockId) => setSelectedBlockId(blockId),
+    selectedBlockId: selectedBlockIds[0],
+    onSelectBlock: (blockId) => setSelectedBlockIds(blockId ? [blockId] : []),
     onDeleteBlock: handleDeleteBlock,
   })
   usePathDrawingHotkey({
@@ -348,7 +377,7 @@ function App() {
     setHasUnsavedChanges(true)
   }, [selectedDroneId])
   const handleInsertBlock = useCallback((definition: (typeof INSERTABLE_BLOCKS)[number]) => {
-    const targetBlockId = insertAfterBlockId ?? selectedBlockId
+    const targetBlockId = insertAfterBlockId ?? selectedBlockIds[0]
     if (!targetBlockId || !selectedDroneId) {
       return
     }
@@ -362,7 +391,7 @@ function App() {
       }
     }
     setResult((prev) => insertBlockAfterTarget(prev, selectedDroneId, targetBlockId, nextBlock))
-    setSelectedBlockId(nextBlock.id)
+    setSelectedBlockIds([nextBlock.id])
     setHighlightedBlockId(nextBlock.id)
     setHighlightPulse((prev) => prev + 1)
     setPendingFocusTarget({ blockId: nextBlock.id })
@@ -370,7 +399,7 @@ function App() {
     setInsertAfterBlockId(undefined)
     setHasUnsavedChanges(true)
     message.success(`已插入积木：${definition.label}`)
-  }, [insertAfterBlockId, selectedBlockId, selectedDroneId, selectedProgram])
+  }, [insertAfterBlockId, selectedBlockIds, selectedDroneId, selectedProgram])
   const handleInsertPickerSubmit = useCallback((item: InsertPickerItem) => {
     if (item.kind === 'template' && item.templateDefinition) {
       setPendingTemplateDefinition(item.templateDefinition)
@@ -388,7 +417,7 @@ function App() {
     setInsertAfterBlockId(undefined)
   }, [])
   const handleTemplateInsertConfirm = useCallback((payload: TemplateModalConfirmPayload) => {
-    const targetBlockId = insertAfterBlockId ?? selectedBlockId
+    const targetBlockId = insertAfterBlockId ?? selectedBlockIds[0]
     if (!targetBlockId || !selectedDroneId || !pendingTemplateDefinition) {
       setTemplateModalOpen(false)
       setPendingTemplateDefinition(undefined)
@@ -464,7 +493,7 @@ function App() {
     }
     const lastInsertedBlock = blocks[blocks.length - 1]
     setResult((prev) => insertBlocksAfterTarget(prev, selectedDroneId, targetBlockId, blocks))
-    setSelectedBlockId(lastInsertedBlock.id)
+    setSelectedBlockIds([lastInsertedBlock.id])
     setHighlightedBlockId(lastInsertedBlock.id)
     setHighlightPulse((prev) => prev + 1)
     setTemplateModalOpen(false)
@@ -475,7 +504,7 @@ function App() {
   }, [
     insertAfterBlockId,
     pendingTemplateDefinition,
-    selectedBlockId,
+    selectedBlockIds,
     selectedDroneId,
     selectedProgram,
     subject7TemplateDefaultRods.subject7RodAX,
@@ -489,7 +518,7 @@ function App() {
     }
     const defaultBlock = createInsertedBlock(INSERTABLE_BLOCKS[0])
     setResult((prev) => insertFirstBlockWhenEmpty(prev, selectedDroneId, defaultBlock))
-    setSelectedBlockId(defaultBlock.id)
+    setSelectedBlockIds([defaultBlock.id])
     setHighlightedBlockId(defaultBlock.id)
     setHighlightPulse((prev) => prev + 1)
     setPendingFocusTarget({ blockId: defaultBlock.id })
@@ -557,7 +586,7 @@ function App() {
             onSelect={(id) => {
               setSelectedDroneId(id)
               setHighlightedBlockId(undefined)
-              setSelectedBlockId(undefined)
+              setSelectedBlockIds([])
               setHighlightPulse(0)
             }}
           />
@@ -592,15 +621,38 @@ function App() {
                 startPos={selectedProgram?.drone.startPos}
                 blocks={selectedProgram?.blocks ?? []}
                 highlightedBlockId={highlightedBlockId}
-                selectedBlockId={selectedBlockId}
+                selectedBlockIds={selectedBlockIds}
                 highlightPulse={highlightPulse}
                 onFieldChange={handleFieldChange}
                 onFieldBlur={handleFieldBlur}
-                onSelectBlock={(blockId) => setSelectedBlockId(blockId)}
+                onSelectBlock={(blockId) => setSelectedBlockIds(blockId ? [blockId] : [])}
+                onShiftSelect={(blockId) => {
+                  if (!shiftSelectAnchor) {
+                    setShiftSelectAnchor(blockId)
+                    setSelectedBlockIds([blockId])
+                  } else {
+                    const blocks = selectedProgram?.blocks ?? []
+                    const anchorIndex = blocks.findIndex((b) => b.id === shiftSelectAnchor)
+                    const currentIndex = blocks.findIndex((b) => b.id === blockId)
+                    if (anchorIndex >= 0 && currentIndex >= 0) {
+                      const start = Math.min(anchorIndex, currentIndex)
+                      const end = Math.max(anchorIndex, currentIndex)
+                      const rangeIds = blocks.slice(start, end + 1).map((b) => b.id)
+                      setSelectedBlockIds(rangeIds)
+                    }
+                  }
+                }}
                 onDuplicateBlock={handleDuplicateBlock}
                 onSplitAutoDelayBlock={handleSplitAutoDelayBlock}
                 onConvertTurnBlock={handleConvertTurnBlock}
                 onDeleteBlock={handleDeleteBlock}
+                onDeleteBlocks={handleDeleteBlocks}
+                onBatchUpdateField={(fieldKey, value) => {
+                  selectedBlockIds.forEach((id) => {
+                    setResult((prev) => updateBlockField(prev, selectedDroneId, id, fieldKey, value))
+                  })
+                  setHasUnsavedChanges(true)
+                }}
                 onReorderBlocks={handleReorderBlocks}
                 insertPickerOpen={insertPickerOpen}
                 insertPickerItems={INSERT_PICKER_ITEMS}
@@ -616,7 +668,7 @@ function App() {
             blocks={selectedProgram?.blocks ?? []}
             safetyDistance={appSettings.safetyDistance}
             openedDirectoryPath={desktopProjectDirectory}
-            selectedBlockId={selectedBlockId}
+            selectedBlockId={selectedBlockIds[0]}
             pathDrawingMode={pathDrawingMode}
             onPathDrawingToggle={handlePathDrawingToggle}
             onDrawPathPoint={handlePathPointDraw}

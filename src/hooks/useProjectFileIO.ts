@@ -22,7 +22,7 @@ type UseProjectFileIOOptions = {
   setDesktopProjectDirectory: Dispatch<SetStateAction<string | undefined>>
   setSelectedDroneId: Dispatch<SetStateAction<string | undefined>>
   setHighlightedBlockId: Dispatch<SetStateAction<string | undefined>>
-  setSelectedBlockId: Dispatch<SetStateAction<string | undefined>>
+  setSelectedBlockIds: Dispatch<SetStateAction<string[]>>
   setHighlightPulse: Dispatch<SetStateAction<number>>
   setHasUnsavedChanges: Dispatch<SetStateAction<boolean>>
 }
@@ -36,7 +36,7 @@ export const useProjectFileIO = ({
   setDesktopProjectDirectory,
   setSelectedDroneId,
   setHighlightedBlockId,
-  setSelectedBlockId,
+  setSelectedBlockIds,
   setHighlightPulse,
   setHasUnsavedChanges,
 }: UseProjectFileIOOptions) => {
@@ -62,7 +62,7 @@ export const useProjectFileIO = ({
       setDesktopProjectDirectory(undefined)
       setSelectedDroneId(merged.programs[0]?.drone.id)
       setHighlightedBlockId(undefined)
-      setSelectedBlockId(undefined)
+      setSelectedBlockIds([])
       setHighlightPulse(0)
       setHasUnsavedChanges(false)
       await updateAgentProjectContext(merged)
@@ -83,7 +83,7 @@ export const useProjectFileIO = ({
     setHighlightedBlockId,
     setLoading,
     setResult,
-    setSelectedBlockId,
+    setSelectedBlockIds,
     setSelectedDroneId,
   ])
 
@@ -111,7 +111,7 @@ export const useProjectFileIO = ({
         setDesktopProjectDirectory(openResult.directoryPath)
         setSelectedDroneId(merged.programs[0]?.drone.id)
         setHighlightedBlockId(undefined)
-        setSelectedBlockId(undefined)
+        setSelectedBlockIds([])
         setHighlightPulse(0)
         setHasUnsavedChanges(false)
         await updateAgentProjectContext(merged)
@@ -137,7 +137,7 @@ export const useProjectFileIO = ({
     setHighlightedBlockId,
     setLoading,
     setResult,
-    setSelectedBlockId,
+    setSelectedBlockIds,
     setSelectedDroneId,
   ])
 

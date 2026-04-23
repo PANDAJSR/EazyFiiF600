@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent } from 'react'
 import { Dropdown, Empty } from 'antd'
 import type { MenuProps } from 'antd'
 import type { ParsedBlock } from '../types/fii'
-import { blockTheme, groupBlocksByRow } from './blockCanvasUtils'
+import { blockTheme, blockText, groupBlocksByRow } from './blockCanvasUtils'
 import { reorderBlocks } from '../utils/blockOrder'
 import useBlockInputNavigation from './useBlockInputNavigation'
 import BlockInsertPicker from './BlockInsertPicker'
@@ -18,15 +18,19 @@ type Props = {
   startPos?: { x: string; y: string; z: string }
   blocks: ParsedBlock[]
   highlightedBlockId?: string
-  selectedBlockId?: string
+  selectedBlockIds?: string[]
   highlightPulse?: number
   onFieldChange?: (blockId: string, fieldKey: string, value: string) => void
   onFieldBlur?: (blockId: string, fieldKey: string, value: string) => void
   onSelectBlock?: (blockId?: string) => void
+  onShiftSelect?: (blockId: string) => void
+  onClearShiftAnchor?: () => void
   onDeleteBlock?: (blockId: string) => void
+  onDeleteBlocks?: (blockIds: string[]) => void
   onDuplicateBlock?: (blockId: string) => void
   onSplitAutoDelayBlock?: (blockId: string) => void
   onConvertTurnBlock?: (blockId: string) => void
+  onBatchUpdateField?: (fieldKey: string, value: string) => void
   onReorderBlocks?: (nextBlocks: ParsedBlock[]) => void
   insertPickerOpen?: boolean
   insertPickerItems?: InsertPickerItem[]
@@ -39,15 +43,19 @@ function BlockCanvas({
   startPos,
   blocks,
   highlightedBlockId,
-  selectedBlockId,
+  selectedBlockIds,
   highlightPulse,
   onFieldChange,
   onFieldBlur,
   onSelectBlock,
+  onShiftSelect,
+  onClearShiftAnchor,
   onDeleteBlock,
+  onDeleteBlocks,
   onDuplicateBlock,
   onSplitAutoDelayBlock,
   onConvertTurnBlock,
+  onBatchUpdateField,
   onReorderBlocks,
   insertPickerOpen,
   insertPickerItems,
@@ -63,6 +71,7 @@ function BlockCanvas({
       return
     }
     onSelectBlock?.(undefined)
+    onClearShiftAnchor?.()
   }
 
   const blockRefs = useRef<Record<string, HTMLElement | null>>({})
@@ -206,9 +215,23 @@ function BlockCanvas({
       border: '#8db8e6',
     }
 
-    if (selectedBlockId === block.id) {
+    const isSelected = selectedBlockIds?.includes(block.id)
+    if (isSelected) {
       classNames.push('block-card-selected')
     }
+
+    // 获取可编辑参数槽位（用于批量操作菜单）
+    const editableFields = (() => {
+      const textInfo = blockText(block)
+      const fields: { fieldKey: string; label: string }[] = []
+      textInfo.values.forEach((val, idx) => {
+        if (val.fieldKey) {
+          fields.push({ fieldKey: val.fieldKey, label: `第${idx + 1}个参数` })
+        }
+      })
+      return fields
+    })()
+    const hasEditableFields = editableFields.length > 0
 
     const menuItems: MenuProps['items'] = [{ key: 'duplicate', label: '复制' }]
     if (block.type === AUTO_DELAY_BLOCK_TYPE && onSplitAutoDelayBlock) {
@@ -233,6 +256,22 @@ function BlockCanvas({
       }
       menuItems.push({ key: 'convert', label: convertLabel })
     }
+
+    if (selectedBlockIds && selectedBlockIds.length > 1 && hasEditableFields && onBatchUpdateField) {
+      const batchSubMenu: MenuProps['items'] = editableFields.map((f) => ({
+        key: `batch_${f.fieldKey}`,
+        label: `清空${f.label}`,
+        onClick: () => {
+          onBatchUpdateField(f.fieldKey, '')
+        },
+      }))
+      menuItems.push({ key: 'batch', label: '批量清空参数', children: batchSubMenu })
+    }
+
+    if (selectedBlockIds && selectedBlockIds.length > 1 && onDeleteBlocks) {
+      menuItems.push({ key: 'delete-multi', label: `删除所选 (${selectedBlockIds.length}个)`, danger: true })
+    }
+
     menuItems.push({ key: 'delete', label: '删除', danger: true })
 
     const handleCardMenuClick: MenuProps['onClick'] = ({ key, domEvent }) => {
@@ -244,6 +283,10 @@ function BlockCanvas({
       }
       if (key === 'delete') {
         onDeleteBlock?.(block.id)
+        return
+      }
+      if (key === 'delete-multi') {
+        onDeleteBlocks?.(selectedBlockIds ?? [])
         return
       }
       if (key === 'split') {
@@ -267,7 +310,13 @@ function BlockCanvas({
         onMouseDownCapture={(event) => {
           suppressCardDragRef.current = shouldIgnoreCardDrag(event.target)
         }}
-        onClick={() => onSelectBlock?.(block.id)}
+        onClick={(event) => {
+          if (event.shiftKey && onShiftSelect) {
+            onShiftSelect(block.id)
+          } else {
+            onSelectBlock?.(block.id)
+          }
+        }}
         onContextMenu={(event) => {
           event.preventDefault()
           onSelectBlock?.(block.id)
@@ -349,7 +398,7 @@ function BlockCanvas({
         cardNode
       )
 
-    if (!(insertPickerOpen && selectedBlockId === block.id && insertPickerItems && onInsertPickerCancel && onInsertPickerSubmit)) {
+    if (!(insertPickerOpen && selectedBlockIds?.length === 1 && selectedBlockIds[0] === block.id && insertPickerItems && onInsertPickerCancel && onInsertPickerSubmit)) {
       return cardNodeWithMenu
     }
 
@@ -385,7 +434,7 @@ function BlockCanvas({
     return renderRowsList.map((row, rowOffset) => {
       const rowIndex = startRowIndex + rowOffset
       const rowId = row[0].id
-      const selectedBlockInRow = row.find((block) => block.id === selectedBlockId)
+      const selectedBlockInRow = row.find((block) => selectedBlockIds?.includes(block.id))
 
       return (
         <div
