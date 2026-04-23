@@ -170,7 +170,7 @@ const buildSubject1SquareStableBlocks = (params: Subject1SquareStableParams): Pa
       time: '800',
     }))
 
-  const flightBlocks = flightSegments.flatMap((_, index) => [headingBlocks[index], moveBlocks[index]]).filter(Boolean) as ParsedBlock[]
+  const flightBlocks = flightSegments.flatMap((_, index) => [headingBlocks[index], createInsertedBlockByType('block_delay', { time: '1000' }), moveBlocks[index]]).filter(Boolean) as ParsedBlock[]
 
   return [
     createInsertedBlockByType(COMMENT_BLOCK_TYPE, { content: '科目一 Begin' }),
