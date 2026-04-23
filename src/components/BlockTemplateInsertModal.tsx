@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { InputNumber, Modal, Space, Typography } from 'antd'
 import {
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
+  SUBJECT1_SQUARE_TURN_AND_FLY_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
   SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
@@ -95,7 +96,7 @@ function BlockTemplateInsertModal({
   const [subject6RodCY, setSubject6RodCY] = useState<number | null>(defaultSubject6RodCY)
   const [subject6RodDX, setSubject6RodDX] = useState<number | null>(defaultSubject6RodDX)
   const [subject6RodDY, setSubject6RodDY] = useState<number | null>(defaultSubject6RodDY)
-  const isSubject1Template = template?.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID
+  const isSubject1Template = template?.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID || template?.id === SUBJECT1_SQUARE_TURN_AND_FLY_TEMPLATE_ID
   const isSubject2Template = template?.id === SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID
   const isSubject5Template = template?.id === SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID
   const isSubject6Template = template?.id === SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID

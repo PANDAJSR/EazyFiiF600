@@ -22,6 +22,7 @@ import {
   getSubject6TemplateDefaultRods,
   getSubject7TemplateDefaultRods,
   SUBJECT1_SQUARE_STABLE_TEMPLATE_ID,
+  SUBJECT1_SQUARE_TURN_AND_FLY_TEMPLATE_ID,
   SUBJECT2_RECTANGLE_STABLE_TEMPLATE_ID,
   SUBJECT5_HEXAGON_FIGURE_EIGHT_TEMPLATE_ID,
   SUBJECT6_OCTAGON_FIGURE_EIGHT_TEMPLATE_ID,
@@ -405,7 +406,7 @@ function App() {
       }
       : undefined
     const blocks = (() => {
-      if (pendingTemplateDefinition.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID) {
+      if (pendingTemplateDefinition.id === SUBJECT1_SQUARE_STABLE_TEMPLATE_ID || pendingTemplateDefinition.id === SUBJECT1_SQUARE_TURN_AND_FLY_TEMPLATE_ID) {
         return buildTemplateBlocks(pendingTemplateDefinition.id, {
           subject1X: payload.subject1X,
           subject1Y: payload.subject1Y,
