@@ -234,6 +234,7 @@ function App() {
         setPathInsertAfterBlockId((prev) => (prev === blockId ? undefined : prev))
         setSelectedBlockId(nextSelectedId)
         setHighlightedBlockId((prev) => (prev === blockId ? undefined : prev))
+        setHighlightPulse(0)
         message.success('积木已删除')
       },
     })
