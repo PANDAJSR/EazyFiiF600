@@ -319,7 +319,6 @@ function BlockCanvas({
         }}
         onContextMenu={(event) => {
           event.preventDefault()
-          onSelectBlock?.(block.id)
         }}
         onDragStart={(event) => {
           if (suppressCardDragRef.current || shouldIgnoreCardDrag(event.target) || shouldIgnoreCardDrag(document.activeElement)) {

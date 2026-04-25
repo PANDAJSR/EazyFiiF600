@@ -3,9 +3,10 @@ import type { DroneProgram } from '../types/fii'
 
 type Options = {
   selectedProgram?: DroneProgram
-  selectedBlockId?: string
+  selectedBlockIds?: string[]
   onSelectBlock: (blockId: string) => void
-  onDeleteBlock: (blockId: string) => void
+  onDeleteBlock?: (blockId: string) => void
+  onDeleteBlocks?: (blockIds: string[]) => void
 }
 
 const isEditableTarget = (target: EventTarget | null) => {
@@ -19,7 +20,7 @@ const isEditableTarget = (target: EventTarget | null) => {
   return target.isContentEditable
 }
 
-function useBlockKeyboardNavigation({ selectedProgram, selectedBlockId, onSelectBlock, onDeleteBlock }: Options) {
+function useBlockKeyboardNavigation({ selectedProgram, selectedBlockIds, onSelectBlock, onDeleteBlock, onDeleteBlocks }: Options) {
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.repeat || isEditableTarget(event.target)) {
@@ -32,8 +33,8 @@ function useBlockKeyboardNavigation({ selectedProgram, selectedBlockId, onSelect
 
       if (event.key === 'ArrowUp' || event.key === 'ArrowDown') {
         event.preventDefault()
-        const currentIndex = selectedBlockId
-          ? selectedProgram.blocks.findIndex((block) => block.id === selectedBlockId)
+        const currentIndex = selectedBlockIds?.length
+          ? selectedProgram.blocks.findIndex((block) => block.id === selectedBlockIds[0])
           : -1
         if (event.key === 'ArrowUp') {
           const prevIndex = currentIndex <= 0 ? selectedProgram.blocks.length - 1 : currentIndex - 1
@@ -46,15 +47,19 @@ function useBlockKeyboardNavigation({ selectedProgram, selectedBlockId, onSelect
         return
       }
 
-      if ((event.key === 'Backspace' || event.key === 'Delete') && selectedBlockId) {
+      if ((event.key === 'Backspace' || event.key === 'Delete') && selectedBlockIds?.length) {
         event.preventDefault()
-        onDeleteBlock(selectedBlockId)
+        if (selectedBlockIds.length > 1 && onDeleteBlocks) {
+          onDeleteBlocks(selectedBlockIds)
+        } else if (onDeleteBlock) {
+          onDeleteBlock(selectedBlockIds[0])
+        }
       }
     }
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [onDeleteBlock, onSelectBlock, selectedBlockId, selectedProgram])
+  }, [onDeleteBlock, onDeleteBlocks, onSelectBlock, selectedBlockIds, selectedProgram])
 }
 
 export default useBlockKeyboardNavigation

@@ -307,9 +307,10 @@ function App() {
   }, [pathDrawingMode, selectedBlockIds])
   useBlockKeyboardNavigation({
     selectedProgram,
-    selectedBlockId: selectedBlockIds[0],
+    selectedBlockIds,
     onSelectBlock: (blockId) => setSelectedBlockIds(blockId ? [blockId] : []),
     onDeleteBlock: handleDeleteBlock,
+    onDeleteBlocks: handleDeleteBlocks,
   })
   usePathDrawingHotkey({
     pathDrawingMode,
