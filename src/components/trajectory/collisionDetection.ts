@@ -98,8 +98,8 @@ const segmentToSegmentDistance = (s1: Segment, s2: Segment): number => {
   const e = dx2 * wx + dy2 * wy + dz2 * wz
 
   const D = a * c - b * b
-  let sD = 1
-  let tD = 1
+  let sD = D
+  let tD = D
   let sN = 0
   let tN = 0
 
