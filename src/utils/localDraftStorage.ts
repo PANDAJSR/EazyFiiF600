@@ -34,6 +34,11 @@ const createInitialProgramBlocks = (droneId: string): ParsedBlock[] => [
     fields: { VV: '200', AV: '400' },
   },
   {
+    id: `${droneId}-block-angular-velocity`,
+    type: 'Goertek_AngularVelocity',
+    fields: { w: '60' },
+  },
+  {
     id: `${droneId}-block-unlock`,
     type: 'Goertek_UnLock',
     fields: {},
