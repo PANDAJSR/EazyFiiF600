@@ -106,10 +106,11 @@ const createSubject1RelativeTurnBlocks = (
 export const buildSubject1SquareTurnAndFlyBlocks = (params: Subject1SquareTurnAndFlyParams): ParsedBlock[] => {
   const { z, startHeadingDeg, approachSegment, squareSegments } = buildSubject1SquareGeometry(params)
   const approachMoveBlock = approachSegment
-    ? createInsertedBlockByType('Goertek_MoveToCoord2', {
+    ? createInsertedBlockByType(AUTO_DELAY_BLOCK_TYPE, {
       X: toFieldNumber(approachSegment.to.x),
       Y: toFieldNumber(approachSegment.to.y),
       Z: toFieldNumber(z),
+      time: '800',
     })
     : null
   const turnBlocks = createSubject1RelativeTurnBlocks(squareSegments, startHeadingDeg, '1500')
