@@ -31,8 +31,8 @@
 
 | 积木 | 作用 | 使用场景 |
 |------|------|----------|
-| `Goertek_TurnTo` | **转向**：将机头对准到指定的绝对角度（世界坐标系） | 科目一等需要特定机头朝向的场景 |
-| `Goertek_Turn` | **转动**：相对于当前机头旋转指定角度 | 绕杆、原地转向等需要相对旋转的场景 |
+| `Goertek_TurnTo` | **转向**：将机头对准到指定的绝对角度（世界坐标系） | 明确要求绝对朝向的场景 |
+| `Goertek_Turn` | **转动**：相对于当前机头旋转指定角度 | 科目一正方形绕行段、绕杆、原地转向等需要相对旋转的场景 |
 
 **示例**：
 - 转向 90°：`Goertek_TurnTo` 的 `angle` 为 `90`，表示机头朝向世界坐标的 90° 方向
@@ -82,7 +82,7 @@
 
 ## 科目1积木写法示例
 
-> **说明**：科目1需要特定机头朝向，因此示例中包含转向积木 `Goertek_TurnTo`。
+> **说明**：科目1正方形绕行段使用相对转动积木 `Goertek_Turn`；到达起始点的进场段不额外插入朝向控制。
 
 ```json
 { "type": "Goertek_LEDTurnOnAllSingleColor4", "fields": { "motor": "1", "color1": "#00FF00" } }
@@ -90,14 +90,16 @@
 { "type": "Goertek_LEDTurnOnAllSingleColor4", "fields": { "motor": "2", "color1": "#00FF00" } }
 { "type": "block_delay", "fields": { "time": "100" } }
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "120", "Z": "100", "time": "800" } }
+{ "type": "Goertek_Turn", "fields": { "turnDirection": "r", "angle": "0" } }
+{ "type": "block_delay", "fields": { "time": "1000" } }
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "200", "Z": "100", "time": "800" } }
-{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "90" } }
+{ "type": "Goertek_Turn", "fields": { "turnDirection": "r", "angle": "90" } }
 { "type": "block_delay", "fields": { "time": "1000" } }
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "200", "Y": "200", "Z": "100", "time": "800" } }
-{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "180" } }
+{ "type": "Goertek_Turn", "fields": { "turnDirection": "r", "angle": "90" } }
 { "type": "block_delay", "fields": { "time": "1000" } }
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "200", "Y": "120", "Z": "100", "time": "800" } }
-{ "type": "Goertek_TurnTo", "fields": { "turnDirection": "r", "angle": "270" } }
+{ "type": "Goertek_Turn", "fields": { "turnDirection": "r", "angle": "90" } }
 { "type": "block_delay", "fields": { "time": "1000" } }
 { "type": "EazyFii_MoveToCoordAutoDelay", "fields": { "X": "120", "Y": "120", "Z": "100", "time": "800" } }
 ```

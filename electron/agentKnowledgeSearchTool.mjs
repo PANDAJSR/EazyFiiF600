@@ -311,7 +311,7 @@ export const searchAgentKnowledge = async (rawArguments) => {
         error: '缺少检索关键词。请传 query 或 keywords。',
         example: {
           query: '科目1 绕竖杆 机头朝向 复检',
-          keywords: ['科目1', '绕竖杆', 'TurnTo', 'GetTrajectoryIssuesDetailed'],
+          keywords: ['科目1', '绕竖杆', 'Turn', '转动', 'GetTrajectoryIssuesDetailed'],
         },
       }),
     }

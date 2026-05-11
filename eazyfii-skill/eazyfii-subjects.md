@@ -46,7 +46,7 @@
 ## 科目1（绕竖杆）硬约束
 
 - 机头朝向强约束仅适用于"围杆封闭图形"内部各段（用于完成科目1判定的绕行段）。
-- 在封闭绕行段的每段平移前，必须先有 `Goertek_TurnTo`（优先）或 `Goertek_Turn`（兼容）。
+- 在封闭绕行段的每段平移前，必须先有 `Goertek_Turn` 相对转动到该段飞行方向。
 - 进场段、离场段（封闭图形外）默认不强制机头对齐飞行方向，除非用户明确要求。
 
 ## 科目2（绕横杆）硬约束
@@ -61,7 +61,7 @@
 - `转向`：仅指 `Goertek_TurnTo`，属于**绝对朝向控制**；`angle` 是世界坐标系中的目标朝向角。
 - `转动`：仅指 `Goertek_Turn`，属于**相对旋转控制**；`angle` 是相对当前机头的旋转量。
 - 禁止把"转向"和"转动"当同义词混用；描述动作时必须带上积木名（`TurnTo` 或 `Turn`）。
-- 科目1默认优先用 `Goertek_TurnTo`；只有在明确需要相对旋转时才使用 `Goertek_Turn`。
+- 科目1模板默认使用 `Goertek_Turn`；不要用 `Goertek_TurnTo` 作为正方形绕行段的朝向控制。
 
 ## 科目1角度与方向计算
 
@@ -72,8 +72,8 @@
   - `turnDirection='r'` => `heading = heading + angle`
   - `turnDirection='l'` => `heading = heading - angle`
 - 选择策略：
-  - 已知目标朝向 `targetDeg` 时，优先 `Goertek_TurnTo(angle=targetDeg)`。
-  - 仅在必须使用 `Goertek_Turn` 时，才按当前朝向计算相对角。
+  - 科目1正方形绕行段使用 `Goertek_Turn`，按当前朝向与下一段目标朝向计算相对角。
+  - 进场段不为了到达起始点额外插入 `Goertek_TurnTo` 或 `Goertek_Turn`。
 - 最小相对角选择：
   - `cw=(target-current+360)%360`
   - `ccw=(current-target+360)%360`
