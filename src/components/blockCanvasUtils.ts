@@ -19,6 +19,7 @@ const NUMERIC_TEXT_FIELDS = new Set([
   'Goertek_HorizontalSpeed:AH',
   'Goertek_VerticalSpeed:VV',
   'Goertek_VerticalSpeed:AV',
+  'Goertek_AngularVelocity:w',
   'block_delay:time',
   'Goertek_TakeOff2:alt',
   `${AUTO_DELAY_BLOCK_TYPE}:X`,
@@ -61,6 +62,7 @@ export const blockTheme: Record<string, { color: string; bg: string; border: str
   block_inittime: { color: '#17324d', bg: '#f1f7ff', border: '#adc3e3' },
   Goertek_HorizontalSpeed: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_VerticalSpeed: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
+  Goertek_AngularVelocity: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   Goertek_UnLock: { color: '#17324d', bg: '#dfeeff', border: '#8fadd8' },
   block_delay: { color: '#17324d', bg: '#eaf3ff', border: '#9bb6de' },
   [COMMENT_BLOCK_TYPE]: { color: '#5a3514', bg: '#fff2df', border: '#dfb27d' },
@@ -102,6 +104,14 @@ export const blockText = (block: ParsedBlock): { title: string; values: BlockTok
           token('加速度'),
           token(f.AV ?? '-', true, false, 'AV'),
           token('cm/s²'),
+        ],
+      }
+    case 'Goertek_AngularVelocity':
+      return {
+        title: '角速度',
+        values: [
+          token(f.w ?? '60', true, false, 'w'),
+          token('°/s'),
         ],
       }
     case 'Goertek_UnLock':

@@ -41,6 +41,12 @@ export const INSERTABLE_BLOCKS: InsertableBlockDefinition[] = [
     fields: { VV: '60', AV: '100' },
   },
   {
+    type: 'Goertek_AngularVelocity',
+    label: '角速度',
+    keywords: ['角速度', '旋转速度', 'angular', 'velocity', 'w'],
+    fields: { w: '60' },
+  },
+  {
     type: 'Goertek_UnLock',
     label: '解锁',
     keywords: ['解锁', 'unlock'],

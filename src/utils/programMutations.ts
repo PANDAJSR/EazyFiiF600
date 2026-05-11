@@ -181,6 +181,15 @@ export const normalizeBlockFieldOnBlur = (
           },
         }
       }
+      if (block.type === 'Goertek_AngularVelocity' && fieldKey === 'w') {
+        return {
+          ...block,
+          fields: {
+            ...block.fields,
+            w: normalizeNonNegativeIntString(value, 60, 5, 60),
+          },
+        }
+      }
       if (block.type === 'block_delay' && fieldKey === 'time') {
         return {
           ...block,

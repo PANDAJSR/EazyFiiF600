@@ -4,6 +4,7 @@ export const BLOCK_CATALOG_SNAPSHOT = {
     { type: 'block_inittime', label: '在时间开始', fields: { time: '00:00' }, keywords: ['时间', '开始', 'init', 'time'] },
     { type: 'Goertek_HorizontalSpeed', label: '水平速度', fields: { VH: '60', AH: '100' }, keywords: ['水平', '速度', 'vh', 'ah'] },
     { type: 'Goertek_VerticalSpeed', label: '垂直速度', fields: { VV: '60', AV: '100' }, keywords: ['垂直', '速度', 'vv', 'av'] },
+    { type: 'Goertek_AngularVelocity', label: '角速度', fields: { w: '60' }, keywords: ['角速度', '旋转速度', 'angular', 'velocity', 'w'] },
     { type: 'Goertek_UnLock', label: '解锁', fields: {}, keywords: ['解锁', 'unlock'] },
     { type: 'block_delay', label: '延时', fields: { time: '500' }, keywords: ['延时', '等待', 'delay', 'time'] },
     { type: 'Goertek_TakeOff2', label: '起飞', fields: { alt: '100' }, keywords: ['起飞', 'takeoff', 'alt'] },

@@ -7,6 +7,7 @@ const TURN_DIRECTION_LABEL: Record<string, string> = { r: '右', l: '左' }
 const LIGHT_COLOR_PRESETS = ['#ff0000', '#00ff00', '#0000ff']
 const INTEGER_INPUT_FIELDS = new Set([
   'block_delay:time',
+  'Goertek_AngularVelocity:w',
   'Goertek_Turn:angle',
   'Goertek_TurnTo:angle',
 ])

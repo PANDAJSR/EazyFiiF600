@@ -5,6 +5,7 @@ const ROUNDABLE_NUMERIC_FIELDS = new Set([
   'Goertek_HorizontalSpeed:AH',
   'Goertek_VerticalSpeed:VV',
   'Goertek_VerticalSpeed:AV',
+  'Goertek_AngularVelocity:w',
   'block_delay:time',
   'Goertek_TakeOff2:alt',
   'Goertek_MoveToCoord2:X',
@@ -37,6 +38,8 @@ const normalizeRoundedValue = (blockType: string, fieldKey: string, value: strin
     rounded = Math.min(359, Math.max(0, rounded))
   } else if (blockType === 'Goertek_Turn' && fieldKey === 'angle') {
     rounded = Math.min(360, Math.max(0, rounded))
+  } else if (blockType === 'Goertek_AngularVelocity' && fieldKey === 'w') {
+    rounded = Math.min(60, Math.max(5, rounded))
   } else if (blockType === 'block_delay' && fieldKey === 'time') {
     rounded = Math.max(0, rounded)
   }
