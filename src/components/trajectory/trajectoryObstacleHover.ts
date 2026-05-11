@@ -65,7 +65,11 @@ const buildHorizontalRing = (start: XYPointLike | undefined, end: XYPointLike | 
   }
 }
 
-const buildVerticalRingProjection = (start: XYPointLike | undefined, end: XYPointLike | undefined): ObstacleLine | null => {
+const buildVerticalRingProjection = (
+  start: XYPointLike | undefined,
+  end: XYPointLike | undefined,
+  halfDiameter = SUBJECT_RING_RADIUS,
+): ObstacleLine | null => {
   if (!isFinitePoint(start) || !isFinitePoint(end)) {
     return null
   }
@@ -80,11 +84,18 @@ const buildVerticalRingProjection = (start: XYPointLike | undefined, end: XYPoin
   const ux = axisX / axisLength
   const uy = axisY / axisLength
   return {
-    x1: centerX - ux * SUBJECT_RING_RADIUS,
-    y1: centerY - uy * SUBJECT_RING_RADIUS,
-    x2: centerX + ux * SUBJECT_RING_RADIUS,
-    y2: centerY + uy * SUBJECT_RING_RADIUS,
+    x1: centerX - ux * halfDiameter,
+    y1: centerY - uy * halfDiameter,
+    x2: centerX + ux * halfDiameter,
+    y2: centerY + uy * halfDiameter,
   }
+}
+
+const distanceBetweenPoints = (start: XYPointLike | undefined, end: XYPointLike | undefined): number | null => {
+  if (!isFinitePoint(start) || !isFinitePoint(end)) {
+    return null
+  }
+  return Math.hypot(end.x - start.x, end.y - start.y)
 }
 
 const formatCm = (value: number) => `${Math.round(value)} cm`
@@ -220,10 +231,11 @@ export const buildRodObstacleHoverInfos = (rodConfig?: RodConfig): RodObstacleHo
     [subject10E, subject10F, 'subject10-hover-c', '科目十（圈3）'],
   ] as const
   subject10Rings.forEach(([start, end, key, label], index) => {
+    const diameter = distanceBetweenPoints(start, end)
     const centerHeight = rodConfig.subject10Config.ringCenterHeights[index]
     const heightText = Number.isFinite(centerHeight) ? formatCm(centerHeight as number) : '待题卡'
-    pushLineInfo(infos, key, label, '竖圈', buildVerticalRingProjection(start, end), [
-      `直径：${formatCm(SUBJECT_RING_DIAMETER)}`,
+    pushLineInfo(infos, key, label, '竖圈', buildVerticalRingProjection(start, end, diameter ? diameter / 2 : undefined), [
+      `直径：${diameter ? formatCm(diameter) : formatCm(SUBJECT_RING_DIAMETER)}`,
       `圈心高度：${heightText}`,
     ])
   })

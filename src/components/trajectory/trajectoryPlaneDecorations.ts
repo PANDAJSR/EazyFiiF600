@@ -138,6 +138,7 @@ const buildVerticalRingProjection = (
   start: XYPointLike | undefined,
   end: XYPointLike | undefined,
   key: string,
+  halfDiameter?: number,
 ): ObstacleLineDecoration | null => {
   if (!isFinitePoint(start) || !isFinitePoint(end)) {
     return null
@@ -150,7 +151,7 @@ const buildVerticalRingProjection = (
   }
   const centerX = (start.x + end.x) / 2
   const centerY = (start.y + end.y) / 2
-  const half = SUBJECT_RING_RADIUS
+  const half = halfDiameter ?? SUBJECT_RING_RADIUS
   const ux = axisX / axisLength
   const uy = axisY / axisLength
   return {
@@ -161,6 +162,13 @@ const buildVerticalRingProjection = (
     x2: centerX + ux * half,
     y2: centerY + uy * half,
   }
+}
+
+const distanceBetweenPoints = (start: XYPointLike | undefined, end: XYPointLike | undefined): number | null => {
+  if (!isFinitePoint(start) || !isFinitePoint(end)) {
+    return null
+  }
+  return Math.hypot(end.x - start.x, end.y - start.y)
 }
 
 export const buildRodObstacleDecorations = (rodConfig?: RodConfig): RodObstacleDecoration[] => {
@@ -221,15 +229,30 @@ export const buildRodObstacleDecorations = (rodConfig?: RodConfig): RodObstacleD
     decorations.push(subject9Line)
   }
 
-  const subject10RingA = buildVerticalRingProjection(subject10A, subject10B, 'subject10-ring-a')
+  const subject10RingA = buildVerticalRingProjection(
+    subject10A,
+    subject10B,
+    'subject10-ring-a',
+    (distanceBetweenPoints(subject10A, subject10B) ?? 0) / 2,
+  )
   if (subject10RingA) {
     decorations.push(subject10RingA)
   }
-  const subject10RingB = buildVerticalRingProjection(subject10C, subject10D, 'subject10-ring-b')
+  const subject10RingB = buildVerticalRingProjection(
+    subject10C,
+    subject10D,
+    'subject10-ring-b',
+    (distanceBetweenPoints(subject10C, subject10D) ?? 0) / 2,
+  )
   if (subject10RingB) {
     decorations.push(subject10RingB)
   }
-  const subject10RingC = buildVerticalRingProjection(subject10E, subject10F, 'subject10-ring-c')
+  const subject10RingC = buildVerticalRingProjection(
+    subject10E,
+    subject10F,
+    'subject10-ring-c',
+    (distanceBetweenPoints(subject10E, subject10F) ?? 0) / 2,
+  )
   if (subject10RingC) {
     decorations.push(subject10RingC)
   }
@@ -316,16 +339,17 @@ export const buildRodLineOccluders = (rodConfig?: RodConfig): RodLineOccluder[] 
   }
 
   subject10Pairs.forEach(([start, end, key], index) => {
-    const line = buildVerticalRingProjection(start, end, key)
+    const diameter = distanceBetweenPoints(start, end)
+    const line = buildVerticalRingProjection(start, end, key, diameter ? diameter / 2 : undefined)
     const centerHeight = rodConfig.subject10Config.ringCenterHeights[index]
-    if (line && Number.isFinite(centerHeight)) {
+    if (line && diameter && Number.isFinite(centerHeight)) {
       occluders.push({
         key: line.key,
         x1: line.x1,
         y1: line.y1,
         x2: line.x2,
         y2: line.y2,
-        height: (centerHeight as number) + SUBJECT_RING_RADIUS,
+        height: (centerHeight as number) + diameter / 2,
       })
     }
   })
