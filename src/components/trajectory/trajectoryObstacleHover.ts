@@ -214,18 +214,19 @@ export const buildRodObstacleHoverInfos = (rodConfig?: RodConfig): RodObstacleHo
     ])
   }
 
-  pushCircleInfo(infos, 'subject10-hover-a', '科目十（圈1）', buildHorizontalRing(subject10A, subject10B), [
-    `直径：${formatCm(SUBJECT_RING_DIAMETER)}`,
-    '圈心高度：待题卡',
-  ])
-  pushCircleInfo(infos, 'subject10-hover-b', '科目十（圈2）', buildHorizontalRing(subject10C, subject10D), [
-    `直径：${formatCm(SUBJECT_RING_DIAMETER)}`,
-    '圈心高度：待题卡',
-  ])
-  pushCircleInfo(infos, 'subject10-hover-c', '科目十（圈3）', buildHorizontalRing(subject10E, subject10F), [
-    `直径：${formatCm(SUBJECT_RING_DIAMETER)}`,
-    '圈心高度：待题卡',
-  ])
+  const subject10Rings = [
+    [subject10A, subject10B, 'subject10-hover-a', '科目十（圈1）'],
+    [subject10C, subject10D, 'subject10-hover-b', '科目十（圈2）'],
+    [subject10E, subject10F, 'subject10-hover-c', '科目十（圈3）'],
+  ] as const
+  subject10Rings.forEach(([start, end, key, label], index) => {
+    const centerHeight = rodConfig.subject10Config.ringCenterHeights[index]
+    const heightText = Number.isFinite(centerHeight) ? formatCm(centerHeight as number) : '待题卡'
+    pushLineInfo(infos, key, label, '竖圈', buildVerticalRingProjection(start, end), [
+      `直径：${formatCm(SUBJECT_RING_DIAMETER)}`,
+      `圈心高度：${heightText}`,
+    ])
+  })
 
   return infos
 }

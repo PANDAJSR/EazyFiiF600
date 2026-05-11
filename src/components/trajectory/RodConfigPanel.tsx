@@ -28,6 +28,7 @@ const cloneConfig = (source: RodConfig): RodConfig => {
     ...source,
     subject3Ring: { ...source.subject3Ring },
     subject9Config: { ...source.subject9Config },
+    subject10Config: { ringCenterHeights: [...source.subject10Config.ringCenterHeights] },
     takeoffZone: source.takeoffZone.map((point) => ({ ...point })),
   }
 
@@ -102,6 +103,15 @@ function RodConfigPanel({ config, onChange }: Props) {
       return
     }
 
+    if (group === 'subject10') {
+      onChange({
+        ...config,
+        [group]: config[group].map(() => ({})),
+        subject10Config: { ringCenterHeights: Array.from({ length: 3 }, () => undefined) },
+      })
+      return
+    }
+
     onChange({
       ...config,
       [group]: config[group].map(() => ({})),
@@ -148,6 +158,17 @@ function RodConfigPanel({ config, onChange }: Props) {
     })
   }
 
+  const updateSubject10RingHeight = (pairIndex: number, value: number | null) => {
+    onChange({
+      ...config,
+      subject10Config: {
+        ringCenterHeights: config.subject10Config.ringCenterHeights.map((height, index) =>
+          index === pairIndex ? (value ?? undefined) : height,
+        ),
+      },
+    })
+  }
+
   const updateVerticalRodHeight = (value: VerticalRodHeight) => {
     onChange({
       ...config,
@@ -167,6 +188,7 @@ function RodConfigPanel({ config, onChange }: Props) {
       Object.keys(labeledCoordinates.coordinates).length > 0
       || Number.isFinite(labeledCoordinates.subject3RingCenterHeight)
       || Number.isFinite(labeledCoordinates.subject9SecondCrossbarHeight)
+      || Boolean(labeledCoordinates.subject10RingCenterHeights?.some((height) => Number.isFinite(height)))
 
     if (hasLabeledData) {
       event.preventDefault()
@@ -186,6 +208,12 @@ function RodConfigPanel({ config, onChange }: Props) {
       if (Number.isFinite(labeledCoordinates.subject9SecondCrossbarHeight)) {
         nextConfig.subject9Config.secondCrossbarHeight = labeledCoordinates.subject9SecondCrossbarHeight
       }
+
+      labeledCoordinates.subject10RingCenterHeights?.forEach((height, index) => {
+        if (Number.isFinite(height)) {
+          nextConfig.subject10Config.ringCenterHeights[index] = height
+        }
+      })
 
       onChange(nextConfig)
       return
@@ -335,6 +363,19 @@ function RodConfigPanel({ config, onChange }: Props) {
                   />
                 </div>
               ) : null}
+              {subject.id === 'subject10'
+                ? config.subject10Config.ringCenterHeights.map((height, pairIndex) => (
+                    <div key={`subject10-ring-height-${pairIndex}`} className="rod-config-point-row">
+                      <span className="rod-config-point-label">{pairIndex * 2 + 1}-{pairIndex * 2 + 2}圈高</span>
+                      <DeferredNumberInput
+                        className="rod-config-input"
+                        value={height}
+                        placeholder="圈中心离地高度(cm)"
+                        onCommit={(value) => updateSubject10RingHeight(pairIndex, value)}
+                      />
+                    </div>
+                  ))
+                : null}
             </div>
           </section>
         ))}

@@ -11,6 +11,7 @@ export type ParsedLabeledCoordinates = {
   coordinates: Partial<Record<GroupId, CoordPair[]>>
   subject3RingCenterHeight?: number
   subject9SecondCrossbarHeight?: number
+  subject10RingCenterHeights?: Array<number | undefined>
 }
 
 const SUBJECT_NUMBER_TO_ID: Record<number, RodSubjectId> = {
@@ -70,6 +71,17 @@ const parseHeightInCm = (sectionText: string): number | undefined => {
   return unit === 'm' ? value * 100 : value
 }
 
+const parseHeightsInCm = (sectionText: string): number[] =>
+  [...sectionText.matchAll(new RegExp(HEIGHT_WITH_UNIT_PATTERN.source, 'gi'))]
+    .map((match) => {
+      const value = Number(match[1])
+      if (!Number.isFinite(value)) {
+        return undefined
+      }
+      return match[2].toLowerCase() === 'm' ? value * 100 : value
+    })
+    .filter((height): height is number => Number.isFinite(height))
+
 export const parseLabeledCoordinates = (rawText: string): ParsedLabeledCoordinates => {
   const normalizedText = rawText
     .replace(/（/g, '(')
@@ -116,6 +128,11 @@ export const parseLabeledCoordinates = (rawText: string): ParsedLabeledCoordinat
 
     if (group === 'subject9') {
       parsed.subject9SecondCrossbarHeight = heightInCm
+      return
+    }
+
+    if (group === 'subject10') {
+      parsed.subject10RingCenterHeights = parseHeightsInCm(sectionText).slice(0, 3)
     }
   })
 

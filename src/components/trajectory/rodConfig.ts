@@ -23,12 +23,17 @@ export type Subject9Config = {
   secondCrossbarHeight?: number
 }
 
+export type Subject10Config = {
+  ringCenterHeights: Array<number | undefined>
+}
+
 export type VerticalRodHeight = 150 | 170
 
 export type RodConfig = Record<RodSubjectId, RodPoint[]> & {
   takeoffZone: RodPoint[]
   subject3Ring: Subject3RingConfig
   subject9Config: Subject9Config
+  subject10Config: Subject10Config
   verticalRodHeight: VerticalRodHeight
 }
 
@@ -90,6 +95,17 @@ const normalizeSubject9Config = (value: unknown): Subject9Config => {
   }
 }
 
+const normalizeSubject10Config = (value: unknown): Subject10Config => {
+  const empty = { ringCenterHeights: Array.from({ length: 3 }, () => undefined) }
+  if (!value || typeof value !== 'object') {
+    return empty
+  }
+  const raw = value as Partial<Subject10Config>
+  return {
+    ringCenterHeights: empty.ringCenterHeights.map((_, index) => toFiniteNumber(raw.ringCenterHeights?.[index])),
+  }
+}
+
 const normalizeVerticalRodHeight = (value: unknown): VerticalRodHeight => {
   if (value === 150 || value === 170) {
     return value
@@ -114,7 +130,13 @@ export const createDefaultRodConfig = (): RodConfig =>
   ROD_SUBJECT_SPECS.reduce<RodConfig>((acc, spec) => {
     acc[spec.id] = Array.from({ length: spec.count }, () => ({}))
     return acc
-  }, { takeoffZone: Array.from({ length: 4 }, () => ({})), subject3Ring: {}, subject9Config: {}, verticalRodHeight: 170 } as RodConfig)
+  }, {
+    takeoffZone: Array.from({ length: 4 }, () => ({})),
+    subject3Ring: {},
+    subject9Config: {},
+    subject10Config: { ringCenterHeights: Array.from({ length: 3 }, () => undefined) },
+    verticalRodHeight: 170,
+  } as RodConfig)
 
 export const normalizeRodConfig = (value: unknown): RodConfig => {
   const fallback = createDefaultRodConfig()
@@ -122,13 +144,17 @@ export const normalizeRodConfig = (value: unknown): RodConfig => {
     return fallback
   }
 
-  const raw = value as Partial<Record<RodSubjectId | 'takeoffZone' | 'subject3Ring' | 'subject9Config' | 'verticalRodHeight', unknown>>
+  const raw = value as Partial<Record<
+    RodSubjectId | 'takeoffZone' | 'subject3Ring' | 'subject9Config' | 'subject10Config' | 'verticalRodHeight',
+    unknown
+  >>
 
   const next: RodConfig = {
     ...fallback,
     takeoffZone: fallback.takeoffZone.map((_, index) => normalizeRodPoint((raw.takeoffZone as unknown[] | undefined)?.[index])),
     subject3Ring: normalizeSubject3RingConfig(raw.subject3Ring),
     subject9Config: normalizeSubject9Config(raw.subject9Config),
+    subject10Config: normalizeSubject10Config(raw.subject10Config),
     verticalRodHeight: normalizeVerticalRodHeight(raw.verticalRodHeight),
   }
 

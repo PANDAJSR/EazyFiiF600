@@ -221,15 +221,15 @@ export const buildRodObstacleDecorations = (rodConfig?: RodConfig): RodObstacleD
     decorations.push(subject9Line)
   }
 
-  const subject10RingA = buildHorizontalRing(subject10A, subject10B, 'subject10-ring-a')
+  const subject10RingA = buildVerticalRingProjection(subject10A, subject10B, 'subject10-ring-a')
   if (subject10RingA) {
     decorations.push(subject10RingA)
   }
-  const subject10RingB = buildHorizontalRing(subject10C, subject10D, 'subject10-ring-b')
+  const subject10RingB = buildVerticalRingProjection(subject10C, subject10D, 'subject10-ring-b')
   if (subject10RingB) {
     decorations.push(subject10RingB)
   }
-  const subject10RingC = buildHorizontalRing(subject10E, subject10F, 'subject10-ring-c')
+  const subject10RingC = buildVerticalRingProjection(subject10E, subject10F, 'subject10-ring-c')
   if (subject10RingC) {
     decorations.push(subject10RingC)
   }
@@ -297,6 +297,11 @@ export const buildRodLineOccluders = (rodConfig?: RodConfig): RodLineOccluder[] 
   const occluders: RodLineOccluder[] = []
   const [subject3A, subject3B] = rodConfig.subject3
   const [subject9A, subject9B] = rodConfig.subject9
+  const subject10Pairs = [
+    [rodConfig.subject10[0], rodConfig.subject10[1], 'subject10-line-occluder-a'],
+    [rodConfig.subject10[2], rodConfig.subject10[3], 'subject10-line-occluder-b'],
+    [rodConfig.subject10[4], rodConfig.subject10[5], 'subject10-line-occluder-c'],
+  ] as const
 
   const subject3Line = buildVerticalRingProjection(subject3A, subject3B, 'subject3-line-occluder')
   if (subject3Line && Number.isFinite(rodConfig.subject3Ring.centerHeight)) {
@@ -309,6 +314,21 @@ export const buildRodLineOccluders = (rodConfig?: RodConfig): RodLineOccluder[] 
       height: (rodConfig.subject3Ring.centerHeight as number) + SUBJECT_RING_RADIUS,
     })
   }
+
+  subject10Pairs.forEach(([start, end, key], index) => {
+    const line = buildVerticalRingProjection(start, end, key)
+    const centerHeight = rodConfig.subject10Config.ringCenterHeights[index]
+    if (line && Number.isFinite(centerHeight)) {
+      occluders.push({
+        key: line.key,
+        x1: line.x1,
+        y1: line.y1,
+        x2: line.x2,
+        y2: line.y2,
+        height: (centerHeight as number) + SUBJECT_RING_RADIUS,
+      })
+    }
+  })
 
   const subject9Line = buildCrossbarLine(subject9A, subject9B, 'subject9-line-occluder')
   if (subject9Line) {

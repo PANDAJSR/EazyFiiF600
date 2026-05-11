@@ -14,6 +14,7 @@ const SUBJECT8_RING_DIAMETER = 65
 const SUBJECT8_HIGH_RING_CENTER_HEIGHT = 150
 const SUBJECT8_LOW_RING_CENTER_HEIGHT = 110
 const SUBJECT9_FIRST_CROSSBAR_HEIGHT = 150
+const SUBJECT10_RING_DIAMETER = 65
 const ROD_RADIUS = 1.8
 const RING_TUBE_RADIUS = 1.35
 const TAKEOFF_ZONE_Z = 0.12
@@ -57,6 +58,7 @@ export const renderSubjectRods = (
   const subject4RingGeometry = new THREE.TorusGeometry(SUBJECT4_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject7RingGeometry = new THREE.TorusGeometry(SUBJECT7_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const subject8RingGeometry = new THREE.TorusGeometry(SUBJECT8_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
+  const subject10RingGeometry = new THREE.TorusGeometry(SUBJECT10_RING_DIAMETER / 2, RING_TUBE_RADIUS, 18, 48)
   const addHoverTargets = (
     key: string | undefined,
     object: THREE.Mesh,
@@ -198,6 +200,33 @@ export const renderSubjectRods = (
     )
   }
 
+  const addVerticalRing = (
+    start: { x: number; y: number },
+    end: { x: number; y: number },
+    centerHeight: number,
+    geometry: THREE.TorusGeometry,
+    hoverKey?: string,
+  ) => {
+    const direction = new THREE.Vector3(end.x - start.x, end.y - start.y, 0)
+    if (direction.lengthSq() < 0.001) {
+      return
+    }
+    direction.normalize()
+    const ring = new THREE.Mesh(geometry, ringMaterial)
+    const planeNormal = new THREE.Vector3().crossVectors(direction, new THREE.Vector3(0, 0, 1))
+    if (planeNormal.lengthSq() > 0.001) {
+      planeNormal.normalize()
+      ring.quaternion.setFromUnitVectors(new THREE.Vector3(0, 0, 1), planeNormal)
+    }
+    ring.position.set((start.x + end.x) / 2, (start.y + end.y) / 2, centerHeight)
+    scene.add(ring)
+    addHoverTargets(
+      hoverKey,
+      ring,
+      new THREE.TorusGeometry(SUBJECT10_RING_DIAMETER / 2, RING_TUBE_RADIUS * 2.5, 18, 48),
+    )
+  }
+
   const subject1Rod = rodConfig?.subject1[0]
   if (isFiniteRodPoint(subject1Rod)) {
     addVerticalRod(subject1Rod.x, subject1Rod.y)
@@ -286,12 +315,30 @@ export const renderSubjectRods = (
     }
   }
 
+  const subject10Pairs = [
+    [rodConfig?.subject10[0], rodConfig?.subject10[1], 'subject10-hover-a'],
+    [rodConfig?.subject10[2], rodConfig?.subject10[3], 'subject10-hover-b'],
+    [rodConfig?.subject10[4], rodConfig?.subject10[5], 'subject10-hover-c'],
+  ] as const
+  subject10Pairs.forEach(([start, end, hoverKey], index) => {
+    if (!isFiniteRodPoint(start) || !isFiniteRodPoint(end)) {
+      return
+    }
+    addVerticalRod(start.x, start.y)
+    addVerticalRod(end.x, end.y)
+    const centerHeight = rodConfig?.subject10Config.ringCenterHeights[index]
+    if (isFiniteNumber(centerHeight)) {
+      addVerticalRing(start, end, centerHeight, subject10RingGeometry, hoverKey)
+    }
+  })
+
   disposers.push(() => {
     rodGeometry.dispose()
     subject3RingGeometry.dispose()
     subject4RingGeometry.dispose()
     subject7RingGeometry.dispose()
     subject8RingGeometry.dispose()
+    subject10RingGeometry.dispose()
     rodMaterial.dispose()
     crossbarMaterial.dispose()
     ringMaterial.dispose()
