@@ -149,13 +149,22 @@ function App() {
     selectAll: pendingFocusTarget?.selectAll,
     onFocused: () => setPendingFocusTarget(undefined),
   })
-  const handleLocateBlock = useCallback((blockId: string) => {
-    console.log('[App] handleLocateBlock called, blockId:', blockId)
+  const handleLocateBlock = useCallback((blockId: string, droneId?: string) => {
+    console.log('[App] handleLocateBlock called, blockId:', blockId, 'droneId:', droneId)
+    // 如果指定了无人机ID且与当前选中的不同，切换无人机
+    if (droneId && droneId !== selectedDroneId) {
+      setSelectedDroneId(droneId)
+      setHighlightedBlockId(blockId)
+      setSelectedBlockIds([blockId])
+      setShiftSelectAnchor(null)
+      setHighlightPulse((prev) => prev + 1)
+      return
+    }
     setHighlightedBlockId(blockId)
     setSelectedBlockIds([blockId])
     setShiftSelectAnchor(null)
     setHighlightPulse((prev) => prev + 1)
-  }, [])
+  }, [selectedDroneId])
   const handleFieldChange = useCallback((blockId: string, fieldKey: string, value: string) => {
     setResult((prev) => updateBlockField(prev, selectedDroneId, blockId, fieldKey, value))
     setHasUnsavedChanges(true)

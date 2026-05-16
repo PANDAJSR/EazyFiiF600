@@ -557,6 +557,7 @@ export const checkRodCollisionIssues = (
   startPos: XYZ,
   blocks: ParsedBlock[],
   safetyDistance?: number,
+  droneId?: string,
 ): TrajectoryIssue[] => {
   const collisionThreshold = safetyDistance ?? DEFAULT_COLLISION_THRESHOLD
   const issues: TrajectoryIssue[] = []
@@ -610,6 +611,7 @@ export const checkRodCollisionIssues = (
         issues.push({
           key: `collision-${segmentIndex}-${obstacle.type}-${i}`,
           blockId,
+          droneId,
           message: `撞杆检测：第${segmentIndex}段路径距离${obstacleDesc}仅${distance.toFixed(1)}cm，小于安全距离${collisionThreshold}cm`,
         })
       }

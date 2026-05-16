@@ -8,7 +8,7 @@ import type { TrajectoryDisplay } from './useTrajectoryVisibility'
 import RodConfigPanel from './trajectory/RodConfigPanel'
 import { createDefaultRodConfig, type RodConfig } from './trajectory/rodConfig'
 import { loadRodConfigFromDirectory, saveRodConfigToDirectory } from './trajectory/rodConfigStorage'
-import { buildTrajectoryIssues } from './trajectory/trajectoryIssues'
+import { buildTrajectoryIssues, type TrajectoryIssue } from './trajectory/trajectoryIssues'
 import { loadAppSettings } from '../utils/appSettings'
 
 type XYZ = {
@@ -28,7 +28,7 @@ type Props = {
   pathDrawingMode?: boolean
   onPathDrawingToggle?: (enabled: boolean) => void
   onDrawPathPoint?: (x: number, y: number) => void
-  onLocateBlock?: (blockId: string) => void
+  onLocateBlock?: (blockId: string, droneId?: string) => void
   onMovePoint?: (payload: {
     blockId: string
     blockType: 'Goertek_MoveToCoord2' | 'Goertek_Move' | typeof AUTO_DELAY_BLOCK_TYPE
@@ -309,11 +309,28 @@ function FloatingTrajectoryPanel({
 
   const issueWarnings = useMemo(() => {
     const safeDistance = safetyDistance ?? loadAppSettings().safetyDistance
-    const selectedIssues = buildTrajectoryIssues(startPos, blocks, rodConfig, safeDistance)
-    if (!selectedDroneId || allPrograms.length === 0) {
-      return selectedIssues
+
+    // 收集所有无人机的撞杆检测问题（排除当前选中的，由 selectedIssues 处理）
+    const allCollisionIssues: TrajectoryIssue[] = []
+    for (const program of allPrograms) {
+      if (program.drone.id === selectedDroneId) {
+        continue
+      }
+      const issues = buildTrajectoryIssues(program.drone.startPos, program.blocks, rodConfig, safeDistance, program.drone.id)
+      for (const issue of issues) {
+        if (issue.droneId) {
+          allCollisionIssues.push(issue)
+        }
+      }
     }
 
+    // 如果只有一个无人机或没有无人机，只显示当前无人机的所有问题
+    if (!selectedDroneId || allPrograms.length <= 1) {
+      const selectedIssues = buildTrajectoryIssues(startPos, blocks, rodConfig, safeDistance)
+      return [...allCollisionIssues, ...selectedIssues.filter((issue) => !issue.droneId)]
+    }
+
+    // 多个无人机：显示所有撞杆检测问题，但对其他问题进行跨无人机过滤
     const subjectFailureByDrone = allPrograms.reduce<Record<string, Set<string>>>((acc, program) => {
       const programIssues = buildTrajectoryIssues(program.drone.startPos, program.blocks, rodConfig, safeDistance)
       const failedSubjects = new Set<string>()
@@ -343,13 +360,19 @@ function FloatingTrajectoryPanel({
       }
     })
 
-    return selectedIssues.filter((issue) => {
+    const selectedIssues = buildTrajectoryIssues(startPos, blocks, rodConfig, safeDistance)
+    const filteredSelectedIssues = selectedIssues.filter((issue) => {
+      if (issue.droneId) {
+        return true
+      }
       const match = issue.key.match(/^subject(\d+)-/)
       if (!match?.[1]) {
         return true
       }
       return !globallyCompletedSubjects.has(match[1])
     })
+
+    return [...allCollisionIssues, ...filteredSelectedIssues]
   }, [allPrograms, blocks, rodConfig, safetyDistance, selectedDroneId, startPos])
 
   const startMove = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -501,7 +524,7 @@ function FloatingTrajectoryPanel({
                       className="trajectory-issue-link"
                       onClick={() => {
                         if (issue.blockId) {
-                          onLocateBlock?.(issue.blockId)
+                          onLocateBlock?.(issue.blockId, issue.droneId)
                         }
                       }}
                     >

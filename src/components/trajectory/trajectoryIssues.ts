@@ -32,6 +32,7 @@ export type TrajectoryIssue = {
   key: string
   message: string
   blockId?: string
+  droneId?: string
 }
 
 const ASYNC_MOVE_DELAY_ANCHORS: DelayAnchor[] = [
@@ -216,6 +217,7 @@ export const buildTrajectoryIssues = (
   blocks: ParsedBlock[],
   rodConfig: RodConfig,
   safetyDistance?: number,
+  droneId?: string,
 ): TrajectoryIssue[] => {
   const issues: TrajectoryIssue[] = []
   const subject1 = rodConfig.subject1[0]
@@ -421,6 +423,6 @@ export const buildTrajectoryIssues = (
   }
 
   issues.push(...findAsyncMoveDelayIssues(startPos, blocks))
-  issues.push(...checkRodCollisionIssues(rodConfig, startPos, blocks, safetyDistance))
+  issues.push(...checkRodCollisionIssues(rodConfig, startPos, blocks, safetyDistance, droneId))
   return issues
 }
